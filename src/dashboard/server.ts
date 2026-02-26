@@ -3,7 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { loadDashboardRun, resolveRunPath } from './data.js';
+import { buildDashboardIndex, resolveRunPath, SECTION_FILES, type ArtifactStore, type DashboardIndex } from './data.js';
 
 interface ServerOptions { runPath: string; port: number; staticDir?: string }
 
@@ -15,22 +15,68 @@ async function sendFile(response: http.ServerResponse, filePath: string): Promis
     response.writeHead(200, { 'content-type': contentType });
     response.end(content);
     return true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export function startDashboardServer(options: ServerOptions): http.Server {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const staticRoot = options.staticDir ?? path.join(here, 'app');
 
+  let indexState: DashboardIndex | null = null;
+  let store: ArtifactStore | null = null;
+
+  const ensureIndex = async (): Promise<void> => {
+    if (indexState && store) return;
+    const built = await buildDashboardIndex(options.runPath);
+    indexState = built.index;
+    store = built.store;
+  };
+
   const server = http.createServer(async (request, response) => {
     try {
       const requestUrl = new URL(request.url ?? '/', `http://localhost:${options.port}`);
+      if (requestUrl.pathname === '/api/index') {
+        await ensureIndex();
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify(indexState));
+        return;
+      }
+
+      if (requestUrl.pathname.startsWith('/api/url/')) {
+        await ensureIndex();
+        const [, , , rawId, action, rawSection] = requestUrl.pathname.split('/');
+        if (!rawId || !store) {
+          response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({ error: 'Invalid URL id' }));
+          return;
+        }
+        const id = decodeURIComponent(rawId);
+
+        if (action === 'section' && rawSection) {
+          const section = decodeURIComponent(rawSection);
+          if (!SECTION_FILES.includes(section as never)) {
+            response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+            response.end(JSON.stringify({ error: `Unknown section: ${section}` }));
+            return;
+          }
+          const data = await store.loadSection(id, section as never);
+          response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({ section, ...data }));
+          return;
+        }
+      }
+
       if (requestUrl.pathname === '/api/model') {
+        // backwards compatibility
+        const { loadDashboardRun } = await import('./data.js');
         const run = await loadDashboardRun(options.runPath);
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         response.end(JSON.stringify(run));
         return;
       }
+
       if (requestUrl.pathname.startsWith('/artifacts/')) {
         const rel = requestUrl.pathname.replace('/artifacts/', '');
         const filePath = path.join(options.runPath, rel);
