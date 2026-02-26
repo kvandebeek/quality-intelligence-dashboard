@@ -426,7 +426,7 @@ ${worstList(summary.worstByTransferSize, 'totalTransferSize', (row) => row.total
 }
 
 async function sendStaticFile(response: http.ServerResponse, staticDir: string, requestPath: string): Promise<boolean> {
-  const normalizedPath = requestPath === '/' ? '/index.html' : requestPath;
+  const normalizedPath = requestPath === '/' ? 'index.html' : requestPath.replace(/^\//, '');
   const filePath = path.join(staticDir, normalizedPath);
   try {
     const content = await fs.readFile(filePath);
@@ -440,6 +440,8 @@ async function sendStaticFile(response: http.ServerResponse, staticDir: string, 
 }
 
 export function startDashboardServer(options: ServerOptions): http.Server {
+  const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
+
   const server = http.createServer(async (request, response) => {
     try {
       const requestUrl = new URL(request.url ?? '/', `http://localhost:${options.port}`);
@@ -451,14 +453,14 @@ export function startDashboardServer(options: ServerOptions): http.Server {
       }
 
       if (requestUrl.pathname === '/styles.css') {
-        const css = await fs.readFile(path.join(path.dirname(new URL(import.meta.url).pathname), 'styles.css'), 'utf8');
+        const css = await fs.readFile(path.join(dashboardDir, 'styles.css'), 'utf8');
         response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
         response.end(css);
         return;
       }
 
       if (requestUrl.pathname.startsWith('/styles/')) {
-        const stylePath = path.join(path.dirname(new URL(import.meta.url).pathname), `.${requestUrl.pathname}`);
+        const stylePath = path.join(dashboardDir, `.${requestUrl.pathname}`);
         const css = await fs.readFile(stylePath, 'utf8');
         response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
         response.end(css);
