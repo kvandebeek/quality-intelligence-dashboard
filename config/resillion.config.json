@@ -4,6 +4,7 @@
   "environment": "local",
   "iteration": 1,
   "outputDir": "artifacts",
+  "name": "RESILLION",
   "startUrl": "https://resillion.com",
   "targets": [
     {

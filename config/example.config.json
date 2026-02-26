@@ -4,6 +4,7 @@
   "environment": "local",
   "iteration": 1,
   "outputDir": "artifacts",
+  "name": "EXAMPLE",
   "startUrl": "https://example.com",
   "targets": [],
   "crawl": {

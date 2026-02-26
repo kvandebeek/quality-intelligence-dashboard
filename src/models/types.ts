@@ -48,6 +48,7 @@ export interface RunMetadata {
   browser: BrowserName;
   environment: string;
   iteration: number;
+  name?: string;
   startUrl: string;
   targets: RunTarget[];
 }
@@ -135,6 +136,7 @@ export interface AppConfig {
   environment: string;
   iteration: number;
   outputDir: string;
+  name?: string;
   startUrl: string;
   targets: RunTarget[];
   crawl: CrawlConfig;
