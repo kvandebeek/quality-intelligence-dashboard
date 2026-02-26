@@ -148,6 +148,14 @@ function renderStateBox(stateName, reason=''){
 
 function rawPanel(raw){ return `<details><summary>Raw JSON</summary><pre>${raw?JSON.stringify(raw,null,2):'Not available'}</pre></details>`; }
 
+function unwrapArtifact(raw){
+  if(raw && typeof raw === 'object' && !Array.isArray(raw) && 'payload' in raw){
+    return { payload: raw.payload, meta: raw.meta && typeof raw.meta === 'object' ? raw.meta : {} };
+  }
+  return { payload: raw, meta: {} };
+}
+
+
 async function loadTab(id, tab){
   const el = document.getElementById('tab-content');
   const res = await fetch(`/api/url/${encodeURIComponent(id)}/section/${encodeURIComponent(tab)}`);
@@ -155,26 +163,27 @@ async function loadTab(id, tab){
   const head = renderStateBox(payload.state,payload.summary?.reason);
   let body = '';
   const raw = payload.raw;
+  const unwrapped = unwrapArtifact(raw);
 
   switch(tab){
-    case 'a11y-beyond-axe.json': body = renderA11yHeuristics(raw); break;
-    case 'accessibility.json': body = renderAxe(raw); break;
-    case 'api-monitoring.json': body = renderApi(raw); break;
-    case 'broken-links.json': body = renderBroken(raw); break;
-    case 'core-web-vitals.json': body = renderCwv(raw); break;
-    case 'lighthouse-summary.json': body = renderLighthouse(raw); break;
-    case 'memory-profile.json': body = renderMemory(raw); break;
-    case 'network-recommendations.json': body = renderNetRec(raw); break;
-    case 'network-requests.json': body = renderNetReq(raw); break;
-    case 'performance.json': body = renderPerformance(raw); break;
-    case 'security-scan.json': body = renderSecurity(raw); break;
-    case 'seo-checks.json': body = renderSeo(raw); break;
-    case 'stability.json': body = renderStability(raw); break;
-    case 'target-summary.json': body = renderTarget(raw); break;
-    case 'third-party-risk.json': body = renderThirdParty(raw); break;
-    case 'throttled-run.json': body = renderThrottled(raw); break;
+    case 'a11y-beyond-axe.json': body = renderA11yHeuristics(unwrapped.payload); break;
+    case 'accessibility.json': body = renderAxe(unwrapped.payload); break;
+    case 'api-monitoring.json': body = renderApi(unwrapped.payload); break;
+    case 'broken-links.json': body = renderBroken(unwrapped.payload); break;
+    case 'core-web-vitals.json': body = renderCwv(unwrapped.payload); break;
+    case 'lighthouse-summary.json': body = renderLighthouse(unwrapped.payload); break;
+    case 'memory-profile.json': body = renderMemory(unwrapped.payload); break;
+    case 'network-recommendations.json': body = renderNetRec(unwrapped.payload); break;
+    case 'network-requests.json': body = renderNetReq(unwrapped.payload); break;
+    case 'performance.json': body = renderPerformance(unwrapped.payload); break;
+    case 'security-scan.json': body = renderSecurity(unwrapped.payload); break;
+    case 'seo-checks.json': body = renderSeo(unwrapped.payload); break;
+    case 'stability.json': body = renderStability(unwrapped.payload); break;
+    case 'target-summary.json': body = renderTarget(unwrapped.payload, unwrapped.meta); break;
+    case 'third-party-risk.json': body = renderThirdParty(unwrapped.payload); break;
+    case 'throttled-run.json': body = renderThrottled(unwrapped.payload); break;
     case 'visual-current.png': body = payload.summary?.image ? `<div class="image-wrap"><img src="${payload.summary.image}"></div>` : '<p>Not available</p>'; break;
-    case 'visual-regression.json': body = renderVisualReg(raw); break;
+    case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     default: body = '<p>Unsupported section</p>';
   }
   el.innerHTML = `${head}${body}${rawPanel(raw)}`;
@@ -185,18 +194,18 @@ async function loadTab(id, tab){
 const metric = (label, v)=>`<div class="kpi"><span>${label}</span><strong>${safe(v,'Not measured')}</strong></div>`;
 const renderA11yHeuristics = (r={})=>`<div class="kpis">${Object.entries(r).slice(0,6).map(([k,v])=>metric(k,v===null?'Not measured':String(v))).join('')}</div><p>Manual checks are shown when flags indicate potential focus/keyboard issues.</p>`;
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
-const renderApi = (r={})=>`<div class="kpis">${metric('Count',r.count)}${metric('Error rate',r.errorRate)}${metric('P95 latency',r.p95LatencyMs)}${metric('Avg payload',r.avgPayloadSize)}</div>`;
-const renderBroken = (r={})=>`<div class="kpis">${metric('Checked',r.checkedCount)}${metric('Broken',r.brokenCount)}${metric('Redirect chains',r.redirectChains)}${metric('Loops',r.loops)}</div>`;
-const renderCwv = (r={})=>{const vals=['lcpMs','cls','inpMs','fcpMs'].map((k)=>toNum(r[k])); const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs)}${metric('CLS',r.cls)}${metric('INP',r.inpMs)}${metric('FCP',r.fcpMs)}${metric('Readiness',ready+'%')}</div>`};
-const renderLighthouse = (r={})=>`<div class="kpis">${metric('Performance',r.performance)}${metric('Accessibility',r.accessibility)}${metric('SEO',r.seo)}${metric('Best practices',r.bestPractices)}</div>`;
-const renderMemory = (r={})=>`<div>${metric('Growth verdict',r.growthVerdict===null?'Insufficient samples':r.growthVerdict)}<pre>${(r.samples||[]).slice(0,20).join(', ')}</pre></div>`;
+const renderApi = (r={})=>`<div class="kpis">${metric('Count',r.count)}${metric('Error rate',r.errorRate)}${metric('P95 latency',r.p95LatencyMs ?? r.p95Ms)}${metric('Avg payload',r.avgPayloadSize ?? r.avgSize)}</div>`;
+const renderBroken = (r={})=>`<div class="kpis">${metric('Checked',r.checkedCount ?? r.checked)}${metric('Broken',r.brokenCount ?? r.broken)}${metric('Redirect chains',r.redirectChains)}${metric('Loops',r.loops)}</div>`;
+const renderCwv = (r={})=>{const vals=[toNum(r.lcpMs ?? r.lcp),toNum(r.cls),toNum(r.inpMs ?? r.inp),toNum(r.fcpMs ?? r.fcp)]; const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs ?? r.lcp)}${metric('CLS',r.cls)}${metric('INP',r.inpMs ?? r.inp)}${metric('FCP',r.fcpMs ?? r.fcp)}${metric('Readiness',ready+'%')}</div>`};
+const renderLighthouse = (r={})=>`<div class="kpis">${metric('Performance',r.performance ?? r.categories?.performance)}${metric('Accessibility',r.accessibility ?? r.categories?.accessibility)}${metric('SEO',r.seo ?? r.categories?.seo)}${metric('Best practices',r.bestPractices ?? r.categories?.bestPractices)}</div>`;
+const renderMemory = (r={})=>`<div>${metric('Growth',r.growth===null?'Insufficient samples':r.growth ?? r.growthVerdict)}<pre>${(r.samples||[]).slice(0,20).join(', ')}</pre></div>`;
 const renderNetRec = (r=[])=>{const arr=Array.isArray(r)?r:(r.recommendations||[]); return `<div class="cards">${arr.slice(0,80).map(x=>`<article><h4>${safe(x.title,x.id)}</h4><p>${safe(x.description,'')}</p><small>${safe(x.severity)} · impacted ${safe(x.impactedCount,0)}</small></article>`).join('')}</div>`;};
 const renderNetReq = (r=[])=>{let arr=Array.isArray(r)?r:(r.requests||[]); if(state.selectedDomain) arr=arr.filter((x)=>String(x.url||'').includes(state.selectedDomain)); return `<div class="kpis">${metric('Rows',arr.length)}${metric('Domain filter',state.selectedDomain||'None')}</div><table><tr><th>Method</th><th>Status</th><th>Type</th><th>Transfer</th><th>Duration</th><th>Cache</th><th>URL</th></tr>${arr.slice(0,400).map(x=>`<tr><td>${safe(x.method)}</td><td>${safe(x.status)}</td><td>${safe(x.type)}</td><td>${safe(x.transferSize)}</td><td>${safe(x.durationMs ?? x.duration)}</td><td>${safe(x.cacheStatus ?? x.cached)}</td><td>${safe(x.url)}</td></tr>`).join('')}</table>`;};
 const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class="kpis">${metric('DNS',n.dnsMs)}${metric('TCP',n.tcpMs)}${metric('TTFB',n.ttfbMs)}${metric('DCL',n.domContentLoadedMs)}${metric('Load',n.loadEventMs)}${metric('FP',r.paint?.fpMs)}${metric('FCP',r.paint?.fcpMs)}</div>`;};
-const renderSecurity = (r={})=>`<div class="kpis">${metric('TLS',r.tlsVersion)}${metric('Missing headers',(r.missingHeaders||[]).join(', ')||'None')}</div>`;
+const renderSecurity = (r={})=>`<div class="kpis">${metric('TLS',r.tlsVersion)}${metric('Missing headers',Array.isArray(r.missingHeaders)?((r.missingHeaders||[]).join(', ')||'None'):'Not measured')}</div>`;
 const renderSeo = (r={})=>`<div class="kpis">${metric('Title',r.title)}${metric('Description',r.description)}${metric('Canonical',r.canonical)}${metric('Robots',r.robots)}${metric('Structured data count',r.structuredDataCount)}</div><blockquote><strong>${safe(r.title,'(title missing)')}</strong><p>${safe(r.description,'(description missing)')}</p></blockquote>`;
-const renderStability = (r={})=>`<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev)}${metric('CV',r.coefficientOfVariation)}${metric('Unstable',r.unstable?'Yes':'No')}</div>`;
-const renderTarget = (r={})=>`<div class="kpis">${metric('URL',r.url)}${metric('Run ID',r.runId)}${metric('Environment',r.environment)}${metric('Overall score',r.overallScore)}</div>`;
+const renderStability = (r={})=>`<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs)}${metric('CV',r.coefficientOfVariation)}${metric('Unstable',r.unstable?'Yes':'No')}</div>`;
+const renderTarget = (r={}, m={})=>`<div class="kpis">${metric('URL',r.url ?? r.target?.url ?? m.url)}${metric('Run ID',r.runId ?? m.runId)}${metric('Environment',r.environment ?? r.meta?.environment)}${metric('Overall score',r.overallScore ?? r.enterpriseScore ?? r.score)}</div>`;
 const renderThirdParty = (r={})=>{const rows=r.domains||r; const arr=Array.isArray(rows)?rows:Object.entries(rows||{}).map(([d,v])=>({domain:d,...v})); return `<table><tr><th>Domain</th><th>Requests</th><th>Bytes</th><th>Avg duration</th><th>Tracker</th></tr>${arr.slice(0,150).map(x=>`<tr><td><button class="link" data-domain="${x.domain}">${x.domain}</button></td><td>${safe(x.requests)}</td><td>${safe(x.transferSize)}</td><td>${safe(x.avgDurationMs)}</td><td>${x.trackerHeuristic?'Yes':'No'}</td></tr>`).join('')}</table>`;};
 const renderThrottled = (r={})=>`<div class="kpis">${metric('Available',r.available===false?'Not executed':'Yes')}${metric('Baseline load',r.baselineLoadMs)}${metric('Throttled load',r.throttledLoadMs)}${metric('Degradation',r.degradationFactor)}</div>`;
 const renderVisualReg = (r={})=>`<div class="kpis">${metric('Baseline found',r.baselineFound?'Yes':'No')}${metric('Diff ratio',r.diffRatio)}${metric('Passed',r.passed?'Yes':'No')}</div>${r.baselineFound===false?'<button>Create baseline from visual-current.png</button>':''}`;

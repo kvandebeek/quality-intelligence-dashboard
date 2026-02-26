@@ -170,8 +170,18 @@ const toNum = (value: unknown): number | null => (typeof value === 'number' && N
 
 const severityList = ['critical', 'serious', 'moderate', 'minor'] as const;
 
+
+function unwrapRaw(raw: unknown): { payload: unknown; meta: Record<string, unknown> } {
+  if (typeof raw === 'object' && raw !== null && !Array.isArray(raw) && 'payload' in raw) {
+    const wrapped = raw as { payload: unknown; meta?: unknown };
+    return { payload: wrapped.payload, meta: (typeof wrapped.meta === 'object' && wrapped.meta !== null ? wrapped.meta : {}) as Record<string, unknown> };
+  }
+  return { payload: raw, meta: {} };
+}
+
 function normalizeSection(section: SectionFile, raw: unknown): { state: SectionIndexStatus['state']; raw: unknown; summary: Record<string, unknown> } {
-  const obj = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  const unwrapped = unwrapRaw(raw);
+  const obj = (typeof unwrapped.payload === 'object' && unwrapped.payload !== null ? unwrapped.payload : {}) as Record<string, unknown>;
   if (obj.available === false) return { state: 'not_available', raw, summary: { reason: obj.reason ?? obj.message ?? 'Not available' } };
 
   if (section === 'accessibility.json') {
@@ -194,7 +204,7 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
     return { state: missingHeaders > 0 ? 'issues' : 'ok', raw, summary: { missingHeaders } };
   }
   if (section === 'network-recommendations.json') {
-    const list = Array.isArray(raw) ? raw as Record<string, unknown>[] : Array.isArray(obj.recommendations) ? obj.recommendations as Record<string, unknown>[] : [];
+    const list = Array.isArray(unwrapped.payload) ? unwrapped.payload as Record<string, unknown>[] : Array.isArray(obj.recommendations) ? obj.recommendations as Record<string, unknown>[] : [];
     const high = list.filter((x) => String(x.severity ?? '').toLowerCase() === 'high').length;
     return { state: list.length > 0 ? 'issues' : 'ok', raw, summary: { count: list.length, high } };
   }
@@ -212,8 +222,8 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
   return { state: 'ok', raw, summary: {} };
 }
 
-function deriveUrl(folderName: string, targetSummary?: Record<string, unknown>): string {
-  return String(targetSummary?.url ?? (targetSummary?.target as Record<string, unknown> | undefined)?.url ?? folderName);
+function deriveUrl(folderName: string, targetSummary?: Record<string, unknown>, meta?: Record<string, unknown>): string {
+  return String(targetSummary?.url ?? (targetSummary?.target as Record<string, unknown> | undefined)?.url ?? meta?.url ?? folderName);
 }
 
 function grade(score: number): string {
@@ -239,8 +249,9 @@ export async function buildDashboardIndex(runPath: string): Promise<{ index: Das
       sections[section] = { file: section, exists: loaded.state !== 'missing', state: loaded.state, summary: loaded.summary };
     }
     const targetLoaded = await store.loadSection(id, 'target-summary.json');
-    const targetRaw = (targetLoaded.raw && typeof targetLoaded.raw === 'object') ? targetLoaded.raw as Record<string, unknown> : undefined;
-    const url = deriveUrl(id, targetRaw);
+    const targetUnwrapped = unwrapRaw(targetLoaded.raw);
+    const targetRaw = (targetUnwrapped.payload && typeof targetUnwrapped.payload === 'object') ? targetUnwrapped.payload as Record<string, unknown> : undefined;
+    const url = deriveUrl(id, targetRaw, targetUnwrapped.meta);
 
     const a11ySev = sections['accessibility.json'].summary;
     const hasFailures = Object.values(sections).some((s) => s.state === 'issues' || s.state === 'error');
@@ -248,8 +259,8 @@ export async function buildDashboardIndex(runPath: string): Promise<{ index: Das
       id,
       folderName: id,
       url,
-      runId: targetRaw?.runId ? String(targetRaw.runId) : null,
-      timestamp: targetRaw?.timestamp ? String(targetRaw.timestamp) : null,
+      runId: (targetRaw?.runId ?? targetUnwrapped.meta.runId) ? String(targetRaw?.runId ?? targetUnwrapped.meta.runId) : null,
+      timestamp: (targetRaw?.timestamp ?? targetUnwrapped.meta.timestamp) ? String(targetRaw?.timestamp ?? targetUnwrapped.meta.timestamp) : null,
       hasFailures,
       badges: {
         a11y: aggregateBadge(sections['accessibility.json'].state, sections['a11y-beyond-axe.json'].state),
@@ -285,7 +296,7 @@ export async function loadDashboardRun(runPath: string): Promise<DashboardRunDat
       if (section === 'visual-current.png') {
         if (loaded.state !== 'missing') images[section] = String(loaded.summary.image ?? '');
       } else if (loaded.state !== 'missing' && loaded.state !== 'error') {
-        artifacts[section] = loaded.raw;
+        artifacts[section] = unwrapRaw(loaded.raw).payload;
       }
     }
 
