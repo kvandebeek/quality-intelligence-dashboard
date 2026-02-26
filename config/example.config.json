@@ -4,19 +4,14 @@
   "environment": "local",
   "iteration": 1,
   "outputDir": "artifacts",
-  "startUrl": "https://resillion.com",
-  "targets": [
-    {
-      "name": "Resillion Landing Page",
-      "url": "https://resillion.com"
-    }
-  ],
+  "startUrl": "https://example.com",
+  "targets": [],
   "crawl": {
-    "enabled": false,
+    "enabled": true,
     "maxDepth": 2,
     "maxPages": 50,
     "includeExternalDomains": false,
-    "allowedDomains": ["resillion.com"]
+    "allowedDomains": ["example.com"]
   },
   "elasticsearch": {
     "enabled": false,
