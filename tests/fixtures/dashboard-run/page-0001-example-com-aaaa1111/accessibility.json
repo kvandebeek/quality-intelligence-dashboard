@@ -1,0 +1,7 @@
+{
+  "url": "https://example.com/",
+  "issues": [
+    {"id": "color-contrast", "impact": "critical", "description": "Insufficient contrast", "help": "Fix colors", "nodes": 2, "tags": ["wcag2aa"], "recommendation": "Increase contrast"}
+  ],
+  "counters": {"critical": 1, "serious": 0, "moderate": 2, "minor": 1}
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist/dashboard",
+    "rootDir": "src/dashboard",
+    "types": ["node"]
+  },
+  "include": ["src/dashboard/**/*.ts"]
+}

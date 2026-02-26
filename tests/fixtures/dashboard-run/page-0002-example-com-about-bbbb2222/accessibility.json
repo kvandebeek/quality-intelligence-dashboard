@@ -1,0 +1,7 @@
+{
+  "url": "https://example.com/about",
+  "issues": [
+    {"id": "aria-label", "impact": "serious", "description": "Missing labels", "help": "Add labels", "nodes": 3, "tags": ["wcag2a"], "recommendation": "Add aria-label"}
+  ],
+  "counters": {"critical": 0, "serious": 2, "moderate": 1, "minor": 1}
+}

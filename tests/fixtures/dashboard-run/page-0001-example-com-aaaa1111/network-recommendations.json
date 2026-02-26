@@ -1,0 +1,4 @@
+[
+  {"id": "cache-static-assets", "title": "Cache static assets", "description": "Increase cache headers", "severity": "high", "impactedCount": 1},
+  {"id": "compress-text", "title": "Compress text", "description": "Enable gzip", "severity": "medium", "impactedCount": 2}
+]
