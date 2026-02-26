@@ -15,11 +15,11 @@ export async function publishToElasticsearch(config: ElasticConfig, summary: Run
         : undefined
   });
 
-  const index = `${config.indexPrefix ?? 'cx-assurance'}-runs`;
+  const index = `${config.indexPrefix ?? 'quality-signal'}-runs`;
 
   await client.indices.putTemplate({
     name: `${index}-template`,
-    index_patterns: [`${config.indexPrefix ?? 'cx-assurance'}-*`],
+    index_patterns: [`${config.indexPrefix ?? 'quality-signal'}-*`],
     template: {
       mappings: {
         properties: {

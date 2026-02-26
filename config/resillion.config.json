@@ -16,6 +16,6 @@
   },
   "elasticsearch": {
     "enabled": false,
-    "indexPrefix": "cx-assurance"
+    "indexPrefix": "quality-signal"
   }
 }

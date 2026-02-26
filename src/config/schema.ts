@@ -40,7 +40,7 @@ export const appConfigSchema = z
         apiKey: z.string().optional(),
         username: z.string().optional(),
         password: z.string().optional(),
-        indexPrefix: z.string().default('cx-assurance')
+        indexPrefix: z.string().default('quality-signal')
       })
       .default({ enabled: false })
   })

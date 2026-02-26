@@ -5,8 +5,8 @@ import { runAssurance } from './core/runEngine.js';
 const program = new Command();
 
 program
-  .name('cx-assurance')
-  .description('Playwright-based CX assurance runner')
+  .name('quality-signal')
+  .description('Playwright-based quality automation runner')
   .version('1.0.0');
 
 program

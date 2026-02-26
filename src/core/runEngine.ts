@@ -232,7 +232,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
     writeJson(path.join(runRoot, 'index.json'), index);
     writeJson(path.join(runRoot, 'history.json'), { runId, timestamp, urls: index.urls.map((entry) => ({ url: entry.meta.url, scores: entry.enterpriseScore })) });
     writeJson(path.join(runRoot, 'ci-summary.json'), { runId, totalUrls: index.summary.totalUrls, worstPerformance: index.summary.rankings.performance.at(-1) ?? null });
-    const junit = `<?xml version="1.0" encoding="UTF-8"?><testsuite name="cx-assurance" tests="${index.urls.length}">${index.urls.map((entry) => `<testcase classname="url" name="${entry.meta.url}"><system-out>performance=${entry.enterpriseScore.performance}</system-out></testcase>`).join('')}</testsuite>`;
+    const junit = `<?xml version="1.0" encoding="UTF-8"?><testsuite name="quality-signal" tests="${index.urls.length}">${index.urls.map((entry) => `<testcase classname="url" name="${entry.meta.url}"><system-out>performance=${entry.enterpriseScore.performance}</system-out></testcase>`).join('')}</testsuite>`;
     fs.writeFileSync(path.join(runRoot, 'junit.xml'), junit);
     fs.writeFileSync(path.join(runRoot, 'executive-report.pdf'), 'PDF report generation placeholder - include summary and regressions.');
     writeJson(path.join(runRoot, 'normalized-export.json'), index.urls);
@@ -252,7 +252,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   writeJson(path.join(runRoot, 'index.json'), index);
   writeJson(path.join(runRoot, 'history.json'), { runId, timestamp, urls: index.urls.map((entry) => ({ url: entry.meta.url, scores: entry.enterpriseScore })) });
   writeJson(path.join(runRoot, 'ci-summary.json'), { runId, totalUrls: index.summary.totalUrls, worstPerformance: index.summary.rankings.performance.at(-1) ?? null });
-  const junit = `<?xml version="1.0" encoding="UTF-8"?><testsuite name="cx-assurance" tests="${index.urls.length}">${index.urls.map((entry) => `<testcase classname="url" name="${entry.meta.url}"><system-out>performance=${entry.enterpriseScore.performance}</system-out></testcase>`).join('')}</testsuite>`;
+  const junit = `<?xml version="1.0" encoding="UTF-8"?><testsuite name="quality-signal" tests="${index.urls.length}">${index.urls.map((entry) => `<testcase classname="url" name="${entry.meta.url}"><system-out>performance=${entry.enterpriseScore.performance}</system-out></testcase>`).join('')}</testsuite>`;
   fs.writeFileSync(path.join(runRoot, 'junit.xml'), junit);
   fs.writeFileSync(path.join(runRoot, 'executive-report.pdf'), 'PDF report generation placeholder - include summary and regressions.');
   writeJson(path.join(runRoot, 'normalized-export.json'), index.urls);
