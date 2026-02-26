@@ -2,7 +2,7 @@ import type { Page } from 'playwright';
 import type { PerformanceMetrics } from '../models/types.js';
 
 export async function collectPerformance(page: Page, url: string): Promise<PerformanceMetrics> {
-  const metrics = await page.evaluate(function collectPerformanceMetrics() {
+  const metrics = await page.evaluate(() => {
     const round = (value: number) => Math.round(value);
     const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
     const paints = performance.getEntriesByType('paint');
