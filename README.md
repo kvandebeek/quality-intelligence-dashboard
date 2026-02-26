@@ -105,3 +105,34 @@ ARTIFACT_RUN_DIR=artifacts/<run-id> npm run dashboard:serve
 - The dashboard reads required JSON files from each `page-*` directory and validates shape at runtime.
 - `network.har` is treated as optional metadata and **is not parsed by default**.
 - You can point to different run folders at startup via `--run` or `ARTIFACT_RUN_DIR` without rebuilding the dashboard.
+
+
+## Layout system
+
+The dashboard now includes a reusable layout skeleton designed for a Resillion-like structure while keeping existing data handling intact.
+
+### Theme tokens
+
+- `src/dashboard/styles/tokens.css` defines CSS variables for color palette, spacing, radius, shadows, gradients, and typography.
+- Update these variables to re-theme header/nav/cards/panels globally.
+
+### Main layout classes
+
+- Section/background modifiers: `page-block`, `purple-bg`, `white-bg`, `purple-light-bg`, `gradient-bg`, `second-half-gradient`.
+- Header/nav patterns: `site-header`, `header-layout`, `main-menu`, `menu-item`, `has-sub-menu`, `sub-menu`, `mobile-nav`, `mobile-nav-toggle`, `buttons-block`.
+- Layout primitives: `container`, `row`, `col-*`, `d-flex`, `align-items-center`, `align-items-stretch`, `text-center`, `mx-auto`, `w-100`.
+- UI primitives: `btn`, `btn-slide`, `btn-fade`, `card`, `panel` (+ header/body/footer helpers).
+
+### Extending the layout
+
+- Add new dashboard sections by composing `panel` and `card` blocks inside the existing `dashboard-grid`.
+- Keep URL selection wiring through `selectedUrlId` query state so cards and detail panel stay synchronized.
+- For responsive behavior, follow the breakpoints in `src/dashboard/styles/dashboard-layout.css` (`1024px` for detail drawer, `768px` for mobile left-nav behavior).
+
+### How to run dashboard layout locally
+
+```bash
+npm run dashboard -- --run tests/fixtures/dashboard-run
+```
+
+Then open `http://localhost:4173`.
