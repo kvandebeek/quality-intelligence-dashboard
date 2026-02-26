@@ -1,27 +1,25 @@
 # DECISIONS
 
-## Dashboard architecture decisions
+## Existing artifact structure (P0-1)
+- Legacy runs stored URL artifacts directly under a run folder using `page-*` directory names.
+- Legacy artifact files observed: `performance.json`, `network-requests.json`, `network-recommendations.json`, `accessibility.json`, `target-summary.json`, and `network.har`.
 
-- **D1 (File reading location):** The dashboard reads artifact JSON on the server-side (Node HTTP server) rather than directly in-browser. This avoids browser filesystem permission complexity and enables simple runtime path selection via CLI/environment across OSes.
-- **D2 (HAR parsing default):** `network.har` is detected for presence only and not parsed by default to avoid large-file parse overhead, long startup latency, and memory spikes for local analysis.
-- **D3 (Deterministic page discovery):** Page folders are restricted to immediate `page-*` directories and sorted with a stable lexical sort for reproducible ordering.
-- **D4 (Validation strategy):** Required JSON files are runtime-validated with zod and fail fast with file-specific error messages to prevent partial/inconsistent dashboard state.
-- **D5 (Aggregation determinism):** Run summary “worst pages” rankings sort by metric descending, then URL lexicographically ascending, then original index for deterministic tie-breaking.
+## Output structure migration (P0-2)
+- New runs are written to `results/<runId>/<urlSlug>/` where `urlSlug` is sanitized and hash-suffixed.
+- Each URL artifact includes shared metadata fields (`runId`, `url`, `urlSlug`, `timestamp`, `toolVersion`, `schemaVersion`) under `meta`.
+- Run aggregate index is emitted at `results/<runId>/index.json`.
 
-## Phase logs and self-check notes
+## Validation model (P0-3)
+- JSON schema files were added in `/schemas/*.schema.json` for every artifact family.
+- Runtime validation is enforced using strict zod validators in `src/core/artifactValidation.ts` before each write.
 
-### Phase A
-- Implemented dashboard scaffolding (`src/dashboard/*`) with data loading, zod schemas, and CLI sanity command.
-- Confirmed parser supports `--run` and `ARTIFACT_RUN_DIR` path selection.
-- Self-check: dashboard data pipeline and CLI are runnable.
+## Normalization model (P0-4)
+- A unified normalization layer (`src/core/normalization.ts`) builds a run-wide internal model and computes derived metrics/scoring.
+- Formulas are deterministic and documented in code (`computeDerived`, `computeEnterpriseScores`).
 
-### Phase B
-- Implemented server-rendered UI overview with sorting/filtering controls.
-- Added per-page drill-down with accessibility, performance, network tables, and recommendation grouping.
-- Self-check: overview and drill-down routes serve complete required data.
-
-### Phase C
-- Added run summary route with deterministic aggregated counters and top worst-page lists.
-- Added fixture-based parser test and aggregation logic test.
-- Updated README + requirement mapping + checklist tracking.
-- Self-check: tests validate parsing and run-level aggregation behavior.
+## Ambiguous/blocked requirements and assumptions
+- Lighthouse integration: package installation is blocked in the current environment (registry policy), so artifacts are generated with `available=false` plus explanatory notes.
+- CPU/network throttling: Playwright-only portable alternative currently records explicit unavailability with preserved baseline metrics.
+- PDF output: environment constraints prevent adding a PDF generator dependency, so a deterministic placeholder report file is emitted.
+- Visual regression: without image-diff libraries, diff ratio is computed via byte-level screenshot comparison as best-effort fallback.
+- JUnit output is always generated (`junit.xml`) and treated as the “optional” CI format.

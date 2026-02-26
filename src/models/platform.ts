@@ -1,0 +1,70 @@
+import { z } from 'zod';
+
+export const TOOL_VERSION = '2.0.0';
+export const SCHEMA_VERSION = '1.0.0';
+
+export const artifactMetaSchema = z.object({
+  runId: z.string().min(1),
+  url: z.string().url(),
+  urlSlug: z.string().min(1),
+  timestamp: z.string().min(1),
+  toolVersion: z.string().min(1),
+  schemaVersion: z.string().min(1)
+});
+
+export type ArtifactMeta = z.infer<typeof artifactMetaSchema>;
+
+export interface UnifiedUrlModel {
+  meta: ArtifactMeta;
+  performance: Record<string, number>;
+  accessibility: { counters: Record<string, number>; issues: Array<{ id: string; impact: string; recommendation: string; nodes: number; tags: string[] }> };
+  network: {
+    totalRequests: number;
+    totalTransferSize: number;
+    uncompressedSize: number;
+    cacheHitRatio: number;
+    thirdPartyRatio: number;
+    requestsByType: Record<string, number>;
+    requestsByDomain: Record<string, number>;
+    sizeByDomain: Record<string, number>;
+    largestResource?: { url: string; transferSize: number };
+  };
+  optimization: { total: number; bySeverity: Record<string, number> };
+  coreWebVitals: { lcp: number | null; cls: number | null; inp: number | null; fcp: number | null };
+  lighthouse: { available: boolean; categories: Record<string, number | null> };
+  throttled: { available: boolean; degradationFactor: number | null };
+  security: Record<string, boolean | string | null>;
+  seo: Record<string, boolean | string | number | null>;
+  visualRegression: { baselineFound: boolean; diffRatio: number | null; passed: boolean };
+  apiMonitoring: { count: number; errorRate: number; p95Ms: number; avgSize: number };
+  brokenLinks: { checked: number; broken: number; redirectChains: number; loops: number };
+  thirdPartyRisk: Array<{ domain: string; requests: number; transferSize: number; avgDurationMs: number; trackerHeuristic: boolean }>;
+  accessibilityBeyondAxe: { keyboardReachable: boolean; possibleFocusTrap: boolean; contrastSimulationScore: number | null };
+  stability: { iterations: number; stdDevLoadMs: number; coefficientOfVariation: number; unstable: boolean };
+  memory: { samples: number[]; growth: number | null };
+  derived: {
+    performanceCompositeScore: number;
+    accessibilityWeightedScore: number;
+    networkEfficiencyScore: number;
+    thirdPartyDependencyRatio: number;
+    backendFrontendRatio: { backendPercent: number; frontendPercent: number };
+    blockingTimeRatio: number;
+  };
+  enterpriseScore: Record<string, number>;
+}
+
+export interface RunIndex {
+  runId: string;
+  timestamp: string;
+  toolVersion: string;
+  schemaVersion: string;
+  urls: UnifiedUrlModel[];
+  summary: {
+    totalUrls: number;
+    generatedAt: string;
+    rankings: {
+      performance: Array<{ url: string; score: number }>;
+      accessibility: Array<{ url: string; score: number }>;
+    };
+  };
+}

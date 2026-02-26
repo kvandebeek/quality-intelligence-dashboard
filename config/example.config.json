@@ -3,7 +3,7 @@
   "headless": true,
   "environment": "local",
   "iteration": 1,
-  "outputDir": "artifacts",
+  "outputDir": "results",
   "name": "EXAMPLE",
   "startUrl": "https://example.com",
   "targets": [],
@@ -12,7 +12,9 @@
     "maxDepth": 2,
     "maxPages": 50,
     "includeExternalDomains": false,
-    "allowedDomains": ["example.com"]
+    "allowedDomains": [
+      "example.com"
+    ]
   },
   "elasticsearch": {
     "enabled": false,
