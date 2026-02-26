@@ -7,7 +7,7 @@ import { artifactMetaSchema, type ArtifactMeta } from '../models/platform.js';
 const wrapped = <T extends z.ZodTypeAny>(payload: T) => z.object({ meta: artifactMetaSchema, payload });
 
 export const artifactSchemas = {
-  performance: wrapped(z.object({ url: z.string().url(), navigation: z.record(z.string(), z.number()), paint: z.record(z.string(), z.number()), resourceSummary: z.object({ count: z.number(), transferSize: z.number(), encodedBodySize: z.number(), decodedBodySize: z.number() }) })),
+  performance: wrapped(z.object({ url: z.string().url(), navigation: z.record(z.string(), z.number()), paint: z.record(z.string(), z.number().nullable()), resourceSummary: z.object({ count: z.number(), transferSize: z.number(), encodedBodySize: z.number(), decodedBodySize: z.number() }) })),
   accessibility: wrapped(z.object({ url: z.string().url(), issues: z.array(z.object({ id: z.string(), impact: z.string(), description: z.string(), help: z.string(), nodes: z.number(), tags: z.array(z.string()), recommendation: z.string() })), counters: z.record(z.string(), z.number()) })),
   networkRequests: wrapped(z.array(z.object({ url: z.string(), method: z.string(), status: z.number(), resourceType: z.string(), transferSize: z.number(), durationMs: z.number(), fromCache: z.boolean() }))),
   networkRecommendations: wrapped(z.array(z.object({ id: z.string(), title: z.string(), description: z.string(), severity: z.string(), impactedCount: z.number() }))),

@@ -9,7 +9,7 @@ export const targetSummarySchema = z.object({
   performance: z.object({
     url: z.string().url(),
     navigation: z.record(z.string(), z.number()),
-    paint: z.record(z.string(), z.number()),
+    paint: z.record(z.string(), z.number().nullable()),
     resourceSummary: z.object({
       count: z.number().nonnegative(),
       transferSize: z.number().nonnegative(),
@@ -32,7 +32,7 @@ export const targetSummarySchema = z.object({
 export const performanceSchema = z.object({
   url: z.string().url(),
   navigation: z.record(z.string(), z.number()),
-  paint: z.record(z.string(), z.number()),
+  paint: z.record(z.string(), z.number().nullable()),
   resourceSummary: z.object({
     count: z.number().nonnegative(),
     transferSize: z.number().nonnegative(),
