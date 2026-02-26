@@ -219,10 +219,12 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const perfScore = Math.round((toScore(lcp, 2500, 4000) + toScore(inp, 200, 500) + toScore(cls, 0.1, 0.25)) / 3);
   const lighthouseSummary = {
     available: true,
-    performance: perfScore,
-    accessibility: Math.max(0, 100 - (accessibility.issues?.length ?? 0) * 5),
-    bestPractices: Math.max(0, 100 - (securityScan.mixedContent ? 20 : 0)),
-    seo: Math.max(0, [seoChecks.title, seoChecks.description, seoChecks.canonical, seoChecks.robots].filter(Boolean).length * 25)
+    categories: {
+      performance: perfScore,
+      accessibility: Math.max(0, 100 - (accessibility.issues?.length ?? 0) * 5),
+      bestPractices: Math.max(0, 100 - (securityScan.mixedContent ? 20 : 0)),
+      seo: Math.max(0, [seoChecks.title, seoChecks.description, seoChecks.canonical, seoChecks.robots].filter(Boolean).length * 25)
+    }
   };
 
   const artifact: TargetRunArtifacts = { target, performance: perfMetrics, network: { harPath: path.relative(runRoot, harPath), requests, recommendations }, accessibility };

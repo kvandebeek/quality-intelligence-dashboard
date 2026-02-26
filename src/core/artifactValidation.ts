@@ -6,13 +6,34 @@ import { artifactMetaSchema, type ArtifactMeta } from '../models/platform.js';
 
 const wrapped = <T extends z.ZodTypeAny>(payload: T) => z.object({ meta: artifactMetaSchema, payload });
 
+const lighthousePayloadSchema = z.preprocess((value) => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const payload = value as Record<string, unknown>;
+  if (payload.categories && typeof payload.categories === 'object' && payload.categories !== null) return value;
+
+  const legacyCategories = {
+    performance: payload.performance,
+    accessibility: payload.accessibility,
+    bestPractices: payload.bestPractices,
+    seo: payload.seo
+  };
+  const hasLegacyCategory = Object.values(legacyCategories).some((metric) => metric !== undefined);
+  if (!hasLegacyCategory) return value;
+
+  return {
+    available: payload.available,
+    categories: legacyCategories,
+    note: payload.note
+  };
+}, z.object({ available: z.boolean(), categories: z.record(z.string(), z.number().nullable()), note: z.string().optional() }));
+
 export const artifactSchemas = {
   performance: wrapped(z.object({ url: z.string().url(), navigation: z.record(z.string(), z.number()), paint: z.record(z.string(), z.number().nullable()), resourceSummary: z.object({ count: z.number(), transferSize: z.number(), encodedBodySize: z.number(), decodedBodySize: z.number() }) })),
   accessibility: wrapped(z.object({ url: z.string().url(), issues: z.array(z.object({ id: z.string(), impact: z.string(), description: z.string(), help: z.string(), nodes: z.number(), tags: z.array(z.string()), recommendation: z.string() })), counters: z.record(z.string(), z.number()) })),
   networkRequests: wrapped(z.array(z.object({ url: z.string(), method: z.string(), status: z.number(), resourceType: z.string(), transferSize: z.number(), durationMs: z.number(), fromCache: z.boolean() }))),
   networkRecommendations: wrapped(z.array(z.object({ id: z.string(), title: z.string(), description: z.string(), severity: z.string(), impactedCount: z.number() }))),
   coreWebVitals: wrapped(z.object({ lcp: z.number().nullable(), cls: z.number().nullable(), inp: z.number().nullable(), fcp: z.number().nullable() })),
-  lighthouse: wrapped(z.object({ available: z.boolean(), categories: z.record(z.string(), z.number().nullable()), note: z.string().optional() })),
+  lighthouse: wrapped(lighthousePayloadSchema),
   throttled: wrapped(z.object({ available: z.boolean(), baselineLoadMs: z.number().nullable(), throttledLoadMs: z.number().nullable(), degradationFactor: z.number().nullable() })),
   security: wrapped(z.record(z.string(), z.union([z.boolean(), z.string(), z.null()]))),
   seo: wrapped(z.record(z.string(), z.union([z.boolean(), z.string(), z.number(), z.null()]))),
