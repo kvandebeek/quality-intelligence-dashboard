@@ -115,7 +115,7 @@ function resolveLinearTargets(config: AppConfig): RunTarget[] {
 
 export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   const timestamp = compactTimestamp();
-  const runId = stableRunId(timestamp, config.browser, config.iteration);
+  const runId = stableRunId(timestamp, config.browser, config.iteration, config.name);
 
   const metadata: RunMetadata = {
     runId,
@@ -123,6 +123,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
     browser: config.browser,
     environment: config.environment,
     iteration: config.iteration,
+    name: config.name,
     startUrl: config.startUrl,
     targets: config.targets
   };

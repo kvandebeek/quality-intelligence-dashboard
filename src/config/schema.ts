@@ -15,6 +15,7 @@ export const appConfigSchema = z
     environment: z.string().min(1).default('local'),
     iteration: z.number().int().positive().default(1),
     outputDir: z.string().min(1).default('artifacts'),
+    name: z.string().min(1).optional(),
     startUrl: z.string().url(),
     targets: z
       .array(
