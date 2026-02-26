@@ -1,258 +1,246 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {
-  accessibilitySchema,
-  networkRecommendationsSchema,
-  networkRequestsSchema,
-  performanceSchema,
-  targetSummarySchema,
-  type AccessibilityIssue,
-  type AccessibilityReport,
-  type NetworkRecommendation,
-  type NetworkRequest,
-  type PerformanceReport,
-  type TargetSummary
-} from './schemas.js';
+import { CATEGORY_WEIGHTS, CWV_THRESHOLDS, SCORE_THRESHOLDS, type StatusValue } from './config.js';
 
-export interface DashboardPageData {
-  folderName: string;
-  hasHar: boolean;
-  targetSummary: TargetSummary;
-  performance: PerformanceReport;
-  accessibility: AccessibilityReport;
-  networkRequests: NetworkRequest[];
-  networkRecommendations: NetworkRecommendation[];
-}
-
-export interface DashboardRunData {
-  runPath: string;
-  pages: DashboardPageData[];
-}
-
-export interface RunPathOptions {
-  cliRunPath?: string;
-  envRunPath?: string;
-}
-
+export interface RunPathOptions { cliRunPath?: string; envRunPath?: string }
 export function resolveRunPath(options: RunPathOptions): string {
   const value = options.cliRunPath ?? options.envRunPath;
   return value ? path.resolve(value) : process.cwd();
 }
 
-function stableSort<T>(items: readonly T[], getKey: (item: T) => string): T[] {
-  return items
-    .map((item, index) => ({ item, index }))
-    .sort((left, right) => {
-      const keyCompare = getKey(left.item).localeCompare(getKey(right.item));
-      return keyCompare !== 0 ? keyCompare : left.index - right.index;
-    })
-    .map((entry) => entry.item);
+type JsonObject = Record<string, unknown>;
+
+export interface ValidationEntry { scope: 'global' | 'url'; id: string; found: string[]; missing: string[] }
+
+export interface UrlModel {
+  id: string;
+  url: string;
+  artifacts: Record<string, unknown>;
+  images: Record<string, string>;
+  categoryScores: Record<string, { value: number; derived: boolean }>;
+  overallScore: number;
+  grade: string;
+  status: StatusValue;
+  blockers: string[];
+  regressions: number;
+  environment: string;
+  lastRunAt: string;
+  hasThrottled: boolean;
 }
 
-
-function unwrapArtifact<T>(value: T | { meta: unknown; payload: T }): T {
-  if (typeof value === 'object' && value !== null && 'payload' in (value as Record<string, unknown>)) {
-    return (value as { payload: T }).payload;
-  }
-  return value as T;
+export interface DashboardRunData {
+  runPath: string;
+  globalArtifacts: Record<string, unknown>;
+  urls: UrlModel[];
+  validation: ValidationEntry[];
 }
 
-async function parseJsonFile<T>(filePath: string, parser: { parse: (input: unknown) => T }, label: string): Promise<T> {
-  try {
-    const text = await fs.readFile(filePath, 'utf8');
-    const json = JSON.parse(text) as unknown;
-    return parser.parse(json);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Invalid ${label} at ${filePath}: ${message}`);
-  }
+const GLOBAL_FILES = ['index.json', 'summary-index.json', 'history.json', 'ci-summary.json', 'run-metadata.json', 'junit.xml'];
+const URL_FILES = [
+  'target-summary.json','lighthouse-summary.json','performance.json','core-web-vitals.json','throttled-run.json','memory-profile.json','network-requests.json',
+  'network-recommendations.json','accessibility.json','a11y-beyond-axe.json','security-scan.json','third-party-risk.json','stability.json','broken-links.json',
+  'api-monitoring.json','seo-checks.json','visual-regression.json'
+];
+
+async function readJsonSafe(filePath: string): Promise<unknown | undefined> {
+  try { return JSON.parse(await fs.readFile(filePath, 'utf8')); } catch { return undefined; }
+}
+
+function num(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function grade(score: number): string { return score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F'; }
+
+function cwvBlockers(cwv: JsonObject): string[] {
+  const out: string[] = [];
+  const metrics: Record<string, number> = {
+    lcp: num(cwv.lcpMs ?? cwv.lcp),
+    cls: num(cwv.cls),
+    inp: num(cwv.inpMs ?? cwv.fidMs ?? cwv.inp),
+    ttfb: num(cwv.ttfbMs ?? cwv.ttfb)
+  };
+  (Object.keys(metrics) as Array<keyof typeof metrics>).forEach((k) => {
+    const poor = CWV_THRESHOLDS[k as keyof typeof CWV_THRESHOLDS].poor;
+    if (metrics[k] > poor * SCORE_THRESHOLDS.blockerCwvMultiplier) out.push(`CWV ${k.toUpperCase()} critical`);
+  });
+  return out;
+}
+
+function normalizeUrl(urlArtifact: Record<string, unknown>, id: string): string {
+  return String(urlArtifact.url ?? (urlArtifact.target as JsonObject | undefined)?.url ?? id);
+}
+
+function getLighthouseScores(artifacts: Record<string, unknown>): Record<string, number> {
+  const l = (artifacts['lighthouse-summary.json'] as JsonObject | undefined) ?? (artifacts['target-summary.json'] as JsonObject | undefined)?.lighthouse as JsonObject | undefined;
+  if (!l) return {};
+  return {
+    performance: Math.round(num(l.performance) * (num(l.performance) <= 1 ? 100 : 1)),
+    accessibility: Math.round(num(l.accessibility) * (num(l.accessibility) <= 1 ? 100 : 1)),
+    seo: Math.round(num(l.seo) * (num(l.seo) <= 1 ? 100 : 1)),
+    bestPractices: Math.round(num(l.bestPractices ?? l['best-practices']) * (num(l.bestPractices ?? l['best-practices']) <= 1 ? 100 : 1))
+  };
+}
+
+function computeCategoryScores(artifacts: Record<string, unknown>): Record<string, { value: number; derived: boolean }> {
+  const lighthouse = getLighthouseScores(artifacts);
+  const a11y = artifacts['accessibility.json'] as JsonObject | undefined;
+  const security = artifacts['security-scan.json'] as JsonObject | undefined;
+  const stability = artifacts['stability.json'] as JsonObject | undefined;
+  const seo = artifacts['seo-checks.json'] as JsonObject | undefined;
+  const visual = artifacts['visual-regression.json'] as JsonObject | undefined;
+  const perf = artifacts['performance.json'] as JsonObject | undefined;
+
+  const a11yViolations = num(a11y?.totalViolations ?? a11y?.violationsCount);
+  const secCritical = num(security?.criticalCount ?? security?.critical ?? security?.criticalFindings);
+  const secHigh = num(security?.highCount ?? security?.high ?? security?.highFindings);
+  const stableFailures = num(stability?.errorCount ?? stability?.failures ?? stability?.jsErrors);
+  const seoIssues = num(seo?.issueCount ?? seo?.errors ?? seo?.missingCount);
+  const visualDiff = num(visual?.diffScore ?? visual?.difference ?? visual?.score);
+  const loadEvent = num((perf?.navigation as JsonObject | undefined)?.loadEventMs ?? perf?.loadEventMs, 4000);
+
+  const score = {
+    performance: lighthouse.performance ? { value: lighthouse.performance, derived: false } : { value: Math.max(0, 100 - Math.round(loadEvent / 100)), derived: true },
+    accessibility: lighthouse.accessibility ? { value: lighthouse.accessibility, derived: false } : { value: Math.max(0, 100 - a11yViolations * 4), derived: true },
+    security: { value: Math.max(0, 100 - secCritical * 30 - secHigh * 12), derived: true },
+    stability: { value: Math.max(0, 100 - stableFailures * 8), derived: true },
+    seo: lighthouse.seo ? { value: lighthouse.seo, derived: false } : { value: Math.max(0, 100 - seoIssues * 10), derived: true },
+    visual: { value: Math.max(0, 100 - visualDiff), derived: true },
+    bestPractices: lighthouse.bestPractices ? { value: lighthouse.bestPractices, derived: false } : { value: 70, derived: true }
+  };
+  return score;
+}
+
+function computeStatus(artifacts: Record<string, unknown>, overallScore: number, regressions: number): { status: StatusValue; blockers: string[] } {
+  const blockers: string[] = [];
+  const cwv = artifacts['core-web-vitals.json'] as JsonObject | undefined;
+  const ci = artifacts['_global_ci'] as JsonObject | undefined;
+  const sec = artifacts['security-scan.json'] as JsonObject | undefined;
+  const api = artifacts['api-monitoring.json'] as JsonObject | undefined;
+  const stability = artifacts['stability.json'] as JsonObject | undefined;
+
+  if (cwv) blockers.push(...cwvBlockers(cwv));
+  if (num(sec?.criticalCount ?? sec?.critical) >= SCORE_THRESHOLDS.blockerSecurityCritical) blockers.push('Security critical findings');
+  if (num(api?.failureRate) > SCORE_THRESHOLDS.blockerApiFailureRate) blockers.push('High API failure rate');
+  if (num(stability?.jsConsoleErrors ?? stability?.consoleErrors) > SCORE_THRESHOLDS.blockerConsoleErrors) blockers.push('Excessive console errors');
+  if (String(ci?.qualityGate ?? ci?.status ?? '').toUpperCase() === 'FAIL') blockers.push('CI quality gate fail');
+
+  if (blockers.length > 0) return { status: 'FAIL', blockers };
+  if (overallScore < SCORE_THRESHOLDS.pass || regressions >= SCORE_THRESHOLDS.regressionWarnCount) return { status: 'WARN', blockers };
+  return { status: 'PASS', blockers };
 }
 
 export async function loadDashboardRun(runPath: string): Promise<DashboardRunData> {
   const entries = await fs.readdir(runPath, { withFileTypes: true });
-  const pageFolders = stableSort(
-    entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'baseline').map((entry) => entry.name),
-    (name) => name
-  );
-
-  const pages: DashboardPageData[] = [];
-  for (const folderName of pageFolders) {
-    const pageRoot = path.join(runPath, folderName);
-    const performanceRaw = await parseJsonFile(path.join(pageRoot, 'performance.json'), { parse: (input) => input }, 'performance.json');
-    const accessibilityRaw = await parseJsonFile(path.join(pageRoot, 'accessibility.json'), { parse: (input) => input }, 'accessibility.json');
-    const networkRequestsRaw = await parseJsonFile(path.join(pageRoot, 'network-requests.json'), { parse: (input) => input }, 'network-requests.json');
-    const networkRecommendationsRaw = await parseJsonFile(path.join(pageRoot, 'network-recommendations.json'), { parse: (input) => input }, 'network-recommendations.json');
-
-    const performance = performanceSchema.parse(unwrapArtifact(performanceRaw as PerformanceReport | { meta: unknown; payload: PerformanceReport }));
-    const accessibility = accessibilitySchema.parse(
-      unwrapArtifact(accessibilityRaw as AccessibilityReport | { meta: unknown; payload: AccessibilityReport })
-    );
-    const networkRequests = networkRequestsSchema.parse(
-      unwrapArtifact(networkRequestsRaw as NetworkRequest[] | { meta: unknown; payload: NetworkRequest[] })
-    );
-    const networkRecommendations = networkRecommendationsSchema.parse(
-      unwrapArtifact(networkRecommendationsRaw as NetworkRecommendation[] | { meta: unknown; payload: NetworkRecommendation[] })
-    );
-
-    let targetSummary: TargetSummary;
-    try {
-      targetSummary = await parseJsonFile(path.join(pageRoot, 'target-summary.json'), targetSummarySchema, 'target-summary.json');
-    } catch {
-      targetSummary = {
-        target: { name: folderName, url: accessibility.url },
-        performance,
-        network: { harPath: 'network.har', requests: [], recommendations: [] },
-        accessibility
-      };
-    }
-
-    let hasHar = false;
-    try {
-      await fs.access(path.join(pageRoot, 'network.har'));
-      hasHar = true;
-    } catch {
-      hasHar = false;
-    }
-
-    pages.push({
-      folderName,
-      hasHar,
-      targetSummary,
-      performance,
-      accessibility,
-      networkRequests,
-      networkRecommendations
-    });
+  const globals: Record<string, unknown> = {};
+  const validation: ValidationEntry[] = [];
+  for (const g of GLOBAL_FILES) {
+    const content = await readJsonSafe(path.join(runPath, g));
+    if (content !== undefined) globals[g] = content;
   }
 
-  return { runPath, pages };
-}
+  const ciSummary = (globals['ci-summary.json'] as JsonObject | undefined) ?? {};
+  const runMeta = (globals['run-metadata.json'] as JsonObject | undefined) ?? {};
+  const history = (globals['history.json'] as JsonObject | undefined) ?? {};
 
-export interface OverviewRow {
-  folderName: string;
-  url: string;
-  critical: number;
-  serious: number;
-  moderate: number;
-  minor: number;
-  ttfbMs: number;
-  dclMs: number;
-  loadEventMs: number;
-  totalTransferSize: number;
-  resourceCount: number;
-  requestCount: number;
-  failedRequestCount: number;
-  networkTransferSize: number;
-  slowestRequestMs: number;
-  recommendationCounts: Record<string, number>;
-  accessibilityIssues: AccessibilityIssue[];
-  networkRequests: NetworkRequest[];
-  networkRecommendations: NetworkRecommendation[];
-}
+  const folders = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'baseline').map((e) => e.name).sort();
+  const urls: UrlModel[] = [];
 
-export interface RunSummaryMetrics {
-  totalPages: number;
-  accessibilityTotals: {
-    critical: number;
-    serious: number;
-    moderate: number;
-    minor: number;
-  };
-  worstByLoadEventMs: OverviewRow[];
-  worstByCriticalIssues: OverviewRow[];
-  worstByTransferSize: OverviewRow[];
-}
+  for (const id of folders) {
+    const folderPath = path.join(runPath, id);
+    const folderEntries = await fs.readdir(folderPath, { withFileTypes: true });
+    const artifacts: Record<string, unknown> = { _global_ci: ciSummary };
+    const found: string[] = [];
+    const missing: string[] = [];
+    const images: Record<string, string> = {};
 
-function getCounter(report: AccessibilityReport, key: string): number {
-  return report.counters[key] ?? 0;
-}
-
-function recommendationBuckets(recommendations: readonly NetworkRecommendation[]): Record<string, number> {
-  const preferredOrder = ['high', 'medium', 'low'];
-  const grouped: Record<string, number> = {};
-  for (const recommendation of recommendations) {
-    grouped[recommendation.severity] = (grouped[recommendation.severity] ?? 0) + 1;
-  }
-  return Object.fromEntries(
-    Object.entries(grouped).sort((left, right) => {
-      const leftRank = preferredOrder.indexOf(left[0]);
-      const rightRank = preferredOrder.indexOf(right[0]);
-      const normalizedLeftRank = leftRank === -1 ? Number.MAX_SAFE_INTEGER : leftRank;
-      const normalizedRightRank = rightRank === -1 ? Number.MAX_SAFE_INTEGER : rightRank;
-      if (normalizedLeftRank !== normalizedRightRank) {
-        return normalizedLeftRank - normalizedRightRank;
+    for (const file of URL_FILES) {
+      const value = await readJsonSafe(path.join(folderPath, file));
+      if (value !== undefined) { artifacts[file] = value; found.push(file); }
+      else missing.push(file);
+    }
+    for (const fe of folderEntries) {
+      if (fe.isFile() && /\.(png|jpg|jpeg|webp|gif)$/i.test(fe.name)) {
+        images[fe.name] = `/artifacts/${encodeURIComponent(id)}/${encodeURIComponent(fe.name)}`;
       }
-      return left[0].localeCompare(right[0]);
-    })
-  );
+    }
+
+    const categoryScores = computeCategoryScores(artifacts);
+    const overallScore = Math.round(
+      categoryScores.performance.value * CATEGORY_WEIGHTS.performance +
+      categoryScores.accessibility.value * CATEGORY_WEIGHTS.accessibility +
+      categoryScores.security.value * CATEGORY_WEIGHTS.security +
+      categoryScores.stability.value * CATEGORY_WEIGHTS.stability +
+      categoryScores.seo.value * CATEGORY_WEIGHTS.seo +
+      categoryScores.visual.value * CATEGORY_WEIGHTS.visual
+    );
+    const regressions = num((history[id] as JsonObject | undefined)?.regressions ?? (artifacts['visual-regression.json'] as JsonObject | undefined)?.regressions);
+    const statusState = computeStatus(artifacts, overallScore, regressions);
+
+    urls.push({
+      id,
+      url: normalizeUrl((artifacts['target-summary.json'] as JsonObject | undefined) ?? {}, id),
+      artifacts,
+      images,
+      categoryScores,
+      overallScore,
+      grade: grade(overallScore),
+      status: statusState.status,
+      blockers: statusState.blockers,
+      regressions,
+      environment: String(runMeta.environment ?? runMeta.env ?? 'Not available'),
+      lastRunAt: String(runMeta.finishedAt ?? runMeta.timestamp ?? 'Not available'),
+      hasThrottled: Boolean(artifacts['throttled-run.json'])
+    });
+
+    validation.push({ scope: 'url', id, found, missing });
+  }
+
+  validation.push({ scope: 'global', id: 'run', found: Object.keys(globals), missing: GLOBAL_FILES.filter((g) => globals[g] === undefined) });
+  process.stdout.write(`[dashboard] discovered ${urls.length} URL folders\n`);
+  for (const v of validation) process.stdout.write(`[dashboard] ${v.scope}:${v.id} found=${v.found.length} missing=${v.missing.length}\n`);
+  return { runPath, globalArtifacts: globals, urls, validation };
 }
+
+// Backward-compatible summary helpers used by tests
+export interface OverviewRow { folderName: string; url: string; critical: number; serious: number; moderate: number; minor: number; ttfbMs: number; dclMs: number; loadEventMs: number; totalTransferSize: number; resourceCount: number; requestCount: number; failedRequestCount: number; networkTransferSize: number; slowestRequestMs: number; recommendationCounts: Record<string, number>; accessibilityIssues: unknown[]; networkRequests: JsonObject[]; networkRecommendations: JsonObject[] }
+export interface RunSummaryMetrics { totalPages: number; accessibilityTotals: { critical: number; serious: number; moderate: number; minor: number }; worstByLoadEventMs: OverviewRow[]; worstByCriticalIssues: OverviewRow[]; worstByTransferSize: OverviewRow[] }
 
 export function toOverviewRows(data: DashboardRunData): OverviewRow[] {
-  return stableSort(
-    data.pages.map((page) => {
-      const failedRequestCount = page.networkRequests.filter((request) => request.status < 200 || request.status >= 400).length;
-      const networkTransferSize = page.networkRequests.reduce((total, request) => total + request.transferSize, 0);
-      const slowestRequestMs = page.networkRequests.reduce((max, request) => Math.max(max, request.durationMs), 0);
-      return {
-        folderName: page.folderName,
-        url: page.targetSummary.target.url,
-        critical: getCounter(page.accessibility, 'critical'),
-        serious: getCounter(page.accessibility, 'serious'),
-        moderate: getCounter(page.accessibility, 'moderate'),
-        minor: getCounter(page.accessibility, 'minor'),
-        ttfbMs: page.performance.navigation.ttfbMs ?? 0,
-        dclMs: page.performance.navigation.domContentLoadedMs ?? 0,
-        loadEventMs: page.performance.navigation.loadEventMs ?? 0,
-        totalTransferSize: page.performance.resourceSummary.transferSize,
-        resourceCount: page.performance.resourceSummary.count,
-        requestCount: page.networkRequests.length,
-        failedRequestCount,
-        networkTransferSize,
-        slowestRequestMs,
-        recommendationCounts: recommendationBuckets(page.networkRecommendations),
-        accessibilityIssues: page.accessibility.issues,
-        networkRequests: page.networkRequests,
-        networkRecommendations: page.networkRecommendations
-      } satisfies OverviewRow;
-    }),
-    (row) => row.url
-  );
+  return data.urls.map((u) => {
+    const a11y = u.artifacts['accessibility.json'] as JsonObject | undefined;
+    const perf = u.artifacts['performance.json'] as JsonObject | undefined;
+    const requests = (u.artifacts['network-requests.json'] as JsonObject[] | undefined) ?? [];
+    const recs = (u.artifacts['network-recommendations.json'] as JsonObject[] | undefined) ?? [];
+    return {
+      folderName: u.id,
+      url: u.url,
+      critical: num((a11y?.counters as JsonObject | undefined)?.critical ?? a11y?.critical),
+      serious: num((a11y?.counters as JsonObject | undefined)?.serious ?? a11y?.serious),
+      moderate: num((a11y?.counters as JsonObject | undefined)?.moderate ?? a11y?.moderate),
+      minor: num((a11y?.counters as JsonObject | undefined)?.minor ?? a11y?.minor),
+      ttfbMs: num((perf?.navigation as JsonObject | undefined)?.ttfbMs),
+      dclMs: num((perf?.navigation as JsonObject | undefined)?.domContentLoadedMs),
+      loadEventMs: num((perf?.navigation as JsonObject | undefined)?.loadEventMs),
+      totalTransferSize: num((perf?.resourceSummary as JsonObject | undefined)?.transferSize),
+      resourceCount: num((perf?.resourceSummary as JsonObject | undefined)?.count),
+      requestCount: requests.length,
+      failedRequestCount: requests.filter((r) => num(r.status, 200) >= 400).length,
+      networkTransferSize: requests.reduce((a, r) => a + num(r.transferSize), 0),
+      slowestRequestMs: requests.reduce((a, r) => Math.max(a, num(r.durationMs)), 0),
+      recommendationCounts: recs.reduce<Record<string, number>>((acc, rec) => { const k = String(rec.severity ?? 'unknown'); acc[k] = (acc[k] ?? 0) + 1; return acc; }, {}),
+      accessibilityIssues: (a11y?.issues as unknown[] | undefined) ?? [],
+      networkRequests: requests,
+      networkRecommendations: recs
+    };
+  });
 }
 
-function selectWorst(rows: readonly OverviewRow[], metric: (row: OverviewRow) => number): OverviewRow[] {
-  return rows
-    .map((row, index) => ({ row, index }))
-    .sort((left, right) => {
-      const metricDelta = metric(right.row) - metric(left.row);
-      if (metricDelta !== 0) {
-        return metricDelta;
-      }
-      const urlCompare = left.row.url.localeCompare(right.row.url);
-      if (urlCompare !== 0) {
-        return urlCompare;
-      }
-      return left.index - right.index;
-    })
-    .slice(0, 5)
-    .map((entry) => entry.row);
+function worst(rows: readonly OverviewRow[], metric: (row: OverviewRow) => number): OverviewRow[] {
+  return [...rows].sort((a, b) => metric(b) - metric(a) || a.url.localeCompare(b.url)).slice(0, 5);
 }
 
 export function computeRunSummary(rows: readonly OverviewRow[]): RunSummaryMetrics {
-  const accessibilityTotals = rows.reduce(
-    (totals, row) => ({
-      critical: totals.critical + row.critical,
-      serious: totals.serious + row.serious,
-      moderate: totals.moderate + row.moderate,
-      minor: totals.minor + row.minor
-    }),
-    { critical: 0, serious: 0, moderate: 0, minor: 0 }
-  );
-
-  return {
-    totalPages: rows.length,
-    accessibilityTotals,
-    worstByLoadEventMs: selectWorst(rows, (row) => row.loadEventMs),
-    worstByCriticalIssues: selectWorst(rows, (row) => row.critical),
-    worstByTransferSize: selectWorst(rows, (row) => row.totalTransferSize)
-  };
+  const totals = rows.reduce((acc, r) => ({ critical: acc.critical + r.critical, serious: acc.serious + r.serious, moderate: acc.moderate + r.moderate, minor: acc.minor + r.minor }), { critical: 0, serious: 0, moderate: 0, minor: 0 });
+  return { totalPages: rows.length, accessibilityTotals: totals, worstByLoadEventMs: worst(rows, (r) => r.loadEventMs), worstByCriticalIssues: worst(rows, (r) => r.critical), worstByTransferSize: worst(rows, (r) => r.totalTransferSize) };
 }
