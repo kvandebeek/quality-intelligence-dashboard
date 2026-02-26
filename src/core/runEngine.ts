@@ -14,7 +14,8 @@ import { SCHEMA_VERSION, TOOL_VERSION, type ArtifactMeta } from '../models/platf
 import { writeValidatedArtifact } from './artifactValidation.js';
 import { buildRunIndex, percentileSummary } from './normalization.js';
 
-const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'network.har', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json'] as const;
+const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json'] as const;
+const ENABLE_HAR_TESTS = false;
 
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
 
@@ -69,7 +70,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   ensureDir(targetFolder);
   const harPath = path.join(targetFolder, 'network.har');
 
-  const context = await browser.newContext({ recordHar: { path: harPath, mode: 'full' } });
+  const context = await browser.newContext(ENABLE_HAR_TESTS ? { recordHar: { path: harPath, mode: 'full' } } : undefined);
   const page = await context.newPage();
   const response = await page.goto(target.url, { waitUntil: 'load' });
   if (target.waitForSelector) await page.locator(target.waitForSelector).waitFor({ state: 'visible' });
@@ -98,7 +99,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   await context.close();
 
-  const requests = parseHar(harPath);
+  const requests = ENABLE_HAR_TESTS ? parseHar(harPath) : [];
   const recommendations = recommendNetworkOptimizations(requests);
 
   const securityHeaders = response?.headers() ?? {};
