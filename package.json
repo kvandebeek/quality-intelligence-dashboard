@@ -1,8 +1,8 @@
 {
-  "name": "cx-assurance-viewer-playwright",
+  "name": "quality-signal-hub-playwright",
   "version": "1.0.0",
   "private": true,
-  "description": "Modernized CX Assurance automation engine using Playwright",
+  "description": "Modernized quality automation engine using Playwright",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
