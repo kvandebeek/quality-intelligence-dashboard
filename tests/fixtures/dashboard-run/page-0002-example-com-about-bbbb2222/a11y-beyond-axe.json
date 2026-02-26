@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "runId": "run-fixture-002",
+    "url": "https://example.com/about",
+    "urlSlug": "page-0002-example-com-about-bbbb2222",
+    "timestamp": "2026-01-01T01:00:00.000Z",
+    "toolVersion": "2.0.0",
+    "schemaVersion": "1.0.0"
+  },
+  "payload": {
+    "keyboardReachable": false,
+    "possibleFocusTrap": false,
+    "contrastSimulationScore": null,
+    "contrastSimulationScoreReason": "Screenshot capture blocked in fixture run"
+  }
+}

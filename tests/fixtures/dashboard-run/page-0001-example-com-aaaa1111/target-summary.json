@@ -1,5 +1,9 @@
 {
   "target": {"name": "Example Home", "url": "https://example.com/"},
+  "runId": "run-fixture-001",
+  "runStart": "2026-01-01T00:00:00.000Z",
+  "runEnd": "2026-01-01T00:02:05.000Z",
+  "overallScore": 88,
   "performance": {
     "url": "https://example.com/",
     "navigation": {"responseStart": 120, "domContentLoadedEventEnd": 450, "loadEventEnd": 780},

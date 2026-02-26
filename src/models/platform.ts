@@ -39,7 +39,7 @@ export interface UnifiedUrlModel {
   apiMonitoring: { count: number; errorRate: number; p95Ms: number; avgSize: number };
   brokenLinks: { checked: number; broken: number; redirectChains: number; loops: number };
   thirdPartyRisk: Array<{ domain: string; requests: number; transferSize: number; avgDurationMs: number; trackerHeuristic: boolean }>;
-  accessibilityBeyondAxe: { keyboardReachable: boolean; possibleFocusTrap: boolean; contrastSimulationScore: number | null };
+  accessibilityBeyondAxe: { keyboardReachable: boolean; possibleFocusTrap: boolean; contrastSimulationScore: number | null; contrastSimulationScoreReason?: string | null };
   stability: { iterations: number; stdDevLoadMs: number; coefficientOfVariation: number; unstable: boolean };
   memory: { samples: number[]; growth: number | null };
   derived: {

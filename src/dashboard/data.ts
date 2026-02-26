@@ -89,6 +89,8 @@ export interface UrlIndexEntry {
   url: string;
   runId: string | null;
   timestamp: string | null;
+  runTime: string | null;
+  environment: string | null;
   hasFailures: boolean;
   badges: Record<'a11y' | 'perf' | 'net' | 'sec' | 'seo' | 'visual' | 'stability', 'missing' | 'ok' | 'issues'>;
   sections: Record<SectionFile, SectionIndexStatus>;
@@ -129,7 +131,7 @@ export class ArtifactStore {
 
   constructor(private readonly runPath: string, private readonly logger?: AppLogger) {}
 
-  private async readJson(filePath: string): Promise<{ ok: boolean; data?: JsonValue; error?: string }> {
+  async readJson(filePath: string): Promise<{ ok: boolean; data?: JsonValue; error?: string }> {
     const startedAt = Date.now();
     this.logger?.debug('Dataset file read started', { filePath });
     try {
@@ -172,6 +174,7 @@ export class ArtifactStore {
 }
 
 const toNum = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+const asRecord = (value: unknown): Record<string, unknown> => (typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {});
 
 const severityList = ['critical', 'serious', 'moderate', 'minor'] as const;
 
@@ -182,6 +185,96 @@ function unwrapRaw(raw: unknown): { payload: unknown; meta: Record<string, unkno
     return { payload: wrapped.payload, meta: (typeof wrapped.meta === 'object' && wrapped.meta !== null ? wrapped.meta : {}) as Record<string, unknown> };
   }
   return { payload: raw, meta: {} };
+}
+
+interface RunMetadataView {
+  runId: string | null;
+  timestamp: string | null;
+  runTime: string | null;
+  environment: string | null;
+}
+
+function secondsFromDuration(value: unknown): number | null {
+  const numeric = toNum(value);
+  if (numeric !== null) return numeric;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+  const timeParts = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec(trimmed);
+  if (timeParts) return Number(timeParts[1]) * 3600 + Number(timeParts[2]) * 60 + Number(timeParts[3]);
+  const minSec = /^(?:(\d+)m)?\s*(?:(\d+)s)?$/i.exec(trimmed);
+  if (minSec && (minSec[1] || minSec[2])) return Number(minSec[1] ?? 0) * 60 + Number(minSec[2] ?? 0);
+  return null;
+}
+
+function toEpochMs(value: unknown): number | null {
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  const asNum = toNum(value);
+  if (asNum === null) return null;
+  return asNum > 1e12 ? asNum : asNum * 1000;
+}
+
+function formatDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  if (seconds >= 3600) {
+    const hh = String(Math.floor(seconds / 3600)).padStart(2, '0');
+    const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+    const ss = String(seconds % 60).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s`;
+}
+
+function readCandidateMetadata(candidate: unknown): Partial<RunMetadataView> {
+  const source = asRecord(candidate);
+  const durationSeconds = secondsFromDuration(source.durationSeconds ?? source.durationSec ?? source.duration ?? source.runtimeSeconds ?? source.runTimeSeconds);
+  const start = toEpochMs(source.runStart ?? source.startTime ?? source.startedAt ?? source.start);
+  const end = toEpochMs(source.runEnd ?? source.endTime ?? source.endedAt ?? source.end);
+  const computedDuration = durationSeconds ?? ((start !== null && end !== null && end >= start) ? (end - start) / 1000 : null);
+  return {
+    runId: source.runId ? String(source.runId) : null,
+    timestamp: source.timestamp || source.runStart || source.startTime || source.startedAt ? String(source.timestamp ?? source.runStart ?? source.startTime ?? source.startedAt) : null,
+    environment: source.environment ? String(source.environment) : null,
+    runTime: computedDuration === null ? null : formatDuration(computedDuration)
+  };
+}
+
+async function selectRunMetadata(store: ArtifactStore, runPath: string, urlId: string): Promise<RunMetadataView> {
+  const selected: RunMetadataView = { runId: null, timestamp: null, runTime: null, environment: null };
+  const sectionCandidates: SectionFile[] = ['target-summary.json', 'performance.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'accessibility.json', 'throttled-run.json', 'a11y-beyond-axe.json'];
+  for (const section of sectionCandidates) {
+    const loaded = await store.loadSection(urlId, section);
+    if (loaded.state === 'missing' || loaded.state === 'error') continue;
+    const unwrapped = unwrapRaw(loaded.raw);
+    for (const candidate of [unwrapped.payload, unwrapped.meta]) {
+      const view = readCandidateMetadata(candidate);
+      selected.runId ??= view.runId ?? null;
+      selected.timestamp ??= view.timestamp ?? null;
+      selected.runTime ??= view.runTime ?? null;
+      selected.environment ??= view.environment ?? null;
+    }
+  }
+
+  const runMetadataPath = path.join(runPath, 'run-metadata.json');
+  try {
+    await fs.access(runMetadataPath);
+    const runMeta = await store.readJson(runMetadataPath);
+    if (runMeta.ok) {
+      const view = readCandidateMetadata(runMeta.data);
+      selected.runId ??= view.runId ?? null;
+      selected.timestamp ??= view.timestamp ?? null;
+      selected.environment ??= view.environment ?? null;
+    }
+  } catch {
+    // optional root metadata
+  }
+  return selected;
 }
 
 function normalizeSection(section: SectionFile, raw: unknown): { state: SectionIndexStatus['state']; raw: unknown; summary: Record<string, unknown> } {
@@ -263,6 +356,7 @@ export async function buildDashboardIndexWithLogger(runPath: string, logger?: Ap
     const targetUnwrapped = unwrapRaw(targetLoaded.raw);
     const targetRaw = (targetUnwrapped.payload && typeof targetUnwrapped.payload === 'object') ? targetUnwrapped.payload as Record<string, unknown> : undefined;
     const url = deriveUrl(id, targetRaw, targetUnwrapped.meta);
+    const runMeta = await selectRunMetadata(store, runPath, id);
 
     const a11ySev = sections['accessibility.json'].summary;
     const hasFailures = Object.values(sections).some((s) => s.state === 'issues' || s.state === 'error');
@@ -270,8 +364,10 @@ export async function buildDashboardIndexWithLogger(runPath: string, logger?: Ap
       id,
       folderName: id,
       url,
-      runId: (targetRaw?.runId ?? targetUnwrapped.meta.runId) ? String(targetRaw?.runId ?? targetUnwrapped.meta.runId) : null,
-      timestamp: (targetRaw?.timestamp ?? targetUnwrapped.meta.timestamp) ? String(targetRaw?.timestamp ?? targetUnwrapped.meta.timestamp) : null,
+      runId: runMeta.runId,
+      timestamp: runMeta.timestamp,
+      runTime: runMeta.runTime,
+      environment: runMeta.environment,
       hasFailures,
       badges: {
         a11y: aggregateBadge(sections['accessibility.json'].state, sections['a11y-beyond-axe.json'].state),
@@ -338,8 +434,8 @@ export async function loadDashboardRun(runPath: string): Promise<DashboardRunDat
       status,
       blockers: [],
       regressions: toNum((artifacts['visual-regression.json'] as Record<string, unknown> | undefined)?.regressions) ?? 0,
-      environment: 'Not available',
-      lastRunAt: item.timestamp ?? 'Not available',
+      environment: item.environment ?? '—',
+      lastRunAt: item.timestamp ?? '—',
       hasThrottled: item.sections['throttled-run.json'].state !== 'missing'
     });
   }
