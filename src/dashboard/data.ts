@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { CATEGORY_WEIGHTS, CWV_THRESHOLDS, SCORE_THRESHOLDS, type StatusValue } from './config.js';
 
 export interface RunPathOptions { cliRunPath?: string; envRunPath?: string }
 export function resolveRunPath(options: RunPathOptions): string {
@@ -8,7 +7,48 @@ export function resolveRunPath(options: RunPathOptions): string {
   return value ? path.resolve(value) : process.cwd();
 }
 
-type JsonObject = Record<string, unknown>;
+type JsonValue = Record<string, unknown> | unknown[];
+
+type SectionFile =
+  | 'a11y-beyond-axe.json'
+  | 'accessibility.json'
+  | 'api-monitoring.json'
+  | 'broken-links.json'
+  | 'core-web-vitals.json'
+  | 'lighthouse-summary.json'
+  | 'memory-profile.json'
+  | 'network-recommendations.json'
+  | 'network-requests.json'
+  | 'performance.json'
+  | 'security-scan.json'
+  | 'seo-checks.json'
+  | 'stability.json'
+  | 'target-summary.json'
+  | 'third-party-risk.json'
+  | 'throttled-run.json'
+  | 'visual-regression.json'
+  | 'visual-current.png';
+
+export const SECTION_FILES: SectionFile[] = [
+  'a11y-beyond-axe.json',
+  'accessibility.json',
+  'api-monitoring.json',
+  'broken-links.json',
+  'core-web-vitals.json',
+  'lighthouse-summary.json',
+  'memory-profile.json',
+  'network-recommendations.json',
+  'network-requests.json',
+  'performance.json',
+  'security-scan.json',
+  'seo-checks.json',
+  'stability.json',
+  'target-summary.json',
+  'third-party-risk.json',
+  'throttled-run.json',
+  'visual-current.png',
+  'visual-regression.json'
+];
 
 export interface ValidationEntry { scope: 'global' | 'url'; id: string; found: string[]; missing: string[] }
 
@@ -20,7 +60,7 @@ export interface UrlModel {
   categoryScores: Record<string, { value: number; derived: boolean }>;
   overallScore: number;
   grade: string;
-  status: StatusValue;
+  status: 'PASS' | 'WARN' | 'FAIL';
   blockers: string[];
   regressions: number;
   environment: string;
@@ -35,201 +75,294 @@ export interface DashboardRunData {
   validation: ValidationEntry[];
 }
 
-const GLOBAL_FILES = ['index.json', 'summary-index.json', 'history.json', 'ci-summary.json', 'run-metadata.json', 'junit.xml'];
-const URL_FILES = [
-  'target-summary.json','lighthouse-summary.json','performance.json','core-web-vitals.json','throttled-run.json','memory-profile.json','network-requests.json',
-  'network-recommendations.json','accessibility.json','a11y-beyond-axe.json','security-scan.json','third-party-risk.json','stability.json','broken-links.json',
-  'api-monitoring.json','seo-checks.json','visual-regression.json'
-];
-
-async function readJsonSafe(filePath: string): Promise<unknown | undefined> {
-  try { return JSON.parse(await fs.readFile(filePath, 'utf8')); } catch { return undefined; }
+export interface SectionIndexStatus {
+  file: SectionFile;
+  exists: boolean;
+  state: 'missing' | 'not_available' | 'ok' | 'issues' | 'error';
+  summary: Record<string, unknown>;
 }
 
-function num(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+export interface UrlIndexEntry {
+  id: string;
+  folderName: string;
+  url: string;
+  runId: string | null;
+  timestamp: string | null;
+  hasFailures: boolean;
+  badges: Record<'a11y' | 'perf' | 'net' | 'sec' | 'seo' | 'visual' | 'stability', 'missing' | 'ok' | 'issues'>;
+  sections: Record<SectionFile, SectionIndexStatus>;
 }
 
-function grade(score: number): string { return score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F'; }
-
-function cwvBlockers(cwv: JsonObject): string[] {
-  const out: string[] = [];
-  const metrics: Record<string, number> = {
-    lcp: num(cwv.lcpMs ?? cwv.lcp),
-    cls: num(cwv.cls),
-    inp: num(cwv.inpMs ?? cwv.fidMs ?? cwv.inp),
-    ttfb: num(cwv.ttfbMs ?? cwv.ttfb)
-  };
-  (Object.keys(metrics) as Array<keyof typeof metrics>).forEach((k) => {
-    const poor = CWV_THRESHOLDS[k as keyof typeof CWV_THRESHOLDS].poor;
-    if (metrics[k] > poor * SCORE_THRESHOLDS.blockerCwvMultiplier) out.push(`CWV ${k.toUpperCase()} critical`);
-  });
-  return out;
+export interface DashboardIndex {
+  runPath: string;
+  urls: UrlIndexEntry[];
+  parseErrors: Array<{ file: string; message: string }>;
+  generatedAt: string;
 }
 
-function normalizeUrl(urlArtifact: Record<string, unknown>, id: string): string {
-  return String(urlArtifact.url ?? (urlArtifact.target as JsonObject | undefined)?.url ?? id);
-}
+class LruCache<K, V> {
+  private map = new Map<K, V>();
+  constructor(private readonly maxSize: number) {}
 
-function getLighthouseScores(artifacts: Record<string, unknown>): Record<string, number> {
-  const l = (artifacts['lighthouse-summary.json'] as JsonObject | undefined) ?? (artifacts['target-summary.json'] as JsonObject | undefined)?.lighthouse as JsonObject | undefined;
-  if (!l) return {};
-  return {
-    performance: Math.round(num(l.performance) * (num(l.performance) <= 1 ? 100 : 1)),
-    accessibility: Math.round(num(l.accessibility) * (num(l.accessibility) <= 1 ? 100 : 1)),
-    seo: Math.round(num(l.seo) * (num(l.seo) <= 1 ? 100 : 1)),
-    bestPractices: Math.round(num(l.bestPractices ?? l['best-practices']) * (num(l.bestPractices ?? l['best-practices']) <= 1 ? 100 : 1))
-  };
-}
-
-function computeCategoryScores(artifacts: Record<string, unknown>): Record<string, { value: number; derived: boolean }> {
-  const lighthouse = getLighthouseScores(artifacts);
-  const a11y = artifacts['accessibility.json'] as JsonObject | undefined;
-  const security = artifacts['security-scan.json'] as JsonObject | undefined;
-  const stability = artifacts['stability.json'] as JsonObject | undefined;
-  const seo = artifacts['seo-checks.json'] as JsonObject | undefined;
-  const visual = artifacts['visual-regression.json'] as JsonObject | undefined;
-  const perf = artifacts['performance.json'] as JsonObject | undefined;
-
-  const a11yViolations = num(a11y?.totalViolations ?? a11y?.violationsCount);
-  const secCritical = num(security?.criticalCount ?? security?.critical ?? security?.criticalFindings);
-  const secHigh = num(security?.highCount ?? security?.high ?? security?.highFindings);
-  const stableFailures = num(stability?.errorCount ?? stability?.failures ?? stability?.jsErrors);
-  const seoIssues = num(seo?.issueCount ?? seo?.errors ?? seo?.missingCount);
-  const visualDiff = num(visual?.diffScore ?? visual?.difference ?? visual?.score);
-  const loadEvent = num((perf?.navigation as JsonObject | undefined)?.loadEventMs ?? perf?.loadEventMs, 4000);
-
-  const score = {
-    performance: lighthouse.performance ? { value: lighthouse.performance, derived: false } : { value: Math.max(0, 100 - Math.round(loadEvent / 100)), derived: true },
-    accessibility: lighthouse.accessibility ? { value: lighthouse.accessibility, derived: false } : { value: Math.max(0, 100 - a11yViolations * 4), derived: true },
-    security: { value: Math.max(0, 100 - secCritical * 30 - secHigh * 12), derived: true },
-    stability: { value: Math.max(0, 100 - stableFailures * 8), derived: true },
-    seo: lighthouse.seo ? { value: lighthouse.seo, derived: false } : { value: Math.max(0, 100 - seoIssues * 10), derived: true },
-    visual: { value: Math.max(0, 100 - visualDiff), derived: true },
-    bestPractices: lighthouse.bestPractices ? { value: lighthouse.bestPractices, derived: false } : { value: 70, derived: true }
-  };
-  return score;
-}
-
-function computeStatus(artifacts: Record<string, unknown>, overallScore: number, regressions: number): { status: StatusValue; blockers: string[] } {
-  const blockers: string[] = [];
-  const cwv = artifacts['core-web-vitals.json'] as JsonObject | undefined;
-  const ci = artifacts['_global_ci'] as JsonObject | undefined;
-  const sec = artifacts['security-scan.json'] as JsonObject | undefined;
-  const api = artifacts['api-monitoring.json'] as JsonObject | undefined;
-  const stability = artifacts['stability.json'] as JsonObject | undefined;
-
-  if (cwv) blockers.push(...cwvBlockers(cwv));
-  if (num(sec?.criticalCount ?? sec?.critical) >= SCORE_THRESHOLDS.blockerSecurityCritical) blockers.push('Security critical findings');
-  if (num(api?.failureRate) > SCORE_THRESHOLDS.blockerApiFailureRate) blockers.push('High API failure rate');
-  if (num(stability?.jsConsoleErrors ?? stability?.consoleErrors) > SCORE_THRESHOLDS.blockerConsoleErrors) blockers.push('Excessive console errors');
-  if (String(ci?.qualityGate ?? ci?.status ?? '').toUpperCase() === 'FAIL') blockers.push('CI quality gate fail');
-
-  if (blockers.length > 0) return { status: 'FAIL', blockers };
-  if (overallScore < SCORE_THRESHOLDS.pass || regressions >= SCORE_THRESHOLDS.regressionWarnCount) return { status: 'WARN', blockers };
-  return { status: 'PASS', blockers };
-}
-
-export async function loadDashboardRun(runPath: string): Promise<DashboardRunData> {
-  const entries = await fs.readdir(runPath, { withFileTypes: true });
-  const globals: Record<string, unknown> = {};
-  const validation: ValidationEntry[] = [];
-  for (const g of GLOBAL_FILES) {
-    const content = await readJsonSafe(path.join(runPath, g));
-    if (content !== undefined) globals[g] = content;
+  get(key: K): V | undefined {
+    const value = this.map.get(key);
+    if (value === undefined) return undefined;
+    this.map.delete(key);
+    this.map.set(key, value);
+    return value;
   }
 
-  const ciSummary = (globals['ci-summary.json'] as JsonObject | undefined) ?? {};
-  const runMeta = (globals['run-metadata.json'] as JsonObject | undefined) ?? {};
-  const history = (globals['history.json'] as JsonObject | undefined) ?? {};
-
-  const folders = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'baseline').map((e) => e.name).sort();
-  const urls: UrlModel[] = [];
-
-  for (const id of folders) {
-    const folderPath = path.join(runPath, id);
-    const folderEntries = await fs.readdir(folderPath, { withFileTypes: true });
-    const artifacts: Record<string, unknown> = { _global_ci: ciSummary };
-    const found: string[] = [];
-    const missing: string[] = [];
-    const images: Record<string, string> = {};
-
-    for (const file of URL_FILES) {
-      const value = await readJsonSafe(path.join(folderPath, file));
-      if (value !== undefined) { artifacts[file] = value; found.push(file); }
-      else missing.push(file);
+  set(key: K, value: V): void {
+    if (this.map.has(key)) this.map.delete(key);
+    this.map.set(key, value);
+    if (this.map.size > this.maxSize) {
+      const oldest = this.map.keys().next().value;
+      if (oldest !== undefined) this.map.delete(oldest);
     }
-    for (const fe of folderEntries) {
-      if (fe.isFile() && /\.(png|jpg|jpeg|webp|gif)$/i.test(fe.name)) {
-        images[fe.name] = `/artifacts/${encodeURIComponent(id)}/${encodeURIComponent(fe.name)}`;
+  }
+}
+
+export class ArtifactStore {
+  private readonly cache = new LruCache<string, unknown>(200);
+  readonly parseErrors: Array<{ file: string; message: string }> = [];
+
+  constructor(private readonly runPath: string) {}
+
+  private async readJson(filePath: string): Promise<{ ok: boolean; data?: JsonValue; error?: string }> {
+    try {
+      const raw = await fs.readFile(filePath, 'utf8');
+      const parsed = JSON.parse(raw) as JsonValue;
+      return { ok: true, data: parsed };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.parseErrors.push({ file: path.relative(this.runPath, filePath), message });
+      return { ok: false, error: message };
+    }
+  }
+
+  async loadSection(urlId: string, section: SectionFile): Promise<{ state: SectionIndexStatus['state']; raw: unknown; summary: Record<string, unknown>; error?: string }> {
+    const filePath = path.join(this.runPath, urlId, section);
+    if (section === 'visual-current.png') {
+      try {
+        await fs.access(filePath);
+        return { state: 'ok', raw: null, summary: { image: `/artifacts/${encodeURIComponent(urlId)}/${encodeURIComponent(section)}` } };
+      } catch {
+        return { state: 'missing', raw: null, summary: {} };
       }
     }
 
-    const categoryScores = computeCategoryScores(artifacts);
-    const overallScore = Math.round(
-      categoryScores.performance.value * CATEGORY_WEIGHTS.performance +
-      categoryScores.accessibility.value * CATEGORY_WEIGHTS.accessibility +
-      categoryScores.security.value * CATEGORY_WEIGHTS.security +
-      categoryScores.stability.value * CATEGORY_WEIGHTS.stability +
-      categoryScores.seo.value * CATEGORY_WEIGHTS.seo +
-      categoryScores.visual.value * CATEGORY_WEIGHTS.visual
-    );
-    const regressions = num((history[id] as JsonObject | undefined)?.regressions ?? (artifacts['visual-regression.json'] as JsonObject | undefined)?.regressions);
-    const statusState = computeStatus(artifacts, overallScore, regressions);
-
-    urls.push({
-      id,
-      url: normalizeUrl((artifacts['target-summary.json'] as JsonObject | undefined) ?? {}, id),
-      artifacts,
-      images,
-      categoryScores,
-      overallScore,
-      grade: grade(overallScore),
-      status: statusState.status,
-      blockers: statusState.blockers,
-      regressions,
-      environment: String(runMeta.environment ?? runMeta.env ?? 'Not available'),
-      lastRunAt: String(runMeta.finishedAt ?? runMeta.timestamp ?? 'Not available'),
-      hasThrottled: Boolean(artifacts['throttled-run.json'])
-    });
-
-    validation.push({ scope: 'url', id, found, missing });
+    const cached = this.cache.get(filePath);
+    const data = cached ?? (await this.readJson(filePath)).data;
+    if (data === undefined) {
+      try {
+        await fs.access(filePath);
+        return { state: 'error', raw: null, summary: {}, error: this.parseErrors.at(-1)?.message ?? 'Malformed JSON' };
+      } catch {
+        return { state: 'missing', raw: null, summary: {} };
+      }
+    }
+    this.cache.set(filePath, data);
+    return normalizeSection(section, data);
   }
-
-  validation.push({ scope: 'global', id: 'run', found: Object.keys(globals), missing: GLOBAL_FILES.filter((g) => globals[g] === undefined) });
-  process.stdout.write(`[dashboard] discovered ${urls.length} URL folders\n`);
-  for (const v of validation) process.stdout.write(`[dashboard] ${v.scope}:${v.id} found=${v.found.length} missing=${v.missing.length}\n`);
-  return { runPath, globalArtifacts: globals, urls, validation };
 }
 
-// Backward-compatible summary helpers used by tests
-export interface OverviewRow { folderName: string; url: string; critical: number; serious: number; moderate: number; minor: number; ttfbMs: number; dclMs: number; loadEventMs: number; totalTransferSize: number; resourceCount: number; requestCount: number; failedRequestCount: number; networkTransferSize: number; slowestRequestMs: number; recommendationCounts: Record<string, number>; accessibilityIssues: unknown[]; networkRequests: JsonObject[]; networkRecommendations: JsonObject[] }
+const toNum = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+
+const severityList = ['critical', 'serious', 'moderate', 'minor'] as const;
+
+function normalizeSection(section: SectionFile, raw: unknown): { state: SectionIndexStatus['state']; raw: unknown; summary: Record<string, unknown> } {
+  const obj = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  if (obj.available === false) return { state: 'not_available', raw, summary: { reason: obj.reason ?? obj.message ?? 'Not available' } };
+
+  if (section === 'accessibility.json') {
+    const counters = (obj.counters as Record<string, unknown> | undefined) ?? obj;
+    const severities = Object.fromEntries(severityList.map((s) => [s, toNum(counters[s]) ?? 0]));
+    const total = severityList.reduce((sum, s) => sum + (severities[s] as number), 0);
+    return { state: total > 0 ? 'issues' : 'ok', raw, summary: { ...severities, total } };
+  }
+  if (section === 'broken-links.json') {
+    const broken = toNum(obj.brokenCount ?? obj.broken) ?? 0;
+    return { state: broken > 0 ? 'issues' : 'ok', raw, summary: { brokenCount: broken } };
+  }
+  if (section === 'visual-regression.json') {
+    const passed = obj.passed === true;
+    const baselineFound = obj.baselineFound !== false;
+    return { state: !baselineFound || !passed ? 'issues' : 'ok', raw, summary: { passed, baselineFound, diffRatio: toNum(obj.diffRatio ?? obj.diffScore) } };
+  }
+  if (section === 'security-scan.json') {
+    const missingHeaders = Array.isArray(obj.missingHeaders) ? obj.missingHeaders.length : 0;
+    return { state: missingHeaders > 0 ? 'issues' : 'ok', raw, summary: { missingHeaders } };
+  }
+  if (section === 'network-recommendations.json') {
+    const list = Array.isArray(raw) ? raw as Record<string, unknown>[] : Array.isArray(obj.recommendations) ? obj.recommendations as Record<string, unknown>[] : [];
+    const high = list.filter((x) => String(x.severity ?? '').toLowerCase() === 'high').length;
+    return { state: list.length > 0 ? 'issues' : 'ok', raw, summary: { count: list.length, high } };
+  }
+  if (section === 'stability.json') {
+    const unstable = obj.unstable === true;
+    return { state: unstable ? 'issues' : 'ok', raw, summary: { unstable } };
+  }
+  if (section === 'lighthouse-summary.json') {
+    if (obj.available === false) return { state: 'not_available', raw, summary: { reason: obj.reason ?? 'Not available' } };
+    return { state: 'ok', raw, summary: { performance: toNum(obj.performance), accessibility: toNum(obj.accessibility), seo: toNum(obj.seo) } };
+  }
+
+  const issueHint = toNum(obj.issueCount ?? obj.errors ?? obj.failures ?? obj.failed ?? obj.regressions ?? obj.riskCount);
+  if (issueHint !== null) return { state: issueHint > 0 ? 'issues' : 'ok', raw, summary: { issueCount: issueHint } };
+  return { state: 'ok', raw, summary: {} };
+}
+
+function deriveUrl(folderName: string, targetSummary?: Record<string, unknown>): string {
+  return String(targetSummary?.url ?? (targetSummary?.target as Record<string, unknown> | undefined)?.url ?? folderName);
+}
+
+function grade(score: number): string {
+  return score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
+}
+
+function aggregateBadge(...states: Array<'missing' | 'not_available' | 'ok' | 'issues' | 'error'>): 'missing' | 'ok' | 'issues' {
+  if (states.some((s) => s === 'issues' || s === 'error')) return 'issues';
+  if (states.every((s) => s === 'missing' || s === 'not_available')) return 'missing';
+  return 'ok';
+}
+
+export async function buildDashboardIndex(runPath: string): Promise<{ index: DashboardIndex; store: ArtifactStore }> {
+  const store = new ArtifactStore(runPath);
+  const entries = await fs.readdir(runPath, { withFileTypes: true });
+  const urlDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort((a, b) => a.localeCompare(b));
+  const urls: UrlIndexEntry[] = [];
+
+  for (const id of urlDirs) {
+    const sections = {} as Record<SectionFile, SectionIndexStatus>;
+    for (const section of SECTION_FILES) {
+      const loaded = await store.loadSection(id, section);
+      sections[section] = { file: section, exists: loaded.state !== 'missing', state: loaded.state, summary: loaded.summary };
+    }
+    const targetLoaded = await store.loadSection(id, 'target-summary.json');
+    const targetRaw = (targetLoaded.raw && typeof targetLoaded.raw === 'object') ? targetLoaded.raw as Record<string, unknown> : undefined;
+    const url = deriveUrl(id, targetRaw);
+
+    const a11ySev = sections['accessibility.json'].summary;
+    const hasFailures = Object.values(sections).some((s) => s.state === 'issues' || s.state === 'error');
+    urls.push({
+      id,
+      folderName: id,
+      url,
+      runId: targetRaw?.runId ? String(targetRaw.runId) : null,
+      timestamp: targetRaw?.timestamp ? String(targetRaw.timestamp) : null,
+      hasFailures,
+      badges: {
+        a11y: aggregateBadge(sections['accessibility.json'].state, sections['a11y-beyond-axe.json'].state),
+        perf: aggregateBadge(sections['performance.json'].state, sections['core-web-vitals.json'].state, sections['lighthouse-summary.json'].state),
+        net: aggregateBadge(sections['network-requests.json'].state, sections['network-recommendations.json'].state, sections['api-monitoring.json'].state),
+        sec: aggregateBadge(sections['security-scan.json'].state, sections['third-party-risk.json'].state),
+        seo: aggregateBadge(sections['seo-checks.json'].state),
+        visual: aggregateBadge(sections['visual-regression.json'].state, sections['visual-current.png'].state),
+        stability: aggregateBadge(sections['stability.json'].state, sections['broken-links.json'].state)
+      },
+      sections
+    });
+
+    // Preserve key counter hints for facets
+    urls[urls.length - 1].sections['accessibility.json'].summary = { ...a11ySev };
+  }
+
+  return {
+    index: { runPath, urls, parseErrors: store.parseErrors, generatedAt: new Date().toISOString() },
+    store
+  };
+}
+
+// Backward compatibility for current tests
+export async function loadDashboardRun(runPath: string): Promise<DashboardRunData> {
+  const { index, store } = await buildDashboardIndex(runPath);
+  const urls: UrlModel[] = [];
+  for (const item of index.urls) {
+    const artifacts: Record<string, unknown> = {};
+    const images: Record<string, string> = {};
+    for (const section of SECTION_FILES) {
+      const loaded = await store.loadSection(item.id, section);
+      if (section === 'visual-current.png') {
+        if (loaded.state !== 'missing') images[section] = String(loaded.summary.image ?? '');
+      } else if (loaded.state !== 'missing' && loaded.state !== 'error') {
+        artifacts[section] = loaded.raw;
+      }
+    }
+
+    const a11y = (artifacts['accessibility.json'] as Record<string, unknown> | undefined) ?? {};
+    const performance = (artifacts['lighthouse-summary.json'] as Record<string, unknown> | undefined) ?? {};
+    const perfScore = toNum(performance.performance);
+    const a11yScore = toNum(performance.accessibility);
+    const seoScore = toNum(performance.seo);
+    const overall = Math.round(((perfScore ?? 60) + (a11yScore ?? 70) + (seoScore ?? 70)) / 3);
+    const status: 'PASS' | 'WARN' | 'FAIL' = item.hasFailures ? (overall < 60 ? 'FAIL' : 'WARN') : 'PASS';
+
+    urls.push({
+      id: item.id,
+      url: item.url,
+      artifacts,
+      images,
+      categoryScores: {
+        performance: { value: perfScore ?? overall, derived: perfScore === null },
+        accessibility: { value: a11yScore ?? (100 - ((toNum(a11y.critical) ?? 0) * 10)), derived: a11yScore === null },
+        security: { value: 70, derived: true },
+        stability: { value: 70, derived: true },
+        seo: { value: seoScore ?? 70, derived: seoScore === null },
+        visual: { value: 70, derived: true }
+      },
+      overallScore: overall,
+      grade: grade(overall),
+      status,
+      blockers: [],
+      regressions: toNum((artifacts['visual-regression.json'] as Record<string, unknown> | undefined)?.regressions) ?? 0,
+      environment: 'Not available',
+      lastRunAt: item.timestamp ?? 'Not available',
+      hasThrottled: item.sections['throttled-run.json'].state !== 'missing'
+    });
+  }
+
+  return {
+    runPath,
+    globalArtifacts: {},
+    urls,
+    validation: index.urls.map((u) => ({ scope: 'url' as const, id: u.id, found: SECTION_FILES.filter((f) => u.sections[f].exists), missing: SECTION_FILES.filter((f) => !u.sections[f].exists) }))
+  };
+}
+
+export interface OverviewRow { folderName: string; url: string; critical: number; serious: number; moderate: number; minor: number; ttfbMs: number; dclMs: number; loadEventMs: number; totalTransferSize: number; resourceCount: number; requestCount: number; failedRequestCount: number; networkTransferSize: number; slowestRequestMs: number; recommendationCounts: Record<string, number>; accessibilityIssues: unknown[]; networkRequests: Record<string, unknown>[]; networkRecommendations: Record<string, unknown>[] }
 export interface RunSummaryMetrics { totalPages: number; accessibilityTotals: { critical: number; serious: number; moderate: number; minor: number }; worstByLoadEventMs: OverviewRow[]; worstByCriticalIssues: OverviewRow[]; worstByTransferSize: OverviewRow[] }
 
 export function toOverviewRows(data: DashboardRunData): OverviewRow[] {
   return data.urls.map((u) => {
-    const a11y = u.artifacts['accessibility.json'] as JsonObject | undefined;
-    const perf = u.artifacts['performance.json'] as JsonObject | undefined;
-    const requests = (u.artifacts['network-requests.json'] as JsonObject[] | undefined) ?? [];
-    const recs = (u.artifacts['network-recommendations.json'] as JsonObject[] | undefined) ?? [];
+    const a11y = (u.artifacts['accessibility.json'] as Record<string, unknown> | undefined) ?? {};
+    const perf = (u.artifacts['performance.json'] as Record<string, unknown> | undefined) ?? {};
+    const navigation = (perf.navigation as Record<string, unknown> | undefined) ?? {};
+    const resourceSummary = (perf.resourceSummary as Record<string, unknown> | undefined) ?? {};
+    const requests = (Array.isArray(u.artifacts['network-requests.json']) ? u.artifacts['network-requests.json'] : []) as Record<string, unknown>[];
+    const recs = (Array.isArray(u.artifacts['network-recommendations.json']) ? u.artifacts['network-recommendations.json'] : []) as Record<string, unknown>[];
+    const counters = (a11y.counters as Record<string, unknown> | undefined) ?? a11y;
     return {
       folderName: u.id,
       url: u.url,
-      critical: num((a11y?.counters as JsonObject | undefined)?.critical ?? a11y?.critical),
-      serious: num((a11y?.counters as JsonObject | undefined)?.serious ?? a11y?.serious),
-      moderate: num((a11y?.counters as JsonObject | undefined)?.moderate ?? a11y?.moderate),
-      minor: num((a11y?.counters as JsonObject | undefined)?.minor ?? a11y?.minor),
-      ttfbMs: num((perf?.navigation as JsonObject | undefined)?.ttfbMs),
-      dclMs: num((perf?.navigation as JsonObject | undefined)?.domContentLoadedMs),
-      loadEventMs: num((perf?.navigation as JsonObject | undefined)?.loadEventMs),
-      totalTransferSize: num((perf?.resourceSummary as JsonObject | undefined)?.transferSize),
-      resourceCount: num((perf?.resourceSummary as JsonObject | undefined)?.count),
+      critical: toNum(counters.critical) ?? 0,
+      serious: toNum(counters.serious) ?? 0,
+      moderate: toNum(counters.moderate) ?? 0,
+      minor: toNum(counters.minor) ?? 0,
+      ttfbMs: toNum(navigation.ttfbMs) ?? 0,
+      dclMs: toNum(navigation.domContentLoadedMs) ?? 0,
+      loadEventMs: toNum(navigation.loadEventMs) ?? 0,
+      totalTransferSize: toNum(resourceSummary.transferSize) ?? 0,
+      resourceCount: toNum(resourceSummary.count) ?? 0,
       requestCount: requests.length,
-      failedRequestCount: requests.filter((r) => num(r.status, 200) >= 400).length,
-      networkTransferSize: requests.reduce((a, r) => a + num(r.transferSize), 0),
-      slowestRequestMs: requests.reduce((a, r) => Math.max(a, num(r.durationMs)), 0),
-      recommendationCounts: recs.reduce<Record<string, number>>((acc, rec) => { const k = String(rec.severity ?? 'unknown'); acc[k] = (acc[k] ?? 0) + 1; return acc; }, {}),
-      accessibilityIssues: (a11y?.issues as unknown[] | undefined) ?? [],
+      failedRequestCount: requests.filter((r) => (toNum(r.status) ?? 200) >= 400).length,
+      networkTransferSize: requests.reduce((acc, r) => acc + (toNum(r.transferSize) ?? 0), 0),
+      slowestRequestMs: requests.reduce((acc, r) => Math.max(acc, toNum(r.durationMs ?? r.duration) ?? 0), 0),
+      recommendationCounts: recs.reduce<Record<string, number>>((acc, rec) => {
+        const sev = String(rec.severity ?? 'unknown');
+        acc[sev] = (acc[sev] ?? 0) + 1;
+        return acc;
+      }, {}),
+      accessibilityIssues: Array.isArray(a11y.issues) ? a11y.issues : [],
       networkRequests: requests,
       networkRecommendations: recs
     };
@@ -241,6 +374,20 @@ function worst(rows: readonly OverviewRow[], metric: (row: OverviewRow) => numbe
 }
 
 export function computeRunSummary(rows: readonly OverviewRow[]): RunSummaryMetrics {
-  const totals = rows.reduce((acc, r) => ({ critical: acc.critical + r.critical, serious: acc.serious + r.serious, moderate: acc.moderate + r.moderate, minor: acc.minor + r.minor }), { critical: 0, serious: 0, moderate: 0, minor: 0 });
-  return { totalPages: rows.length, accessibilityTotals: totals, worstByLoadEventMs: worst(rows, (r) => r.loadEventMs), worstByCriticalIssues: worst(rows, (r) => r.critical), worstByTransferSize: worst(rows, (r) => r.totalTransferSize) };
+  const accessibilityTotals = rows.reduce(
+    (acc, row) => ({
+      critical: acc.critical + row.critical,
+      serious: acc.serious + row.serious,
+      moderate: acc.moderate + row.moderate,
+      minor: acc.minor + row.minor
+    }),
+    { critical: 0, serious: 0, moderate: 0, minor: 0 }
+  );
+  return {
+    totalPages: rows.length,
+    accessibilityTotals,
+    worstByLoadEventMs: worst(rows, (r) => r.loadEventMs),
+    worstByCriticalIssues: worst(rows, (r) => r.critical),
+    worstByTransferSize: worst(rows, (r) => r.totalTransferSize)
+  };
 }
