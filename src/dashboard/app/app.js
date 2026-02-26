@@ -48,7 +48,7 @@ function filterUrls(){
   });
 }
 
-function render(){
+function render(options = {}){
   if(!state.index){ app.innerHTML = '<p>Loading…</p>'; return; }
   const urls = filterUrls();
   const selected = urls.find((u)=>u.id===state.selectedId) ?? state.index.urls.find((u)=>u.id===state.selectedId) ?? urls[0];
@@ -78,6 +78,15 @@ function render(){
   bindFilters();
   renderVirtualList(urls);
   if(selected) bindTabEvents(selected);
+
+  if(options.preserveSearchFocus){
+    const searchInput = document.getElementById('search');
+    if(searchInput){
+      const caret = state.search.length;
+      searchInput.focus();
+      searchInput.setSelectionRange(caret, caret);
+    }
+  }
 }
 
 function badge(s){ return `<span class="b ${s}">${s==='issues'?'!':s==='ok'?'✓':'·'}</span>`; }
@@ -126,7 +135,7 @@ function renderDetailsShell(u){
 }
 
 function bindFilters(){
-  document.getElementById('search').oninput=(e)=>{state.search=e.target.value; render();};
+  document.getElementById('search').oninput=(e)=>{state.search=e.target.value; render({ preserveSearchFocus: true });};
   document.getElementById('regex').onchange=(e)=>{state.regex=e.target.checked; render();};
   document.getElementById('f-fail').onchange=(e)=>{state.facets.failures=e.target.checked; render();};
   document.getElementById('f-broken').onchange=(e)=>{state.facets.broken=e.target.checked; render();};
