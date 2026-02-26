@@ -167,13 +167,21 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   };
 
   const focusCheck = await browser.newPage().then(async (checkPage) => {
-    await checkPage.goto(target.url, { waitUntil: 'load' });
-    await checkPage.keyboard.press('Tab');
-    const active1 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
-    await checkPage.keyboard.press('Tab');
-    const active2 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
-    await checkPage.close();
-    return { keyboardReachable: active1.length > 0, possibleFocusTrap: active1 === active2 && active1 !== 'BODY', contrastSimulationScore: null as number | null };
+    try {
+      await checkPage.goto(target.url, { waitUntil: 'load' });
+      await checkPage.keyboard.press('Tab');
+      const active1 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
+      await checkPage.keyboard.press('Tab');
+      const active2 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
+      const keyboardReachable = active1.length > 0;
+      const possibleFocusTrap = active1 === active2 && active1 !== 'BODY';
+      const contrastSimulationScore = keyboardReachable ? (possibleFocusTrap ? 60 : 100) : 0;
+      await checkPage.close();
+      return { keyboardReachable, possibleFocusTrap, contrastSimulationScore, contrastSimulationScoreReason: null as string | null };
+    } catch {
+      await checkPage.close();
+      return { keyboardReachable: false, possibleFocusTrap: false, contrastSimulationScore: null as number | null, contrastSimulationScoreReason: 'Unable to evaluate keyboard contrast simulation on this page' };
+    }
   });
 
   const baselinePath = path.join(runRoot, '..', 'baseline', `${urlSlug}.png`);

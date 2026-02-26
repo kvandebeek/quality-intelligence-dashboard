@@ -15,9 +15,9 @@ const state = {
   sorts: { netRec: { key: 'severity', dir: 'asc' }, netReq: { key: 'url', dir: 'asc' }, stability: { key: 'index', dir: 'asc' } }
 };
 
-const safe = (v, fallback='Not available') => (v === null || v === undefined || v === '' ? fallback : v);
+const MISSING = '—';
+const safe = (v, fallback=MISSING) => (v === null || v === undefined || v === '' ? fallback : v);
 const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-const INFO = 'ⓘ';
 
 const CLIENT_RUN_ID = (()=>{ try { return crypto.randomUUID(); } catch { return `client-${Date.now()}`; } })();
 
@@ -144,19 +144,19 @@ function renderVirtualList(urls){
 
 function renderDetailsShell(u){
   const a11y = u.sections['accessibility.json']?.summary || {};
-  const netHi = u.sections['network-recommendations.json']?.summary?.high ?? 'Not measured';
-  const sec = u.sections['security-scan.json']?.summary?.missingHeaders ?? 'Not measured';
-  const broken = u.sections['broken-links.json']?.summary?.brokenCount ?? 'Not measured';
+  const netHi = u.sections['network-recommendations.json']?.summary?.high ?? MISSING;
+  const sec = u.sections['security-scan.json']?.summary?.missingHeaders ?? MISSING;
+  const broken = u.sections['broken-links.json']?.summary?.brokenCount ?? MISSING;
   const visual = u.sections['visual-regression.json']?.summary?.passed;
   return `<header class="detail-header">
     <h2>${u.url}</h2>
-    <div class="meta">${safe(u.timestamp,'Run time not available')} · ${safe(u.runId,'Run ID not available')}</div>
+    <div class="meta">${safe(u.runTime)} · ${safe(u.runId)}</div>
     <div class="top-issues">
       <span>A11y C/S: ${a11y.critical??0}/${a11y.serious??0}</span>
       <span>High net recs: ${netHi}</span>
       <span>Missing security headers: ${sec}</span>
       <span>Broken links: ${broken}</span>
-      <span>Visual: ${visual===undefined?'Not measured':visual?'Pass':'Fail'}</span>
+      <span>Visual: ${visual===undefined?MISSING:visual?'Pass':'Fail'}</span>
     </div>
   </header>
   <nav class="tabs">${SECTION_ORDER.map((s)=>`<button class="tab ${state.selectedTab===s?'active':''}" data-tab="${s}">${s.replace('.json','')}</button>`).join('')}</nav>
@@ -198,17 +198,16 @@ function bindTabEvents(u){
 
 function renderStateBox(stateName, reason=''){
   if(stateName==='missing') return `<div class="state missing">Missing / not executed</div>`;
-  if(stateName==='not_available') return `<div class="state na">Not available: ${reason||'No reason provided'}</div>`;
+  if(stateName==='not_available') return `<div class="state na">${MISSING}${reason?`: ${reason}`:''}</div>`;
   if(stateName==='error') return `<div class="state error">Malformed JSON</div>`;
   return '';
 }
 
-function rawPanel(raw){ return `<details><summary>Raw JSON</summary><pre>${raw?JSON.stringify(raw,null,2):'Not available'}</pre></details>`; }
+function rawPanel(raw){ return `<details><summary>Raw JSON</summary><pre>${raw?JSON.stringify(raw,null,2):MISSING}</pre></details>`; }
 
-function infoTip(text){ return `<span class="info-tip" title="${String(text).replace(/"/g,'&quot;')}">${INFO}</span>`; }
-function fmt(value, unit=''){ const n = toNum(value); if(n===null) return 'Not measured'; const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2)); return `${rounded}${unit ? ` ${unit}` : ''}`; }
-function metric(label, value, unit='', description=''){ return `<div class="kpi"><span>${label} ${description ? infoTip(description) : ''}</span><strong>${fmt(value, unit)}</strong></div>`; }
-function textMetric(label, value, description=''){ return `<div class="kpi"><span>${label} ${description ? infoTip(description) : ''}</span><strong>${safe(value,'Not measured')}</strong></div>`; }
+function fmt(value, unit=''){ const n = toNum(value); if(n===null) return MISSING; const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2)); return `${rounded}${unit ? ` ${unit}` : ''}`; }
+function metric(label, value, unit=''){ return `<div class="kpi"><span>${label}</span><strong>${fmt(value, unit)}</strong></div>`; }
+function textMetric(label, value){ return `<div class="kpi"><span>${label}</span><strong>${safe(value)}</strong></div>`; }
 function severityRank(value){ const ranks = { low:1, medium:2, high:3, critical:4 }; return ranks[String(value).toLowerCase()] ?? 0; }
 function sortRows(rows, sort){ const dir = sort.dir === 'asc' ? 1 : -1; return [...rows].sort((a,b)=>{ const av=a[sort.key]; const bv=b[sort.key]; if(sort.key==='severity') return (severityRank(av)-severityRank(bv))*dir; const an=toNum(av); const bn=toNum(bv); if(an!==null&&bn!==null) return (an-bn)*dir; return String(av??'').localeCompare(String(bv??''))*dir;}); }
 function sortableHeader(label, scope, key){ const s=state.sorts[scope]; const arrow=s.key===key?(s.dir==='asc'?'↑':'↓'):''; return `<th><button class="sort-btn" data-sort-scope="${scope}" data-sort-key="${key}">${label} ${arrow}</button></th>`; }
@@ -231,6 +230,7 @@ async function loadTab(id, tab){
   let body = '';
   const raw = payload.raw;
   const unwrapped = unwrapArtifact(raw);
+  const selected = state.index?.urls?.find((entry)=>entry.id===id) ?? {};
 
   switch(tab){
     case 'a11y-beyond-axe.json': body = renderA11yHeuristics(unwrapped.payload); break;
@@ -246,10 +246,10 @@ async function loadTab(id, tab){
     case 'security-scan.json': body = renderSecurity(unwrapped.payload); break;
     case 'seo-checks.json': body = renderSeo(unwrapped.payload); break;
     case 'stability.json': body = renderStability(unwrapped.payload); break;
-    case 'target-summary.json': body = renderTarget(unwrapped.payload, unwrapped.meta); break;
+    case 'target-summary.json': body = renderTarget(unwrapped.payload, unwrapped.meta, selected); break;
     case 'third-party-risk.json': body = renderThirdParty(unwrapped.payload); break;
     case 'throttled-run.json': body = renderThrottled(unwrapped.payload); break;
-    case 'visual-current.png': body = payload.summary?.image ? `<div class="image-wrap"><img src="${payload.summary.image}"></div>` : '<p>Not available</p>'; break;
+    case 'visual-current.png': body = payload.summary?.image ? `<div class="image-wrap"><img src="${payload.summary.image}"></div>` : `<p>${MISSING}</p>`; break;
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     default: body = '<p>Unsupported section</p>';
   }
@@ -260,7 +260,12 @@ async function loadTab(id, tab){
   el.querySelectorAll('[data-sort-scope]').forEach((btn)=>btn.onclick=()=>{const scope=btn.dataset.sortScope;const key=btn.dataset.sortKey;const current=state.sorts[scope];state.sorts[scope]={key,dir:current.key===key&&current.dir==='asc'?'desc':'asc'};loadTab(id, tab);});
 }
 
-const renderA11yHeuristics = (r={})=>`<div class="kpis">${Object.entries(r).slice(0,6).map(([k,v])=>textMetric(k,v===null?'Not measured':String(v))).join('')}</div><p>Manual checks are shown when flags indicate potential focus/keyboard issues.</p>`;
+const renderA11yHeuristics = (r={})=>{
+  const score = toNum(r.contrastSimulationScore);
+  const reason = safe(r.contrastSimulationScoreReason, '');
+  const scoreValue = score === null ? MISSING : score;
+  return `<div class="kpis">${textMetric('keyboardReachable',String(r.keyboardReachable))}${textMetric('possibleFocusTrap',String(r.possibleFocusTrap))}${textMetric('contrastSimulationScore',scoreValue)}</div>${score===null&&reason?`<p>contrastSimulationScore reason: ${reason}</p>`:''}<p>Manual checks are shown when flags indicate potential focus/keyboard issues.</p>`;
+};
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
 const renderApi = (r={})=>`<div class="kpis">${metric('Count',r.count,'','Total API endpoints tested')}${metric('Error rate',(toNum(r.errorRate)??0)*100,'%','API responses with status >= 400')}${metric('P95 latency',r.p95LatencyMs ?? r.p95Ms,'ms','95th percentile response latency')}${metric('Avg payload',r.avgPayloadSize ?? r.avgSize,'bytes','Mean API payload size')}</div>`;
 const renderBroken = (r={})=>`<div class="kpis">${metric('Checked',r.checkedCount ?? r.checked)}${metric('Broken',r.brokenCount ?? r.broken)}${metric('Redirect chains',r.redirectChains)}${metric('Loops',r.loops)}</div>`;
@@ -273,7 +278,18 @@ const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class=
 const renderSecurity = (r={})=>`<div class="kpis">${textMetric('TLS',r.tlsVersion)}${textMetric('Missing headers',Array.isArray(r.missingHeaders)?((r.missingHeaders||[]).join(', ')||'None'):'None')}</div>`;
 const renderSeo = (r={})=>`<div class="kpis">${textMetric('Title',r.title)}${textMetric('Description',r.description)}${textMetric('Canonical',r.canonical)}${textMetric('Robots',r.robots ?? r.robotsMeta)}${metric('Structured data count',r.structuredDataCount)}</div><blockquote><strong>${safe(r.title,'(title missing)')}</strong><p>${safe(r.description,'(description missing)')}</p></blockquote>`;
 const renderStability = (r={})=>{const samples=(r.loadEventSamples||[]).map((v,i)=>({index:i+1,sample:Math.round(v),timestamp:r.timestamps?.[i]??'n/a'})); const avg=samples.length?samples.reduce((sum,row)=>sum+row.sample,0)/samples.length:0; const sorted=sortRows(samples,state.sorts.stability); return `<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs,'ms')}${metric('CV',r.coefficientOfVariation)}${textMetric('Unstable',r.unstable?'Yes':'No')}</div><table><tr>${sortableHeader('#','stability','index')}${sortableHeader('Load event','stability','sample')}${sortableHeader('Timestamp','stability','timestamp')}</tr>${sorted.slice(0,300).map(x=>`<tr class="${x.sample<=avg?'fast':'slow'}"><td>${x.index}</td><td>${fmt(x.sample,'ms')}</td><td>${x.timestamp}</td></tr>`).join('')}</table>`;};
-const renderTarget = (r={}, m={})=>`<div class="kpis">${textMetric('URL',r.url ?? r.target?.url ?? m.url)}${textMetric('Run ID',r.runId ?? m.runId)}${textMetric('Environment',r.environment ?? r.meta?.environment)}${metric('Overall score',r.overallScore ?? r.enterpriseScore ?? r.score,'%')}</div>`;
+const resolveOverallScore = (r={}) => {
+  const explicit = toNum(r.overallScore ?? r.score);
+  if (explicit !== null) return explicit;
+  const enterprise = r.enterpriseScore;
+  if (enterprise && typeof enterprise === 'object' && !Array.isArray(enterprise)) {
+    const values = Object.values(enterprise).map((value) => toNum(value)).filter((value) => value !== null);
+    if (values.length > 0) return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+  }
+  return null;
+};
+
+const renderTarget = (r={}, m={}, indexMeta={})=>`<div class="kpis">${textMetric('URL',r.url ?? r.target?.url ?? m.url)}${textMetric('Run ID',r.runId ?? m.runId ?? indexMeta.runId)}${textMetric('Environment',r.environment ?? r.meta?.environment ?? indexMeta.environment)}${metric('Overall score',resolveOverallScore(r),'%')}</div>`;
 const renderThirdParty = (r={})=>{const rows=r.domains||r; const arr=Array.isArray(rows)?rows:Object.entries(rows||{}).map(([d,v])=>({domain:d,...v})); return `<table><tr><th>Domain</th><th>Requests</th><th>Bytes</th><th>Avg duration</th><th>Tracker</th></tr>${arr.slice(0,150).map(x=>`<tr><td><button class="link" data-domain="${x.domain}">${x.domain}</button></td><td>${safe(x.requests ?? x.requestCount ?? 0)}</td><td>${fmt(x.transferSize ?? x.bytes,'bytes')}</td><td>${fmt(x.avgDurationMs ?? x.avgDuration,'ms')}</td><td>${x.trackerHeuristic?'Yes':'No'}</td></tr>`).join('')}</table>`;};
 const renderThrottled = (r={})=>`<div class="kpis">${textMetric('Available',r.available===false?'Not executed':'Yes')}${metric('Baseline load',r.baselineLoadMs,'ms')}${metric('Throttled load',r.throttledLoadMs,'ms')}${metric('Degradation',r.degradationFactor,'x')}</div>`;
 const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound?'Yes':'No')}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed?'Yes':'No')}</div>${r.baselineFound===false?'<button>Create baseline from visual-current.png</button>':''}`;
