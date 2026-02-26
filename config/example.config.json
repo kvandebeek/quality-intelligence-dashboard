@@ -1,0 +1,17 @@
+{
+  "browser": "chromium",
+  "headless": true,
+  "environment": "local",
+  "iteration": 1,
+  "outputDir": "artifacts",
+  "targets": [
+    {
+      "name": "example",
+      "url": "https://example.com"
+    }
+  ],
+  "elasticsearch": {
+    "enabled": false,
+    "indexPrefix": "cx-assurance"
+  }
+}

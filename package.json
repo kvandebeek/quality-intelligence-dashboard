@@ -1,0 +1,29 @@
+{
+  "name": "cx-assurance-viewer-playwright",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Modernized CX Assurance automation engine using Playwright",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "start": "tsx src/cli.ts run --config config/example.config.json",
+    "run": "tsx src/cli.ts run",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@elastic/elasticsearch": "^8.17.0",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "playwright": "^1.51.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "eslint": "^9.22.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}
