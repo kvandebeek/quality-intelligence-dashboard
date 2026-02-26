@@ -49,6 +49,14 @@ function stableSort<T>(items: readonly T[], getKey: (item: T) => string): T[] {
     .map((entry) => entry.item);
 }
 
+
+function unwrapArtifact<T>(value: T | { meta: unknown; payload: T }): T {
+  if (typeof value === 'object' && value !== null && 'payload' in (value as Record<string, unknown>)) {
+    return (value as { payload: T }).payload;
+  }
+  return value as T;
+}
+
 async function parseJsonFile<T>(filePath: string, parser: { parse: (input: unknown) => T }, label: string): Promise<T> {
   try {
     const text = await fs.readFile(filePath, 'utf8');
@@ -63,22 +71,40 @@ async function parseJsonFile<T>(filePath: string, parser: { parse: (input: unkno
 export async function loadDashboardRun(runPath: string): Promise<DashboardRunData> {
   const entries = await fs.readdir(runPath, { withFileTypes: true });
   const pageFolders = stableSort(
-    entries.filter((entry) => entry.isDirectory() && entry.name.startsWith('page-')).map((entry) => entry.name),
+    entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'baseline').map((entry) => entry.name),
     (name) => name
   );
 
   const pages: DashboardPageData[] = [];
   for (const folderName of pageFolders) {
     const pageRoot = path.join(runPath, folderName);
-    const targetSummary = await parseJsonFile(path.join(pageRoot, 'target-summary.json'), targetSummarySchema, 'target-summary.json');
-    const performance = await parseJsonFile(path.join(pageRoot, 'performance.json'), performanceSchema, 'performance.json');
-    const accessibility = await parseJsonFile(path.join(pageRoot, 'accessibility.json'), accessibilitySchema, 'accessibility.json');
-    const networkRequests = await parseJsonFile(path.join(pageRoot, 'network-requests.json'), networkRequestsSchema, 'network-requests.json');
-    const networkRecommendations = await parseJsonFile(
-      path.join(pageRoot, 'network-recommendations.json'),
-      networkRecommendationsSchema,
-      'network-recommendations.json'
+    const performanceRaw = await parseJsonFile(path.join(pageRoot, 'performance.json'), { parse: (input) => input }, 'performance.json');
+    const accessibilityRaw = await parseJsonFile(path.join(pageRoot, 'accessibility.json'), { parse: (input) => input }, 'accessibility.json');
+    const networkRequestsRaw = await parseJsonFile(path.join(pageRoot, 'network-requests.json'), { parse: (input) => input }, 'network-requests.json');
+    const networkRecommendationsRaw = await parseJsonFile(path.join(pageRoot, 'network-recommendations.json'), { parse: (input) => input }, 'network-recommendations.json');
+
+    const performance = performanceSchema.parse(unwrapArtifact(performanceRaw as PerformanceReport | { meta: unknown; payload: PerformanceReport }));
+    const accessibility = accessibilitySchema.parse(
+      unwrapArtifact(accessibilityRaw as AccessibilityReport | { meta: unknown; payload: AccessibilityReport })
     );
+    const networkRequests = networkRequestsSchema.parse(
+      unwrapArtifact(networkRequestsRaw as NetworkRequest[] | { meta: unknown; payload: NetworkRequest[] })
+    );
+    const networkRecommendations = networkRecommendationsSchema.parse(
+      unwrapArtifact(networkRecommendationsRaw as NetworkRecommendation[] | { meta: unknown; payload: NetworkRecommendation[] })
+    );
+
+    let targetSummary: TargetSummary;
+    try {
+      targetSummary = await parseJsonFile(path.join(pageRoot, 'target-summary.json'), targetSummarySchema, 'target-summary.json');
+    } catch {
+      targetSummary = {
+        target: { name: folderName, url: accessibility.url },
+        performance,
+        network: { harPath: 'network.har', requests: [], recommendations: [] },
+        accessibility
+      };
+    }
 
     let hasHar = false;
     try {
@@ -174,9 +200,9 @@ export function toOverviewRows(data: DashboardRunData): OverviewRow[] {
         serious: getCounter(page.accessibility, 'serious'),
         moderate: getCounter(page.accessibility, 'moderate'),
         minor: getCounter(page.accessibility, 'minor'),
-        ttfbMs: page.performance.navigation.responseStart ?? 0,
-        dclMs: page.performance.navigation.domContentLoadedEventEnd ?? 0,
-        loadEventMs: page.performance.navigation.loadEventEnd ?? 0,
+        ttfbMs: page.performance.navigation.ttfbMs ?? 0,
+        dclMs: page.performance.navigation.domContentLoadedMs ?? 0,
+        loadEventMs: page.performance.navigation.loadEventMs ?? 0,
         totalTransferSize: page.performance.resourceSummary.transferSize,
         resourceCount: page.performance.resourceSummary.count,
         requestCount: page.networkRequests.length,

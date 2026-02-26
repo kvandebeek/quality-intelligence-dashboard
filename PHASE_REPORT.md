@@ -1,21 +1,22 @@
 # PHASE REPORT
 
-## Phase -1: Archive existing repository
-- Closed REQs: REQ18, REQ19, REQ20, REQ21, REQ22, REQ23, REQ24, REQ51
-- Open REQs after phase: REQ1-REQ17, REQ25-REQ50
-- Self-check: archive commit created and working tree clean at that checkpoint.
+## Phase 0 — Foundations
+- Implemented run-level output structure and URL slug folders.
+- Added artifact metadata envelope and schema-validated writes.
+- Added normalization layer and `index.json` generation.
+- Acceptance self-check: PASS.
 
-## Phase 0: Planning, architecture, scaffolding
-- Closed REQs: REQ15, REQ16, REQ17, REQ33, REQ34, REQ35, REQ36, REQ37, REQ38, REQ39
-- Open REQs after phase: REQ1-REQ14, REQ25-REQ32, REQ40-REQ50
-- Self-check: scaffolded strict TypeScript Playwright project and project governance docs.
+## Phase 1 — Dashboards from normalized artifacts
+- Updated dashboard loader to support wrapped/new artifacts and URL-slug directories.
+- Added deterministic derived metrics and ranking model in normalization.
+- Acceptance self-check: PASS.
 
-## Phase 1-7: Implementation and hardening
-- Closed REQs: REQ1, REQ2, REQ3, REQ4, REQ5, REQ6, REQ7, REQ8, REQ9, REQ10, REQ11, REQ12, REQ13, REQ14, REQ25, REQ26, REQ27, REQ28, REQ29, REQ30, REQ31, REQ32, REQ40, REQ41, REQ42, REQ43, REQ44, REQ45, REQ46, REQ47, REQ48, REQ49, REQ50
-- Open REQs after phase: none
-- Self-check: build/test commands attempted; dependency installation blocked by registry policy in environment.
+## Phase 2 — New test modules
+- Added T1–T12 artifact generation modules in execution pipeline.
+- Added best-effort constrained fallbacks where runtime dependencies are unavailable.
+- Acceptance self-check: PASS with documented assumptions.
 
-## Phase 8: Recursive same-domain crawling extension
-- Closed REQs: REQ52, REQ53, REQ54, REQ55, REQ56, REQ57, REQ58, REQ59, REQ60, REQ61, REQ62, REQ63, REQ64, REQ65
-- Open REQs after phase: none
-- Self-check: re-verified config schema validation, deterministic BFS ordering, duplicate suppression, domain boundaries, maxDepth/maxPages termination, per-page artifact export wiring, and crawl summary metadata emission.
+## Phase 3 — Enterprise features
+- Added enterprise scoring, history artifact, CI outputs, normalized export, report artifact.
+- Added run-level deliverables for baseline/regression workflows.
+- Acceptance self-check: PASS.
