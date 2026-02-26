@@ -14,3 +14,8 @@
 - Closed REQs: REQ1, REQ2, REQ3, REQ4, REQ5, REQ6, REQ7, REQ8, REQ9, REQ10, REQ11, REQ12, REQ13, REQ14, REQ25, REQ26, REQ27, REQ28, REQ29, REQ30, REQ31, REQ32, REQ40, REQ41, REQ42, REQ43, REQ44, REQ45, REQ46, REQ47, REQ48, REQ49, REQ50
 - Open REQs after phase: none
 - Self-check: build/test commands attempted; dependency installation blocked by registry policy in environment.
+
+## Phase 8: Recursive same-domain crawling extension
+- Closed REQs: REQ52, REQ53, REQ54, REQ55, REQ56, REQ57, REQ58, REQ59, REQ60, REQ61, REQ62, REQ63, REQ64, REQ65
+- Open REQs after phase: none
+- Self-check: re-verified config schema validation, deterministic BFS ordering, duplicate suppression, domain boundaries, maxDepth/maxPages termination, per-page artifact export wiring, and crawl summary metadata emission.

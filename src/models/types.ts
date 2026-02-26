@@ -1,4 +1,11 @@
 export type Severity = 'critical' | 'serious' | 'moderate' | 'minor' | 'unknown';
+export type BrowserName = 'chromium' | 'firefox' | 'webkit';
+export type CrawlSkipReason =
+  | 'duplicate_url'
+  | 'disallowed_domain'
+  | 'invalid_url'
+  | 'depth_exceeded'
+  | 'max_pages_exceeded';
 
 export interface RunTarget {
   name: string;
@@ -6,12 +13,41 @@ export interface RunTarget {
   waitForSelector?: string;
 }
 
+export interface CrawlConfig {
+  enabled: boolean;
+  maxDepth: number;
+  maxPages: number;
+  includeExternalDomains: boolean;
+  allowedDomains: string[];
+}
+
+export interface CrawlPageMetadata {
+  url: string;
+  parentUrl: string | null;
+  depth: number;
+}
+
+export interface CrawlSkipRecord {
+  url: string;
+  parentUrl: string | null;
+  depth: number;
+  reason: CrawlSkipReason;
+}
+
+export interface CrawlSummaryMetadata {
+  totalPagesDiscovered: number;
+  totalPagesExecuted: number;
+  pages: CrawlPageMetadata[];
+  skippedUrls: CrawlSkipRecord[];
+}
+
 export interface RunMetadata {
   runId: string;
   timestamp: string;
-  browser: 'chromium' | 'firefox' | 'webkit';
+  browser: BrowserName;
   environment: string;
   iteration: number;
+  startUrl: string;
   targets: RunTarget[];
 }
 
@@ -78,7 +114,9 @@ export interface RunSummary {
     targetName: string;
     folder: string;
     files: string[];
+    crawl?: CrawlPageMetadata;
   }>;
+  crawl?: CrawlSummaryMetadata;
 }
 
 export interface ElasticConfig {
@@ -91,11 +129,13 @@ export interface ElasticConfig {
 }
 
 export interface AppConfig {
-  browser: 'chromium' | 'firefox' | 'webkit';
+  browser: BrowserName;
   headless: boolean;
   environment: string;
   iteration: number;
   outputDir: string;
+  startUrl: string;
   targets: RunTarget[];
+  crawl: CrawlConfig;
   elasticsearch: ElasticConfig;
 }

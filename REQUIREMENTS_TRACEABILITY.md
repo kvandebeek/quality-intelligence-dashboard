@@ -53,3 +53,17 @@
 | REQ49 | .github/workflows/ci.yml |
 | REQ50 | tests/networkCollector.test.ts |
 | REQ51 | _archive/20260226-102143 |
+| REQ52 | src/config/schema.ts, src/models/types.ts |
+| REQ53 | src/core/runEngine.ts (scrapePageLinks) |
+| REQ54 | src/core/crawler.ts (normalizeUrl) |
+| REQ55 | src/core/crawler.ts (isDomainAllowed) |
+| REQ56 | src/config/schema.ts, src/core/crawler.ts (runBfsCrawl) |
+| REQ57 | src/core/crawler.ts (visited Set) |
+| REQ58 | src/core/crawler.ts (sortedUnique) |
+| REQ59 | src/core/runEngine.ts, src/core/crawler.ts |
+| REQ60 | src/core/runEngine.ts (executePipelineForUrl via crawl callback) |
+| REQ61 | src/core/runEngine.ts (folderName) |
+| REQ62 | src/models/types.ts, src/core/runEngine.ts |
+| REQ63 | src/core/crawler.ts |
+| REQ64 | src/core/crawler.ts (depth/maxPages/queue termination paths) |
+| REQ65 | README.md, config/example.config.json |
