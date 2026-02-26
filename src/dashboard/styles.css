@@ -1,0 +1,8 @@
+body { font-family: Arial, sans-serif; margin: 0; background: #f8fafc; color: #111827; }
+nav { background: #111827; padding: 12px 16px; display: flex; gap: 12px; }
+nav a { color: #f9fafb; text-decoration: none; }
+main { padding: 16px; }
+table { width: 100%; border-collapse: collapse; background: #ffffff; margin-top: 12px; }
+th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; vertical-align: top; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; background: #fff; padding: 12px; border: 1px solid #d1d5db; }
+label { display: flex; gap: 6px; align-items: center; }

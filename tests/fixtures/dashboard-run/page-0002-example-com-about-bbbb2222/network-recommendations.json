@@ -1,0 +1,3 @@
+[
+  {"id": "bundle-css", "title": "Bundle CSS", "description": "Reduce requests", "severity": "low", "impactedCount": 1}
+]

@@ -1,0 +1,6 @@
+{
+  "url": "https://example.com/about",
+  "navigation": {"responseStart": 140, "domContentLoadedEventEnd": 390, "loadEventEnd": 650},
+  "paint": {"first-paint": 88},
+  "resourceSummary": {"count": 8, "transferSize": 90000, "encodedBodySize": 70000, "decodedBodySize": 130000}
+}

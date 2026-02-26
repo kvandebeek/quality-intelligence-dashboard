@@ -68,3 +68,40 @@ Field guidance:
 - `ELASTIC_PASSWORD`
 
 Use these only when Elasticsearch publishing is enabled.
+
+## Dashboard
+
+A local artifacts dashboard is included for browsing existing run outputs without Elasticsearch/cloud services.
+
+### Start dashboard against a run folder
+
+Use either a CLI argument (preferred) or environment variable:
+
+```bash
+npm run dashboard -- --run artifacts/<run-id>
+# or
+ARTIFACT_RUN_DIR=artifacts/<run-id> npm run dashboard
+```
+
+Then open `http://localhost:4173`.
+
+### Build and serve
+
+```bash
+npm run dashboard:build
+node dist/dashboard/server.js --run artifacts/<run-id> --port 4173
+# or
+ARTIFACT_RUN_DIR=artifacts/<run-id> npm run dashboard:serve
+```
+
+### Dashboard views
+
+- **Overview (`/`)**: one row per URL with accessibility counters, performance metrics (TTFB/DCL/load/resource transfer/count), network summary, recommendation counts, sorting, and filters.
+- **Drill-down (`/page/:folder`)**: URL/page-folder header, accessibility issues table, performance summary, network request table (status-class filter + duration/transfer sorting), grouped recommendations, and “Open URL” link.
+- **Run Summary (`/summary`)**: total pages, aggregated accessibility counters, and deterministic worst pages by load event, critical a11y count, and transfer size.
+
+### Notes and limitations
+
+- The dashboard reads required JSON files from each `page-*` directory and validates shape at runtime.
+- `network.har` is treated as optional metadata and **is not parsed by default**.
+- You can point to different run folders at startup via `--run` or `ARTIFACT_RUN_DIR` without rebuilding the dashboard.

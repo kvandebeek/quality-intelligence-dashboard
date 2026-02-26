@@ -1,0 +1,4 @@
+[
+  {"url": "https://example.com/", "method": "GET", "status": 200, "resourceType": "document", "transferSize": 60000, "durationMs": 200, "fromCache": false},
+  {"url": "https://example.com/app.js", "method": "GET", "status": 404, "resourceType": "script", "transferSize": 40000, "durationMs": 320, "fromCache": false}
+]

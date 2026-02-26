@@ -1,0 +1,11 @@
+{
+  "target": {"name": "Example Home", "url": "https://example.com/"},
+  "performance": {
+    "url": "https://example.com/",
+    "navigation": {"responseStart": 120, "domContentLoadedEventEnd": 450, "loadEventEnd": 780},
+    "paint": {"first-paint": 90},
+    "resourceSummary": {"count": 10, "transferSize": 100000, "encodedBodySize": 80000, "decodedBodySize": 150000}
+  },
+  "network": {"harPath": "page-0001-example-com-aaaa1111/network.har", "requests": [], "recommendations": []},
+  "accessibility": {"url": "https://example.com/", "issues": [], "counters": {"critical": 1, "serious": 0, "moderate": 2, "minor": 1}}
+}

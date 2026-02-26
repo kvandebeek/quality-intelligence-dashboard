@@ -1,0 +1,11 @@
+{
+  "target": {"name": "Example About", "url": "https://example.com/about"},
+  "performance": {
+    "url": "https://example.com/about",
+    "navigation": {"responseStart": 140, "domContentLoadedEventEnd": 390, "loadEventEnd": 650},
+    "paint": {"first-paint": 88},
+    "resourceSummary": {"count": 8, "transferSize": 90000, "encodedBodySize": 70000, "decodedBodySize": 130000}
+  },
+  "network": {"harPath": "page-0002-example-com-about-bbbb2222/network.har", "requests": [], "recommendations": []},
+  "accessibility": {"url": "https://example.com/about", "issues": [], "counters": {"critical": 0, "serious": 2, "moderate": 1, "minor": 1}}
+}

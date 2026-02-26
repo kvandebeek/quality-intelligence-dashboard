@@ -9,7 +9,11 @@
     "lint": "eslint .",
     "start": "tsx src/cli.ts run --config config/example.config.json",
     "run": "tsx src/cli.ts run",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dashboard": "tsx src/dashboard/server.ts",
+    "dashboard:cli": "tsx src/dashboard/cli.ts",
+    "dashboard:build": "tsc -p tsconfig.dashboard.json && tsx src/dashboard/build.ts",
+    "dashboard:serve": "node dist/dashboard/server.js --static"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.2",
