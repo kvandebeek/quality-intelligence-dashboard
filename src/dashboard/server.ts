@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { computeRunSummary, loadDashboardRun, resolveRunPath, toOverviewRows, type OverviewRow } from './data.js';
 
@@ -366,7 +367,15 @@ export function parseServerOptions(argv: readonly string[]): ServerOptions {
   return { runPath, port, staticDir };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function isMainModule(metaUrl: string, argvPath: string | undefined): boolean {
+  if (!argvPath) {
+    return false;
+  }
+
+  return path.resolve(fileURLToPath(metaUrl)) === path.resolve(argvPath);
+}
+
+if (isMainModule(import.meta.url, process.argv[1])) {
   const options = parseServerOptions(process.argv.slice(2));
   startDashboardServer(options);
   process.stdout.write(`Dashboard listening on http://localhost:${options.port} for run ${options.runPath}\n`);
