@@ -1,0 +1,18 @@
+{
+    "browser": "chromium",
+    "headless": true,
+    "environment": "local",
+    "iteration": 1,
+    "outputDir": "artifacts",
+    "targets": [
+      {
+        "name": "Resillion Landing Page",
+        "url": "https://resillion.com"
+      }
+    ],
+    "elasticsearch": {
+      "enabled": false,
+      "indexPrefix": "cx-assurance"
+    }
+  }
+  
