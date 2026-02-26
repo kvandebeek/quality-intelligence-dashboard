@@ -11,11 +11,13 @@ const state = {
   search: '',
   regex: false,
   selectedDomain: null,
-  facets: { failures:false, broken:false, visualFailed:false, throttled:false, lighthouse:false, a11y:new Set() }
+  facets: { failures:false, broken:false, visualFailed:false, throttled:false, lighthouse:false, a11y:new Set() },
+  sorts: { netRec: { key: 'severity', dir: 'asc' }, netReq: { key: 'url', dir: 'asc' }, stability: { key: 'index', dir: 'asc' } }
 };
 
 const safe = (v, fallback='Not available') => (v === null || v === undefined || v === '' ? fallback : v);
 const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+const INFO = 'ⓘ';
 
 async function loadIndex(){
   const res = await fetch('/api/index');
@@ -148,13 +150,20 @@ function renderStateBox(stateName, reason=''){
 
 function rawPanel(raw){ return `<details><summary>Raw JSON</summary><pre>${raw?JSON.stringify(raw,null,2):'Not available'}</pre></details>`; }
 
+function infoTip(text){ return `<span class="info-tip" title="${String(text).replace(/"/g,'&quot;')}">${INFO}</span>`; }
+function fmt(value, unit=''){ const n = toNum(value); if(n===null) return 'Not measured'; const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2)); return `${rounded}${unit ? ` ${unit}` : ''}`; }
+function metric(label, value, unit='', description=''){ return `<div class="kpi"><span>${label} ${description ? infoTip(description) : ''}</span><strong>${fmt(value, unit)}</strong></div>`; }
+function textMetric(label, value, description=''){ return `<div class="kpi"><span>${label} ${description ? infoTip(description) : ''}</span><strong>${safe(value,'Not measured')}</strong></div>`; }
+function severityRank(value){ const ranks = { low:1, medium:2, high:3, critical:4 }; return ranks[String(value).toLowerCase()] ?? 0; }
+function sortRows(rows, sort){ const dir = sort.dir === 'asc' ? 1 : -1; return [...rows].sort((a,b)=>{ const av=a[sort.key]; const bv=b[sort.key]; if(sort.key==='severity') return (severityRank(av)-severityRank(bv))*dir; const an=toNum(av); const bn=toNum(bv); if(an!==null&&bn!==null) return (an-bn)*dir; return String(av??'').localeCompare(String(bv??''))*dir;}); }
+function sortableHeader(label, scope, key){ const s=state.sorts[scope]; const arrow=s.key===key?(s.dir==='asc'?'↑':'↓'):''; return `<th><button class="sort-btn" data-sort-scope="${scope}" data-sort-key="${key}">${label} ${arrow}</button></th>`; }
+
 function unwrapArtifact(raw){
   if(raw && typeof raw === 'object' && !Array.isArray(raw) && 'payload' in raw){
     return { payload: raw.payload, meta: raw.meta && typeof raw.meta === 'object' ? raw.meta : {} };
   }
   return { payload: raw, meta: {} };
 }
-
 
 async function loadTab(id, tab){
   const el = document.getElementById('tab-content');
@@ -189,25 +198,25 @@ async function loadTab(id, tab){
   el.innerHTML = `${head}${body}${rawPanel(raw)}`;
 
   el.querySelectorAll('[data-domain]').forEach((b)=>b.onclick=()=>{state.selectedDomain=b.dataset.domain; state.selectedTab='network-requests.json'; render();});
+  el.querySelectorAll('[data-sort-scope]').forEach((btn)=>btn.onclick=()=>{const scope=btn.dataset.sortScope;const key=btn.dataset.sortKey;const current=state.sorts[scope];state.sorts[scope]={key,dir:current.key===key&&current.dir==='asc'?'desc':'asc'};loadTab(id, tab);});
 }
 
-const metric = (label, v)=>`<div class="kpi"><span>${label}</span><strong>${safe(v,'Not measured')}</strong></div>`;
-const renderA11yHeuristics = (r={})=>`<div class="kpis">${Object.entries(r).slice(0,6).map(([k,v])=>metric(k,v===null?'Not measured':String(v))).join('')}</div><p>Manual checks are shown when flags indicate potential focus/keyboard issues.</p>`;
+const renderA11yHeuristics = (r={})=>`<div class="kpis">${Object.entries(r).slice(0,6).map(([k,v])=>textMetric(k,v===null?'Not measured':String(v))).join('')}</div><p>Manual checks are shown when flags indicate potential focus/keyboard issues.</p>`;
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
-const renderApi = (r={})=>`<div class="kpis">${metric('Count',r.count)}${metric('Error rate',r.errorRate)}${metric('P95 latency',r.p95LatencyMs ?? r.p95Ms)}${metric('Avg payload',r.avgPayloadSize ?? r.avgSize)}</div>`;
+const renderApi = (r={})=>`<div class="kpis">${metric('Count',r.count,'','Total API endpoints tested')}${metric('Error rate',(toNum(r.errorRate)??0)*100,'%','API responses with status >= 400')}${metric('P95 latency',r.p95LatencyMs ?? r.p95Ms,'ms','95th percentile response latency')}${metric('Avg payload',r.avgPayloadSize ?? r.avgSize,'bytes','Mean API payload size')}</div>`;
 const renderBroken = (r={})=>`<div class="kpis">${metric('Checked',r.checkedCount ?? r.checked)}${metric('Broken',r.brokenCount ?? r.broken)}${metric('Redirect chains',r.redirectChains)}${metric('Loops',r.loops)}</div>`;
-const renderCwv = (r={})=>{const vals=[toNum(r.lcpMs ?? r.lcp),toNum(r.cls),toNum(r.inpMs ?? r.inp),toNum(r.fcpMs ?? r.fcp)]; const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs ?? r.lcp)}${metric('CLS',r.cls)}${metric('INP',r.inpMs ?? r.inp)}${metric('FCP',r.fcpMs ?? r.fcp)}${metric('Readiness',ready+'%')}</div>`};
-const renderLighthouse = (r={})=>`<div class="kpis">${metric('Performance',r.performance ?? r.categories?.performance)}${metric('Accessibility',r.accessibility ?? r.categories?.accessibility)}${metric('SEO',r.seo ?? r.categories?.seo)}${metric('Best practices',r.bestPractices ?? r.categories?.bestPractices)}</div>`;
-const renderMemory = (r={})=>`<div>${metric('Growth',r.growth===null?'Insufficient samples':r.growth ?? r.growthVerdict)}<pre>${(r.samples||[]).slice(0,20).join(', ')}</pre></div>`;
-const renderNetRec = (r=[])=>{const arr=Array.isArray(r)?r:(r.recommendations||[]); return `<div class="cards">${arr.slice(0,80).map(x=>`<article><h4>${safe(x.title,x.id)}</h4><p>${safe(x.description,'')}</p><small>${safe(x.severity)} · impacted ${safe(x.impactedCount,0)}</small></article>`).join('')}</div>`;};
-const renderNetReq = (r=[])=>{let arr=Array.isArray(r)?r:(r.requests||[]); if(state.selectedDomain) arr=arr.filter((x)=>String(x.url||'').includes(state.selectedDomain)); return `<div class="kpis">${metric('Rows',arr.length)}${metric('Domain filter',state.selectedDomain||'None')}</div><table><tr><th>Method</th><th>Status</th><th>Type</th><th>Transfer</th><th>Duration</th><th>Cache</th><th>URL</th></tr>${arr.slice(0,400).map(x=>`<tr><td>${safe(x.method)}</td><td>${safe(x.status)}</td><td>${safe(x.type)}</td><td>${safe(x.transferSize)}</td><td>${safe(x.durationMs ?? x.duration)}</td><td>${safe(x.cacheStatus ?? x.cached)}</td><td>${safe(x.url)}</td></tr>`).join('')}</table>`;};
-const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class="kpis">${metric('DNS',n.dnsMs)}${metric('TCP',n.tcpMs)}${metric('TTFB',n.ttfbMs)}${metric('DCL',n.domContentLoadedMs)}${metric('Load',n.loadEventMs)}${metric('FP',r.paint?.fpMs)}${metric('FCP',r.paint?.fcpMs)}</div>`;};
-const renderSecurity = (r={})=>`<div class="kpis">${metric('TLS',r.tlsVersion)}${metric('Missing headers',Array.isArray(r.missingHeaders)?((r.missingHeaders||[]).join(', ')||'None'):'Not measured')}</div>`;
-const renderSeo = (r={})=>`<div class="kpis">${metric('Title',r.title)}${metric('Description',r.description)}${metric('Canonical',r.canonical)}${metric('Robots',r.robots)}${metric('Structured data count',r.structuredDataCount)}</div><blockquote><strong>${safe(r.title,'(title missing)')}</strong><p>${safe(r.description,'(description missing)')}</p></blockquote>`;
-const renderStability = (r={})=>`<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs)}${metric('CV',r.coefficientOfVariation)}${metric('Unstable',r.unstable?'Yes':'No')}</div>`;
-const renderTarget = (r={}, m={})=>`<div class="kpis">${metric('URL',r.url ?? r.target?.url ?? m.url)}${metric('Run ID',r.runId ?? m.runId)}${metric('Environment',r.environment ?? r.meta?.environment)}${metric('Overall score',r.overallScore ?? r.enterpriseScore ?? r.score)}</div>`;
-const renderThirdParty = (r={})=>{const rows=r.domains||r; const arr=Array.isArray(rows)?rows:Object.entries(rows||{}).map(([d,v])=>({domain:d,...v})); return `<table><tr><th>Domain</th><th>Requests</th><th>Bytes</th><th>Avg duration</th><th>Tracker</th></tr>${arr.slice(0,150).map(x=>`<tr><td><button class="link" data-domain="${x.domain}">${x.domain}</button></td><td>${safe(x.requests)}</td><td>${safe(x.transferSize)}</td><td>${safe(x.avgDurationMs)}</td><td>${x.trackerHeuristic?'Yes':'No'}</td></tr>`).join('')}</table>`;};
-const renderThrottled = (r={})=>`<div class="kpis">${metric('Available',r.available===false?'Not executed':'Yes')}${metric('Baseline load',r.baselineLoadMs)}${metric('Throttled load',r.throttledLoadMs)}${metric('Degradation',r.degradationFactor)}</div>`;
-const renderVisualReg = (r={})=>`<div class="kpis">${metric('Baseline found',r.baselineFound?'Yes':'No')}${metric('Diff ratio',r.diffRatio)}${metric('Passed',r.passed?'Yes':'No')}</div>${r.baselineFound===false?'<button>Create baseline from visual-current.png</button>':''}`;
+const renderCwv = (r={})=>{const vals=[toNum(r.lcpMs ?? r.lcp),toNum(r.cls),toNum(r.inpMs ?? r.inp),toNum(r.fcpMs ?? r.fcp)]; const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs ?? r.lcp,'ms','Largest Contentful Paint')}${metric('CLS',r.cls)}${metric('INP',r.inpMs ?? r.inp,'ms','Interaction to Next Paint')}${metric('FCP',r.fcpMs ?? r.fcp,'ms','First Contentful Paint')}${metric('Readiness',ready,'%')}</div>`};
+const renderLighthouse = (r={})=>`<div class="kpis">${metric('Performance',r.performance ?? r.categories?.performance,'%')}${metric('Accessibility',r.accessibility ?? r.categories?.accessibility,'%')}${metric('SEO',r.seo ?? r.categories?.seo,'%')}${metric('Best practices',r.bestPractices ?? r.categories?.bestPractices,'%')}</div>`;
+const renderMemory = (r={})=>`<div>${metric('Growth',r.growth ?? r.growthVerdict,'bytes')}<pre>${(r.samples||[]).slice(0,20).map((x)=>Math.round(x)).join(', ')}</pre></div>`;
+const renderNetRec = (r=[])=>{const arr=(Array.isArray(r)?r:(r.recommendations||[])).map((x)=>({title:safe(x.title,x.id),description:safe(x.description,''),severity:safe(x.severity,'unknown'),count:toNum(x.impactedCount)??0})); const sorted=sortRows(arr,state.sorts.netRec); return `<table><tr>${sortableHeader('Title','netRec','title')}${sortableHeader('Description','netRec','description')}${sortableHeader('Severity','netRec','severity')}${sortableHeader('Count','netRec','count')}</tr>${sorted.slice(0,120).map(x=>`<tr><td>${x.title}</td><td>${x.description}</td><td>${x.severity}</td><td>${x.count}</td></tr>`).join('')}</table>`;};
+const renderNetReq = (r=[])=>{let arr=Array.isArray(r)?r:(r.requests||[]); if(state.selectedDomain) arr=arr.filter((x)=>String(x.url||'').includes(state.selectedDomain)); const rows=arr.map((x)=>({method:safe(x.method),status:toNum(x.status)??0,type:safe(x.type ?? x.resourceType),transfer:toNum(x.transferSize)??0,duration:toNum(x.durationMs ?? x.duration)??0,cache:safe(x.cacheStatus ?? (x.fromCache ? 'HIT':'MISS') ?? x.cached),url:safe(x.url)})); const sorted=sortRows(rows,state.sorts.netReq); return `<div class="kpis">${metric('Rows',arr.length)}${textMetric('Domain filter',state.selectedDomain||'None')}</div><table><tr>${sortableHeader('Method','netReq','method')}${sortableHeader('Status','netReq','status')}${sortableHeader('Type','netReq','type')}${sortableHeader('Transfer','netReq','transfer')}${sortableHeader('Duration','netReq','duration')}${sortableHeader('Cache','netReq','cache')}${sortableHeader('URL','netReq','url')}</tr>${sorted.slice(0,400).map(x=>`<tr><td>${x.method}</td><td>${x.status}</td><td>${x.type}</td><td>${fmt(x.transfer,'bytes')}</td><td>${fmt(x.duration,'ms')}</td><td>${x.cache}</td><td>${x.url}</td></tr>`).join('')}</table>`;};
+const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class="kpis">${metric('DNS',n.dnsMs,'ms')}${metric('TCP',n.tcpMs,'ms')}${metric('TTFB',n.ttfbMs,'ms')}${metric('DCL',n.domContentLoadedMs,'ms')}${metric('Load',n.loadEventMs,'ms')}${metric('FP',r.paint?.fpMs ?? r.paint?.['first-paint'],'ms')}${metric('FCP',r.paint?.fcpMs ?? r.paint?.['first-contentful-paint'],'ms')}</div>`;};
+const renderSecurity = (r={})=>`<div class="kpis">${textMetric('TLS',r.tlsVersion)}${textMetric('Missing headers',Array.isArray(r.missingHeaders)?((r.missingHeaders||[]).join(', ')||'None'):'None')}</div>`;
+const renderSeo = (r={})=>`<div class="kpis">${textMetric('Title',r.title)}${textMetric('Description',r.description)}${textMetric('Canonical',r.canonical)}${textMetric('Robots',r.robots ?? r.robotsMeta)}${metric('Structured data count',r.structuredDataCount)}</div><blockquote><strong>${safe(r.title,'(title missing)')}</strong><p>${safe(r.description,'(description missing)')}</p></blockquote>`;
+const renderStability = (r={})=>{const samples=(r.loadEventSamples||[]).map((v,i)=>({index:i+1,sample:Math.round(v),timestamp:r.timestamps?.[i]??'n/a'})); const avg=samples.length?samples.reduce((sum,row)=>sum+row.sample,0)/samples.length:0; const sorted=sortRows(samples,state.sorts.stability); return `<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs,'ms')}${metric('CV',r.coefficientOfVariation)}${textMetric('Unstable',r.unstable?'Yes':'No')}</div><table><tr>${sortableHeader('#','stability','index')}${sortableHeader('Load event','stability','sample')}${sortableHeader('Timestamp','stability','timestamp')}</tr>${sorted.slice(0,300).map(x=>`<tr class="${x.sample<=avg?'fast':'slow'}"><td>${x.index}</td><td>${fmt(x.sample,'ms')}</td><td>${x.timestamp}</td></tr>`).join('')}</table>`;};
+const renderTarget = (r={}, m={})=>`<div class="kpis">${textMetric('URL',r.url ?? r.target?.url ?? m.url)}${textMetric('Run ID',r.runId ?? m.runId)}${textMetric('Environment',r.environment ?? r.meta?.environment)}${metric('Overall score',r.overallScore ?? r.enterpriseScore ?? r.score,'%')}</div>`;
+const renderThirdParty = (r={})=>{const rows=r.domains||r; const arr=Array.isArray(rows)?rows:Object.entries(rows||{}).map(([d,v])=>({domain:d,...v})); return `<table><tr><th>Domain</th><th>Requests</th><th>Bytes</th><th>Avg duration</th><th>Tracker</th></tr>${arr.slice(0,150).map(x=>`<tr><td><button class="link" data-domain="${x.domain}">${x.domain}</button></td><td>${safe(x.requests ?? x.requestCount ?? 0)}</td><td>${fmt(x.transferSize ?? x.bytes,'bytes')}</td><td>${fmt(x.avgDurationMs ?? x.avgDuration,'ms')}</td><td>${x.trackerHeuristic?'Yes':'No'}</td></tr>`).join('')}</table>`;};
+const renderThrottled = (r={})=>`<div class="kpis">${textMetric('Available',r.available===false?'Not executed':'Yes')}${metric('Baseline load',r.baselineLoadMs,'ms')}${metric('Throttled load',r.throttledLoadMs,'ms')}${metric('Degradation',r.degradationFactor,'x')}</div>`;
+const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound?'Yes':'No')}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed?'Yes':'No')}</div>${r.baselineFound===false?'<button>Create baseline from visual-current.png</button>':''}`;
 
 loadIndex().catch((e)=>{app.innerHTML=`<p>Failed to load dashboard: ${e.message}</p>`;});
