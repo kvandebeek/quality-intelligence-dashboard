@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { AppLogger } from './logging.js';
 
 export interface RunPathOptions { cliRunPath?: string; envRunPath?: string }
 export function resolveRunPath(options: RunPathOptions): string {
@@ -126,16 +127,20 @@ export class ArtifactStore {
   private readonly cache = new LruCache<string, unknown>(200);
   readonly parseErrors: Array<{ file: string; message: string }> = [];
 
-  constructor(private readonly runPath: string) {}
+  constructor(private readonly runPath: string, private readonly logger?: AppLogger) {}
 
   private async readJson(filePath: string): Promise<{ ok: boolean; data?: JsonValue; error?: string }> {
+    const startedAt = Date.now();
+    this.logger?.debug('Dataset file read started', { filePath });
     try {
       const raw = await fs.readFile(filePath, 'utf8');
       const parsed = JSON.parse(raw) as JsonValue;
+      this.logger?.debug('Dataset JSON parsed', { filePath, bytes: Buffer.byteLength(raw), durationMs: Date.now() - startedAt });
       return { ok: true, data: parsed };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.parseErrors.push({ file: path.relative(this.runPath, filePath), message });
+      this.logger?.error('Dataset JSON parse/read failed', { filePath, durationMs: Date.now() - startedAt }, error);
       return { ok: false, error: message };
     }
   }
@@ -237,9 +242,15 @@ function aggregateBadge(...states: Array<'missing' | 'not_available' | 'ok' | 'i
 }
 
 export async function buildDashboardIndex(runPath: string): Promise<{ index: DashboardIndex; store: ArtifactStore }> {
-  const store = new ArtifactStore(runPath);
+  return buildDashboardIndexWithLogger(runPath);
+}
+
+export async function buildDashboardIndexWithLogger(runPath: string, logger?: AppLogger): Promise<{ index: DashboardIndex; store: ArtifactStore }> {
+  const op = logger?.operation('dataset.scan', { datasetPath: runPath, view: 'index' });
+  const store = new ArtifactStore(runPath, logger);
   const entries = await fs.readdir(runPath, { withFileTypes: true });
   const urlDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort((a, b) => a.localeCompare(b));
+  logger?.info('Dataset URL folders discovered', { operationId: op?.operationId, datasetPath: runPath, count: urlDirs.length });
   const urls: UrlIndexEntry[] = [];
 
   for (const id of urlDirs) {
@@ -278,6 +289,7 @@ export async function buildDashboardIndex(runPath: string): Promise<{ index: Das
     urls[urls.length - 1].sections['accessibility.json'].summary = { ...a11ySev };
   }
 
+  op?.end('ok', { count: urls.length, parseErrors: store.parseErrors.length });
   return {
     index: { runPath, urls, parseErrors: store.parseErrors, generatedAt: new Date().toISOString() },
     store

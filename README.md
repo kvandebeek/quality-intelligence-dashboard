@@ -61,3 +61,40 @@ This keeps the URL list responsive with large folder counts and avoids full eage
 npm run dashboard:build
 npm run dashboard:serve -- --run /path/to/results-root --port 4173
 ```
+
+
+## Logging and diagnostics
+
+### Logging outputs
+
+- Console logs are always enabled in human-readable format.
+- Structured JSON logs are written to `./logs/` as `*.jsonl` files.
+- Every log includes `runId`, timestamp, app version/build id, and contextual fields.
+- Lifecycle events, dataset scans, per-file reads/parses, navigation, section rendering, and slow operations are logged.
+
+### Log level configuration
+
+- Set `LOG_LEVEL` to one of: `DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`.
+- Default is `INFO` (or `DEBUG` when `NODE_ENV=development`).
+- In the UI, click **Verbose logging** to elevate runtime logging to `DEBUG` for the current run.
+
+Example:
+
+```bash
+LOG_LEVEL=DEBUG npm run dashboard -- --run /path/to/results-root --port 4173
+```
+
+### Export diagnostics
+
+- In the UI, click **Export diagnostics**.
+- A ZIP is generated in `logs/diagnostics/` with:
+  - log files
+  - sanitized environment metadata
+  - sanitized runtime config snapshot
+
+### Redaction
+
+Sensitive fields are redacted in logs and diagnostics export, including keys matching:
+`token`, `cookie`, `password`, `secret`, `authorization`, `apiKey`, `session`.
+
+See [DIAGNOSTICS.md](./DIAGNOSTICS.md) for field definitions and troubleshooting flow.
