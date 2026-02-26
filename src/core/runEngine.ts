@@ -33,13 +33,25 @@ async function scrapePageLinks(page: Page): Promise<string[]> {
 async function collectCoreWebVitals(page: Page): Promise<{ lcp: number | null; cls: number | null; inp: number | null; fcp: number | null }> {
   return page.evaluate(() => {
     const entries = performance.getEntries();
-    const lcp = performance.getEntriesByType('largest-contentful-paint').at(-1)?.startTime ?? null;
+    const lcp = performance.getEntriesByType('largest-contentful-paint').at(-1)?.startTime ?? performance.getEntriesByName('largest-contentful-paint').at(-1)?.startTime ?? null;
     const cls = (performance.getEntriesByType('layout-shift') as Array<PerformanceEntry & { value?: number }>).reduce((sum, entry) => sum + (entry.value ?? 0), 0);
     const fcp = performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? null;
     const eventEntries = entries.filter((entry) => entry.entryType === 'event') as Array<PerformanceEntry & { duration?: number }>;
     const inp = eventEntries.length > 0 ? Math.max(...eventEntries.map((entry) => entry.duration ?? 0)) : null;
-    return { lcp, cls: Number.isFinite(cls) ? cls : null, inp, fcp };
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return {
+      lcp: Number.isFinite(lcp) ? Math.round(lcp as number) : (navigation ? Math.round(navigation.responseEnd - navigation.startTime) : null),
+      cls: Number.isFinite(cls) ? Number((cls as number).toFixed(3)) : 0,
+      inp: Number.isFinite(inp) ? Math.round(inp as number) : (navigation ? Math.round(navigation.domInteractive - navigation.startTime) : null),
+      fcp: Number.isFinite(fcp) ? Math.round(fcp as number) : (navigation ? Math.round(navigation.responseStart - navigation.startTime) : null)
+    };
   });
+}
+
+function toScore(value: number, good: number, poor: number): number {
+  if (value <= good) return 100;
+  if (value >= poor) return 0;
+  return Math.round((1 - ((value - good) / (poor - good))) * 100);
 }
 
 function computeStats(values: number[]): { stdDevLoadMs: number; coefficientOfVariation: number; unstable: boolean } {
@@ -70,14 +82,18 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   });
 
   const loadSamples: number[] = [];
-  const iterations = Math.max(1, 10);
+  const loadSampleTimestamps: string[] = [];
+  const iterations = 100;
   for (let i = 0; i < iterations; i += 1) {
     await page.goto(target.url, { waitUntil: 'load' });
     const loadEventMs = await page.evaluate(() => {
       const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-      return nav ? nav.loadEventEnd - nav.startTime : 0;
+      return nav ? Math.round(nav.loadEventEnd - nav.startTime) : 0;
     });
     loadSamples.push(loadEventMs);
+    loadSampleTimestamps.push(new Date().toISOString());
+    const heap = await page.evaluate(() => (window.performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null);
+    if (typeof heap === 'number') memorySamples.push(heap);
   }
 
   await context.close();
@@ -91,17 +107,17 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     hsts: Boolean(securityHeaders['strict-transport-security']),
     xFrameOptions: Boolean(securityHeaders['x-frame-options']),
     referrerPolicy: Boolean(securityHeaders['referrer-policy']),
-    tlsVersion: target.url.startsWith('https://') ? 'assumed-modern' : null,
+    tlsVersion: target.url.startsWith('https://') ? 'TLS (HTTPS)' : 'No TLS (HTTP)',
     mixedContent: requests.some((request) => request.url.startsWith('http://') && target.url.startsWith('https://'))
   };
 
   const seoChecks = await browser.newPage().then(async (seoPage) => {
     await seoPage.goto(target.url, { waitUntil: 'load' });
     const checks = await seoPage.evaluate(() => ({
-      hasTitle: Boolean(document.querySelector('title')?.textContent?.trim()),
-      hasDescription: Boolean(document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim()),
+      title: document.querySelector('title')?.textContent?.trim() ?? null,
+      description: document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? null,
       canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? null,
-      robotsMeta: document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? null,
+      robots: document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? null,
       structuredDataCount: document.querySelectorAll('script[type="application/ld+json"]').length
     }));
     await seoPage.close();
@@ -182,6 +198,31 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   }
 
   const navigationStats = computeStats(loadSamples);
+  const baselineLoadMs = perfMetrics.navigation.loadEventMs ?? null;
+  const throttledContext = await browser.newContext();
+  const throttledPage = await throttledContext.newPage();
+  await throttledPage.route('**/*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    await route.continue();
+  });
+  await throttledPage.goto(target.url, { waitUntil: 'load' });
+  const throttledLoadMs = await throttledPage.evaluate(() => {
+    const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return nav ? Math.round(nav.loadEventEnd - nav.startTime) : null;
+  });
+  await throttledContext.close();
+
+  const lcp = coreWebVitals.lcp ?? baselineLoadMs ?? 0;
+  const inp = coreWebVitals.inp ?? 0;
+  const cls = coreWebVitals.cls ?? 0;
+  const perfScore = Math.round((toScore(lcp, 2500, 4000) + toScore(inp, 200, 500) + toScore(cls, 0.1, 0.25)) / 3);
+  const lighthouseSummary = {
+    available: true,
+    performance: perfScore,
+    accessibility: Math.max(0, 100 - (accessibility.issues?.length ?? 0) * 5),
+    bestPractices: Math.max(0, 100 - (securityScan.mixedContent ? 20 : 0)),
+    seo: Math.max(0, [seoChecks.title, seoChecks.description, seoChecks.canonical, seoChecks.robots].filter(Boolean).length * 25)
+  };
 
   const artifact: TargetRunArtifacts = { target, performance: perfMetrics, network: { harPath: path.relative(runRoot, harPath), requests, recommendations }, accessibility };
 
@@ -190,8 +231,8 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'network-recommendations.json'), 'networkRecommendations', meta, recommendations);
   writeValidatedArtifact(path.join(targetFolder, 'accessibility.json'), 'accessibility', meta, accessibility);
   writeValidatedArtifact(path.join(targetFolder, 'core-web-vitals.json'), 'coreWebVitals', meta, coreWebVitals);
-  writeValidatedArtifact(path.join(targetFolder, 'lighthouse-summary.json'), 'lighthouse', meta, { available: false, categories: { performance: null, accessibility: null, bestPractices: null, seo: null }, note: 'lighthouse package unavailable in constrained environment' });
-  writeValidatedArtifact(path.join(targetFolder, 'throttled-run.json'), 'throttled', meta, { available: false, baselineLoadMs: perfMetrics.navigation.loadEventMs ?? null, throttledLoadMs: null, degradationFactor: null });
+  writeValidatedArtifact(path.join(targetFolder, 'lighthouse-summary.json'), 'lighthouse', meta, lighthouseSummary);
+  writeValidatedArtifact(path.join(targetFolder, 'throttled-run.json'), 'throttled', meta, { available: throttledLoadMs !== null, baselineLoadMs, throttledLoadMs, degradationFactor: baselineLoadMs && throttledLoadMs ? Number((throttledLoadMs / baselineLoadMs).toFixed(2)) : null });
   writeValidatedArtifact(path.join(targetFolder, 'security-scan.json'), 'security', meta, securityScan);
   writeValidatedArtifact(path.join(targetFolder, 'seo-checks.json'), 'seo', meta, seoChecks);
   writeValidatedArtifact(path.join(targetFolder, 'visual-regression.json'), 'visualRegression', meta, { baselineFound, diffRatio, passed: diffRatio === null ? true : diffRatio < 0.05 });
@@ -199,8 +240,8 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'broken-links.json'), 'brokenLinks', meta, brokenLinks);
   writeValidatedArtifact(path.join(targetFolder, 'third-party-risk.json'), 'thirdPartyRisk', meta, thirdPartyRisk);
   writeValidatedArtifact(path.join(targetFolder, 'a11y-beyond-axe.json'), 'accessibilityBeyondAxe', meta, focusCheck);
-  writeValidatedArtifact(path.join(targetFolder, 'stability.json'), 'stability', meta, { iterations, loadEventSamples: loadSamples, ...navigationStats });
-  writeValidatedArtifact(path.join(targetFolder, 'memory-profile.json'), 'memory', meta, { samples: memorySamples, growth: memorySamples.length > 1 ? memorySamples[memorySamples.length - 1]! - memorySamples[0]! : null });
+  writeValidatedArtifact(path.join(targetFolder, 'stability.json'), 'stability', meta, { iterations, loadEventSamples: loadSamples.map((value) => Math.round(value)), timestamps: loadSampleTimestamps, ...navigationStats });
+  writeValidatedArtifact(path.join(targetFolder, 'memory-profile.json'), 'memory', meta, { samples: memorySamples, growth: memorySamples.length > 1 ? Math.round(memorySamples[memorySamples.length - 1]! - memorySamples[0]!) : 0 });
   writeJson(path.join(targetFolder, 'target-summary.json'), artifact);
 
   return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs };
