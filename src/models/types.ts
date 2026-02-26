@@ -56,7 +56,7 @@ export interface RunMetadata {
 export interface PerformanceMetrics {
   url: string;
   navigation: Record<string, number>;
-  paint: Record<string, number>;
+  paint: Record<string, number | null>;
   resourceSummary: {
     count: number;
     transferSize: number;
