@@ -1,0 +1,1413 @@
+{
+  "target": {
+    "name": "Crawled Page 1",
+    "url": "https://www.resillion.com/"
+  },
+  "performance": {
+    "url": "https://www.resillion.com/",
+    "navigation": {
+      "dnsMs": 33.599999997764826,
+      "tcpMs": 44.100000001490116,
+      "ttfbMs": 104.19999999925494,
+      "domContentLoadedMs": 703.5,
+      "loadEventMs": 2016.6000000014901
+    },
+    "paint": {
+      "first-paint": 456,
+      "first-contentful-paint": 456
+    },
+    "resourceSummary": {
+      "count": 93,
+      "transferSize": 4056925,
+      "encodedBodySize": 4034425,
+      "decodedBodySize": 6371068
+    }
+  },
+  "network": {
+    "harPath": "page-0001-www-resillion-com-1803b4eb\\network.har",
+    "requests": [
+      {
+        "url": "https://www.resillion.com/",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/html; charset=UTF-8",
+        "transferSize": 27005,
+        "durationMs": 221.955,
+        "fromCache": false
+      },
+      {
+        "url": "https://use.typekit.net/knl0gvk.css",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css;charset=utf-8",
+        "transferSize": 1231,
+        "durationMs": 93.77,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/client_data/3bc3c1da55e4732d9d9b9a96/script.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 9269,
+        "durationMs": 95.114,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/mu-plugins/chatbot/index.css?ver=1.1.0",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 9339,
+        "durationMs": 68.113,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/css/child-theme.min.css?ver=1.2.0.1771950779",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 55552,
+        "durationMs": 68.363,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/inc/swiper-bundle.min.css?ver=12.0.2",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 3096,
+        "durationMs": 38.992999999999995,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/inc/aos.css",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 1671,
+        "durationMs": 43.059,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/inc/swiper-bundle.min.js?ver=12.0.2",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 44646,
+        "durationMs": 74.12100000000001,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-includes/js/jquery/jquery.min.js?ver=3.7.1",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 31622,
+        "durationMs": 43.381,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 5111,
+        "durationMs": 46.089,
+        "fromCache": false
+      },
+      {
+        "url": "https://plausible.io/js/script.tagged-events.pageview-props.outbound-links.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 2670,
+        "durationMs": 309.682,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/Resillion-logo.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 17815,
+        "durationMs": 45.577,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/wind-turbines-in-clouds-at-sunrise-renewable-power.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 68666,
+        "durationMs": 89.75200000000001,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2026/02/Resillion-Disconnected-brochure-stack-1.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 343583,
+        "durationMs": 226.047,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/man.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 102626,
+        "durationMs": 197.47899999999998,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 836,
+        "durationMs": 221.86,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/js/player.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 60010,
+        "durationMs": 316.024,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.com/embed/k91wvau1w6.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript; charset=utf-8",
+        "transferSize": 3584,
+        "durationMs": 106.585,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/smart-factory-engineer-using-tablet-for-monitoring-768x432.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 37555,
+        "durationMs": 75.248,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/digital-padlock-representing-cyber-security-protec-768x405.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 33544,
+        "durationMs": 240.48700000000002,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/engineer-calibrating-robotics-in-smart-factory-768x456.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 46325,
+        "durationMs": 320.43399999999997,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/close-up-of-camera-lens-media-production-768x512.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 28724,
+        "durationMs": 236.481,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/resillion-wheels-updated-new-colors.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 271269,
+        "durationMs": 345.719,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/automotive-assembly-line-with-red-electric-cars-1536x864.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 133125,
+        "durationMs": 319.276,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/view-of-the-shard-in-london-s-modern-skyline-1536x1024.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 213398,
+        "durationMs": 343.015,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/offshore-wind-turbines-generating-clean-energy-1536x1024.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 78831,
+        "durationMs": 321.23900000000003,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/user-browsing-e-commerce-app-on-smartphone-1536x1024.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 44343,
+        "durationMs": 324.557,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/london-financial-district-skyline-at-sunset-1536x1024.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 174447,
+        "durationMs": 339.086,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/female-software-engineer-writing-code-on-monitors-1536x1024.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 119204,
+        "durationMs": 326.31600000000003,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/professional-video-camera-filming-in-studio-1536x1026.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 53904,
+        "durationMs": 294.284,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/Becker-Harman.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 14047,
+        "durationMs": 316.97,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/zephyr.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 8617,
+        "durationMs": 266.234,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/Vodafone-logo-1.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 17894,
+        "durationMs": 299.442,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/Telenet-Logo.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 39122,
+        "durationMs": 245.887,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/Slimming-World-logo1.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 19302,
+        "durationMs": 241.975,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/showtime-logo.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 19010,
+        "durationMs": 241.791,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/orange-logo-1.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 36648,
+        "durationMs": 293.88,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/hulu.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 7017,
+        "durationMs": 231.781,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/Heineken-logo.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 8931,
+        "durationMs": 268.30899999999997,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/Aggreko-logo.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 49986,
+        "durationMs": 269.412,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/tech-team-collaborating-at-multiple-workstations-1024x540.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 46884,
+        "durationMs": 277.551,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/colourful-data-streams-merging-into-digital-cloud-1024x576.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 89707,
+        "durationMs": 307.992,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/interactive-data-dashboard-for-business-analytics-1024x576.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 43170,
+        "durationMs": 299.897,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/cyber-security-shield-with-check-mark-icon-1024x540.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 56059,
+        "durationMs": 323.88,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/cybersecurity-specialist-in-data-center-1024x576.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 38605,
+        "durationMs": 297.641,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/technology-team-collaborating-in-modern-lab-1024x576.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 50468,
+        "durationMs": 316.38,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/iStock-2054876919-1.jpg",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/jpeg",
+        "transferSize": 269726,
+        "durationMs": 339.38599999999997,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/smart-city-at-night-with-data-connectivity-lines-1024x534.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 102520,
+        "durationMs": 320.994,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/executive-presenting-data-visualisations-to-team-1024x540.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 33963,
+        "durationMs": 244.983,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/Untitled-design-10.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 85249,
+        "durationMs": 319.203,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2026/02/Resillion-Disconnected-brochure-stack-768x768.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 61594,
+        "durationMs": 310.158,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/cybersecurity-specialist-in-data-center.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 85730,
+        "durationMs": 312.355,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/12/LW_Employer.jpg",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/jpeg",
+        "transferSize": 132906,
+        "durationMs": 331.08799999999997,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/Accr-37838_Crest-icons_2022_4_VA-PT-SOC-.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 8920,
+        "durationMs": 268.432,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/Accr-CHECK-Penetration-Testing.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 7930,
+        "durationMs": 267.89099999999996,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/Rectangle-520.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 5787,
+        "durationMs": 243.582,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/Accr-NEW-ISO-Cert-no.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 11649,
+        "durationMs": 270.04200000000003,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/Accr-NEW-ISO-Cert-no-1.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 11474,
+        "durationMs": 244.216,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/CCVLogo_Cyber-pentest.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 4225,
+        "durationMs": 243.18800000000002,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/CE-assessor.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 10366,
+        "durationMs": 267.371,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/CEassessor.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 9948,
+        "durationMs": 268.772,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/10/EPI_Logo_primary_positive_RGB-scaled.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 38674,
+        "durationMs": 294.815,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/11/EP-logo-for-Official-Partners-2.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 24359,
+        "durationMs": 242.647,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/Resillion-logo-with-strapline-CMYK-4-white.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 4451,
+        "durationMs": 231.49,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/linkedin-brands.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 533,
+        "durationMs": 236.807,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2025/09/youtube-brands.png",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 589,
+        "durationMs": 239.221,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/mu-plugins/chatbot/index.js?ver=1.1.0",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 215289,
+        "durationMs": 82.643,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/js/child-theme.min.js?ver=1.2.0.1771950783",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 32135,
+        "durationMs": 207.704,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/inc/aos.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 4741,
+        "durationMs": 222.428,
+        "fromCache": false
+      },
+      {
+        "url": "https://p.typekit.net/p.css?s=1&k=knl0gvk&ht=tk&f=49469.49471.49474.49475.49476.51229.51230.51231.51233.51234&a=300146945&app=typekit&e=css",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 172,
+        "durationMs": 107.291,
+        "fromCache": false
+      },
+      {
+        "url": "https://log.cookieyes.com/api/v1/log",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "x-unknown",
+        "transferSize": 181,
+        "durationMs": 170.73799999999997,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/client_data/3bc3c1da55e4732d9d9b9a96/banner.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 7432,
+        "durationMs": 54.762,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/themes/resillion_feb_2026_4/img/pattern-bg.webp",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 119914,
+        "durationMs": 143.341,
+        "fromCache": false
+      },
+      {
+        "url": "https://use.typekit.net/af/2b8727/00000000000000007735fa48/31/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n6&v=3",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/font-woff2",
+        "transferSize": 22879,
+        "durationMs": 130.698,
+        "fromCache": false
+      },
+      {
+        "url": "https://use.typekit.net/af/c268bf/00000000000000007735fa4e/31/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/font-woff2",
+        "transferSize": 22919,
+        "durationMs": 79.50399999999999,
+        "fromCache": false
+      },
+      {
+        "url": "https://use.typekit.net/af/6f536c/00000000000000007735fa47/31/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/font-woff2",
+        "transferSize": 22963,
+        "durationMs": 60.062,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/l/1035023/2025-10-29/33xv4",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/html; charset=utf-8",
+        "transferSize": 6795,
+        "durationMs": 1067.9919999999997,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.com/embed/medias/k91wvau1w6/swatch",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/jpeg",
+        "transferSize": 2966,
+        "durationMs": 89.003,
+        "fromCache": false
+      },
+      {
+        "url": "https://use.typekit.net/af/eb7ffe/00000000000000007735fa4d/31/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n5&v=3",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/font-woff2",
+        "transferSize": 22887,
+        "durationMs": 59.119,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/l/1035023/2025-10-30/33zm1",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/html; charset=utf-8",
+        "transferSize": 6202,
+        "durationMs": 867.3140000000001,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.com/assets/external/publicApi.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript",
+        "transferSize": 149635,
+        "durationMs": 48.296,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.net/embed/medias/k91wvau1w6.json",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 3544,
+        "durationMs": 89.137,
+        "fromCache": false
+      },
+      {
+        "url": "blob:https://www.resillion.com/99d3bbe2-7fec-4ff8-a174-9b4b549e222c",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript",
+        "transferSize": -1,
+        "durationMs": 115.773,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/client_data/3bc3c1da55e4732d9d9b9a96/MA4i1uR-.json",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/json",
+        "transferSize": 335,
+        "durationMs": 84.93299999999999,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/users",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 738,
+        "durationMs": 813.473,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/users",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 738,
+        "durationMs": 795.755,
+        "fromCache": false
+      },
+      {
+        "url": "https://embed-ssl.wistia.com/deliveries/6f144ad4626b3530eda8f6e27cdd83ae.webp?image_crop_resized=1280x720",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/webp",
+        "transferSize": 40274,
+        "durationMs": 139.28900000000002,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/client_data/3bc3c1da55e4732d9d9b9a96/config/6b2lagDP.json",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/json",
+        "transferSize": 6777,
+        "durationMs": 20.218,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-includes/js/wp-emoji-release.min.js?ver=6.9.1",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 5650,
+        "durationMs": 34.144,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.net/assets/external/captions.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript",
+        "transferSize": 43836,
+        "durationMs": 66.698,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/client_data/3bc3c1da55e4732d9d9b9a96/translations/OI38krd6.json",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/json",
+        "transferSize": 771,
+        "durationMs": 21.549,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/client_data/3bc3c1da55e4732d9d9b9a96/audit-table/dkKGTXv4.json",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/json",
+        "transferSize": 2346,
+        "durationMs": 17.896,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/assets/images/revisit.svg",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/svg+xml",
+        "transferSize": 1237,
+        "durationMs": 21.478,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/assets/images/close.svg",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/svg+xml",
+        "transferSize": 787,
+        "durationMs": 22.205,
+        "fromCache": false
+      },
+      {
+        "url": "https://cdn-cookieyes.com/assets/images/poweredbtcky.svg",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/svg+xml",
+        "transferSize": 1548,
+        "durationMs": 21.481,
+        "fromCache": false
+      },
+      {
+        "url": "https://use.typekit.net/af/7b6f28/000000000000000077368798/31/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=i4&v=3",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/font-woff2",
+        "transferSize": 23139,
+        "durationMs": 28.519000000000002,
+        "fromCache": false
+      },
+      {
+        "url": "https://browser.sentry-cdn.com/9.6.1/bundle.min.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript; charset=utf-8",
+        "transferSize": 25430,
+        "durationMs": 107.984,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.net/embed/captions/k91wvau1w6.json",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 1220,
+        "durationMs": 17.049,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.net/assets/external/interFontFace.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript",
+        "transferSize": 20490,
+        "durationMs": 24.911,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/l/1035023/2025-06-30/2wykf/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": 302,
+        "resourceType": "text/html; charset=UTF-8",
+        "transferSize": 748,
+        "durationMs": 206.578,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/js/piUtils.js?ver=2021-09-20",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 102189,
+        "durationMs": 603.836,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/l/1035023/2025-06-30/2wykf/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": 302,
+        "resourceType": "text/html; charset=UTF-8",
+        "transferSize": 646,
+        "durationMs": 79.68599999999999,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/js/piUtils.js?ver=2021-09-20",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 0,
+        "durationMs": 600.193,
+        "fromCache": false
+      },
+      {
+        "url": "https://storage.pardot.com/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 50734,
+        "durationMs": 120.605,
+        "fromCache": false
+      },
+      {
+        "url": "https://storage.pardot.com/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 0,
+        "durationMs": 101.877,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/conversations",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 581,
+        "durationMs": 499.481,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/conversations",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 580,
+        "durationMs": 462.71,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/pd.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 2396,
+        "durationMs": 156.557,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/pd.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/javascript",
+        "transferSize": 0,
+        "durationMs": 149.919,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.net/assets/external/playPauseLoadingControl.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript",
+        "transferSize": 19107,
+        "durationMs": 19.662,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.net/assets/external/engines/hls_video.js",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript",
+        "transferSize": 162728,
+        "durationMs": 47.230000000000004,
+        "fromCache": false
+      },
+      {
+        "url": "https://distillery.wistia.com/x",
+        "method": "POST",
+        "status": 204,
+        "resourceType": "x-unknown",
+        "transferSize": -1,
+        "durationMs": 208.19299999999998,
+        "fromCache": false
+      },
+      {
+        "url": "https://pipedream.wistia.com/mput?topic=metrics",
+        "method": "POST",
+        "status": -1,
+        "resourceType": "x-unknown",
+        "transferSize": -1,
+        "durationMs": -1,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/conversations/conv_01KJCY7VR2TYM59TWJWT1B9W16/listen",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/event-stream; charset=utf-8",
+        "transferSize": -1,
+        "durationMs": 231.081,
+        "fromCache": false
+      },
+      {
+        "url": "https://fast.wistia.com/embed/medias/k91wvau1w6.m3u8",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "application/x-mpegURL",
+        "transferSize": 1708,
+        "durationMs": 15.373,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/analytics?ver=3&pi_form=true&visitor_id=&visitor_id_sign=&pi_opt_in=&campaign_id=12934&account_id=1036023&title=&url=https%3A%2F%2Fgo.www.resillion.com%2Fl%2F1035023%2F2025-10-30%2F33zm1&referrer=https%3A%2F%2Fwww.resillion.com%2F",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript; charset=utf-8",
+        "transferSize": 619,
+        "durationMs": 253.42499999999998,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/analytics?ver=3&pi_form=true&visitor_id=&visitor_id_sign=&pi_opt_in=&campaign_id=119095&account_id=1036023&title=&url=https%3A%2F%2Fgo.www.resillion.com%2Fl%2F1035023%2F2025-10-29%2F33xv4&referrer=https%3A%2F%2Fwww.resillion.com%2F",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/javascript; charset=utf-8",
+        "transferSize": 619,
+        "durationMs": 290.719,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/conversations/conv_01KJCY7VR7VMZ9H2SARNHNDNRP/listen",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/event-stream; charset=utf-8",
+        "transferSize": -1,
+        "durationMs": 228.672,
+        "fromCache": false
+      },
+      {
+        "url": "https://www.resillion.com/wp-content/uploads/2026/02/aliro-smart-home.jpg",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "image/jpeg",
+        "transferSize": 28248,
+        "durationMs": 46.557,
+        "fromCache": false
+      },
+      {
+        "url": "https://use.typekit.net/knl0gvk.css",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css;charset=utf-8",
+        "transferSize": 0,
+        "durationMs": 0.85,
+        "fromCache": false
+      },
+      {
+        "url": "blob:https://www.resillion.com/9ed0d4c1-7482-4f89-80eb-f55df886131e",
+        "method": "GET",
+        "status": -1,
+        "resourceType": "x-unknown",
+        "transferSize": -1,
+        "durationMs": -1,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/events",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 707,
+        "durationMs": 502.165,
+        "fromCache": false
+      },
+      {
+        "url": "https://p.typekit.net/p.css?s=1&k=knl0gvk&ht=tk&f=49469.49471.49474.49475.49476.51229.51230.51231.51233.51234&a=300146945&app=typekit&e=css",
+        "method": "GET",
+        "status": 200,
+        "resourceType": "text/css",
+        "transferSize": 0,
+        "durationMs": 0.549,
+        "fromCache": false
+      },
+      {
+        "url": "https://webchat.botpress.cloud/db3b476e-19fa-410a-8173-5183c3f043ba/events",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "application/json; charset=utf-8",
+        "transferSize": 706,
+        "durationMs": 318.47700000000003,
+        "fromCache": false
+      },
+      {
+        "url": "https://pipedream.wistia.com/mput?topic=metrics",
+        "method": "POST",
+        "status": 200,
+        "resourceType": "text/plain; charset=utf-8",
+        "transferSize": 332,
+        "durationMs": 109.91,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/l/1035023/2025-06-30/2wykf/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": 302,
+        "resourceType": "text/html; charset=UTF-8",
+        "transferSize": 646,
+        "durationMs": 1.8090000000000002,
+        "fromCache": false
+      },
+      {
+        "url": "https://storage.pardot.com/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": -1,
+        "resourceType": "x-unknown",
+        "transferSize": -1,
+        "durationMs": -1,
+        "fromCache": false
+      },
+      {
+        "url": "https://go.www.resillion.com/l/1035023/2025-06-30/2wykf/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": 302,
+        "resourceType": "text/html; charset=UTF-8",
+        "transferSize": 646,
+        "durationMs": 1.78,
+        "fromCache": false
+      },
+      {
+        "url": "https://storage.pardot.com/1035023/1751282220AWPujDZo/theSans_FontFace.css",
+        "method": "GET",
+        "status": -1,
+        "resourceType": "x-unknown",
+        "transferSize": -1,
+        "durationMs": -1,
+        "fromCache": false
+      }
+    ],
+    "recommendations": [
+      {
+        "id": "net-large-assets",
+        "title": "Reduce large assets",
+        "description": "Large resources detected; consider compression, code-splitting, and lazy loading.",
+        "severity": "high",
+        "impactedCount": 1
+      },
+      {
+        "id": "net-slow-requests",
+        "title": "Address slow requests",
+        "description": "Requests exceeding 1s were found; evaluate backend latency and caching strategy.",
+        "severity": "medium",
+        "impactedCount": 1
+      },
+      {
+        "id": "net-js-compression",
+        "title": "Improve JS delivery efficiency",
+        "description": "Large JavaScript payloads detected; ensure Brotli/Gzip and minification are enabled.",
+        "severity": "low",
+        "impactedCount": 4
+      }
+    ]
+  },
+  "accessibility": {
+    "url": "https://www.resillion.com/",
+    "issues": [
+      {
+        "id": "accesskeys",
+        "impact": "serious",
+        "description": "Ensure every accesskey attribute value is unique",
+        "help": "accesskey attribute value should be unique",
+        "nodes": 1,
+        "tags": [
+          "cat.keyboard",
+          "best-practice"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "aria-allowed-role",
+        "impact": "minor",
+        "description": "Ensure role attribute has an appropriate value for the element",
+        "help": "ARIA role should be appropriate for the element",
+        "nodes": 20,
+        "tags": [
+          "cat.aria",
+          "best-practice"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "frame-title",
+        "impact": "serious",
+        "description": "Ensure <iframe> and <frame> elements have an accessible name",
+        "help": "Frames must have an accessible name",
+        "nodes": 2,
+        "tags": [
+          "cat.text-alternatives",
+          "wcag2a",
+          "wcag412",
+          "section508",
+          "section508.22.i",
+          "TTv5",
+          "TT12.d",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "RGAAv4",
+          "RGAA-2.1.1"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "heading-order",
+        "impact": "moderate",
+        "description": "Ensure the order of headings is semantically correct",
+        "help": "Heading levels should only increase by one",
+        "nodes": 5,
+        "tags": [
+          "cat.semantics",
+          "best-practice"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "landmark-unique",
+        "impact": "moderate",
+        "description": "Ensure landmarks are unique",
+        "help": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
+        "nodes": 1,
+        "tags": [
+          "cat.semantics",
+          "best-practice"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "link-name",
+        "impact": "serious",
+        "description": "Ensure links have discernible text",
+        "help": "Links must have discernible text",
+        "nodes": 20,
+        "tags": [
+          "cat.name-role-value",
+          "wcag2a",
+          "wcag244",
+          "wcag412",
+          "section508",
+          "section508.22.a",
+          "TTv5",
+          "TT6.a",
+          "EN-301-549",
+          "EN-9.2.4.4",
+          "EN-9.4.1.2",
+          "ACT",
+          "RGAAv4",
+          "RGAA-6.2.1"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "listitem",
+        "impact": "serious",
+        "description": "Ensure <li> elements are used semantically",
+        "help": "<li> elements must be contained in a <ul> or <ol>",
+        "nodes": 2,
+        "tags": [
+          "cat.structure",
+          "wcag2a",
+          "wcag131",
+          "EN-301-549",
+          "EN-9.1.3.1",
+          "RGAAv4",
+          "RGAA-9.3.1"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+        "help": "Interactive controls must not be nested",
+        "nodes": 2,
+        "tags": [
+          "cat.keyboard",
+          "wcag2a",
+          "wcag412",
+          "TTv5",
+          "TT6.a",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "RGAAv4",
+          "RGAA-7.1.1"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "region",
+        "impact": "moderate",
+        "description": "Ensure all page content is contained by landmarks",
+        "help": "All page content should be contained by landmarks",
+        "nodes": 77,
+        "tags": [
+          "cat.keyboard",
+          "best-practice",
+          "RGAAv4",
+          "RGAA-9.2.1"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "scrollable-region-focusable",
+        "impact": "serious",
+        "description": "Ensure elements that have scrollable content are accessible by keyboard",
+        "help": "Scrollable region must have keyboard access",
+        "nodes": 4,
+        "tags": [
+          "cat.keyboard",
+          "wcag2a",
+          "wcag211",
+          "wcag213",
+          "TTv5",
+          "TT4.a",
+          "EN-301-549",
+          "EN-9.2.1.1",
+          "EN-9.2.1.3",
+          "RGAAv4",
+          "RGAA-7.3.2"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "description": "Ensure select element has an accessible name",
+        "help": "Select element must have an accessible name",
+        "nodes": 1,
+        "tags": [
+          "cat.forms",
+          "wcag2a",
+          "wcag412",
+          "section508",
+          "section508.22.n",
+          "TTv5",
+          "TT5.c",
+          "EN-301-549",
+          "EN-9.4.1.2",
+          "ACT",
+          "RGAAv4",
+          "RGAA-11.1.1"
+        ],
+        "recommendation": "Refer to WCAG technique guidance for this rule."
+      }
+    ],
+    "counters": {
+      "critical": 1,
+      "serious": 6,
+      "moderate": 3,
+      "minor": 1,
+      "unknown": 0
+    }
+  }
+}

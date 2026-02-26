@@ -1,0 +1,23 @@
+[
+  {
+    "id": "net-large-assets",
+    "title": "Reduce large assets",
+    "description": "Large resources detected; consider compression, code-splitting, and lazy loading.",
+    "severity": "high",
+    "impactedCount": 1
+  },
+  {
+    "id": "net-slow-requests",
+    "title": "Address slow requests",
+    "description": "Requests exceeding 1s were found; evaluate backend latency and caching strategy.",
+    "severity": "medium",
+    "impactedCount": 1
+  },
+  {
+    "id": "net-js-compression",
+    "title": "Improve JS delivery efficiency",
+    "description": "Large JavaScript payloads detected; ensure Brotli/Gzip and minification are enabled.",
+    "severity": "low",
+    "impactedCount": 4
+  }
+]

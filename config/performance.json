@@ -1,0 +1,20 @@
+{
+  "url": "https://www.resillion.com/",
+  "navigation": {
+    "dnsMs": 33.599999997764826,
+    "tcpMs": 44.100000001490116,
+    "ttfbMs": 104.19999999925494,
+    "domContentLoadedMs": 703.5,
+    "loadEventMs": 2016.6000000014901
+  },
+  "paint": {
+    "first-paint": 456,
+    "first-contentful-paint": 456
+  },
+  "resourceSummary": {
+    "count": 93,
+    "transferSize": 4056925,
+    "encodedBodySize": 4034425,
+    "decodedBodySize": 6371068
+  }
+}

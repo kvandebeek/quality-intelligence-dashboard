@@ -5,13 +5,8 @@
   "iteration": 1,
   "outputDir": "artifacts",
   "name": "RESILLION",
-  "startUrl": "https://resillion.com",
-  "targets": [
-    {
-      "name": "Resillion Landing Page",
-      "url": "https://resillion.com"
-    }
-  ],
+  "startUrl": "https://www.resillion.com",
+  "targets": [],
   "crawl": {
     "enabled": false,
     "maxDepth": 2,
