@@ -19,11 +19,35 @@ const safe = (v, fallback='Not available') => (v === null || v === undefined || 
 const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const INFO = 'ⓘ';
 
+const CLIENT_RUN_ID = (()=>{ try { return crypto.randomUUID(); } catch { return `client-${Date.now()}`; } })();
+
+function createOperationId(){
+  try { return crypto.randomUUID(); } catch { return `op-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+}
+
+async function logEvent(level, message, context = {}){
+  const payload = { level, message, context: { runId: CLIENT_RUN_ID, ...context } };
+  try {
+    await fetch('/api/log', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(payload) });
+  } catch {
+    // intentionally ignored
+  }
+}
+
+function summarizeInput(value){
+  const text = String(value ?? '');
+  return { length: text.length, hasWhitespace: /\s/.test(text) };
+}
+
 async function loadIndex(){
+  const opId = createOperationId();
+  const started = performance.now();
+  await logEvent('INFO', 'UI index load started', { operationId: opId, view: 'index' });
   const res = await fetch('/api/index');
   if(!res.ok) throw new Error(`Failed to load index: ${res.status}`);
   state.index = await res.json();
   state.selectedId = state.index.urls[0]?.id ?? null;
+  await logEvent('INFO', 'UI index load completed', { operationId: opId, view: 'index', count: state.index.urls.length, durationMs: Math.round(performance.now()-started) });
   render();
 }
 
@@ -49,6 +73,7 @@ function filterUrls(){
 }
 
 function render(options = {}){
+  const renderStart = performance.now();
   if(!state.index){ app.innerHTML = '<p>Loading…</p>'; return; }
   const urls = filterUrls();
   const selected = urls.find((u)=>u.id===state.selectedId) ?? state.index.urls.find((u)=>u.id===state.selectedId) ?? urls[0];
@@ -59,6 +84,8 @@ function render(options = {}){
       <div class="search-block">
         <input id="search" placeholder="Search URL or folder" value="${state.search.replace(/"/g,'&quot;')}">
         <label><input type="checkbox" id="regex" ${state.regex?'checked':''}> Regex</label>
+        <button id="toggle-verbose" class="btn-mini">Verbose logging</button>
+        <button id="export-diagnostics" class="btn-mini">Export diagnostics</button>
       </div>
       <div class="facets">
         <label><input type="checkbox" id="f-fail" ${state.facets.failures?'checked':''}> Has failures</label>
@@ -78,6 +105,9 @@ function render(options = {}){
   bindFilters();
   renderVirtualList(urls);
   if(selected) bindTabEvents(selected);
+
+  const renderDuration = Math.round(performance.now() - renderStart);
+  logEvent(renderDuration > 500 ? 'WARN' : 'DEBUG', 'UI render completed', { view: state.selectedTab, durationMs: renderDuration, selectedId: state.selectedId });
 
   if(options.preserveSearchFocus){
     const searchInput = document.getElementById('search');
@@ -106,7 +136,7 @@ function renderVirtualList(urls){
         <div class="row-badges">${badge(u.badges.a11y)}${badge(u.badges.perf)}${badge(u.badges.net)}${badge(u.badges.sec)}${badge(u.badges.seo)}${badge(u.badges.visual)}${badge(u.badges.stability)}</div>
       </button>`;
     }).join('')}</div>`;
-    container.querySelectorAll('.url-row').forEach((el)=>el.onclick=()=>{state.selectedId=el.dataset.id; state.selectedDomain=null; render();});
+    container.querySelectorAll('.url-row').forEach((el)=>el.onclick=()=>{const operationId=createOperationId(); state.selectedId=el.dataset.id; state.selectedDomain=null; logEvent('INFO','UI URL selection changed',{operationId,urlId:state.selectedId,view:state.selectedTab}); render();});
   };
   container.onscroll = renderRows;
   renderRows();
@@ -135,18 +165,34 @@ function renderDetailsShell(u){
 }
 
 function bindFilters(){
-  document.getElementById('search').oninput=(e)=>{state.search=e.target.value; render({ preserveSearchFocus: true });};
-  document.getElementById('regex').onchange=(e)=>{state.regex=e.target.checked; render();};
-  document.getElementById('f-fail').onchange=(e)=>{state.facets.failures=e.target.checked; render();};
-  document.getElementById('f-broken').onchange=(e)=>{state.facets.broken=e.target.checked; render();};
-  document.getElementById('f-visual').onchange=(e)=>{state.facets.visualFailed=e.target.checked; render();};
-  document.getElementById('f-throttle').onchange=(e)=>{state.facets.throttled=e.target.checked; render();};
-  document.getElementById('f-lh').onchange=(e)=>{state.facets.lighthouse=e.target.checked; render();};
-  document.querySelectorAll('[data-sev]').forEach((btn)=>btn.onclick=()=>{const s=btn.dataset.sev; state.facets.a11y.has(s)?state.facets.a11y.delete(s):state.facets.a11y.add(s); render();});
+  document.getElementById('search').oninput=(e)=>{const operationId=createOperationId(); state.search=e.target.value; logEvent('INFO','UI search changed',{operationId,view:'filters',search:summarizeInput(state.search)}); render({ preserveSearchFocus: true });};
+  document.getElementById('regex').onchange=(e)=>{const operationId=createOperationId(); state.regex=e.target.checked; logEvent('INFO','UI regex toggle changed',{operationId,view:'filters',enabled:state.regex}); render();};
+  document.getElementById('f-fail').onchange=(e)=>{state.facets.failures=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'failures',enabled:state.facets.failures}); render();};
+  document.getElementById('f-broken').onchange=(e)=>{state.facets.broken=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'broken',enabled:state.facets.broken}); render();};
+  document.getElementById('f-visual').onchange=(e)=>{state.facets.visualFailed=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'visualFailed',enabled:state.facets.visualFailed}); render();};
+  document.getElementById('f-throttle').onchange=(e)=>{state.facets.throttled=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'throttled',enabled:state.facets.throttled}); render();};
+  document.getElementById('f-lh').onchange=(e)=>{state.facets.lighthouse=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'lighthouse',enabled:state.facets.lighthouse}); render();};
+  document.querySelectorAll('[data-sev]').forEach((btn)=>btn.onclick=()=>{const sev=btn.dataset.sev; state.facets.a11y.has(sev)?state.facets.a11y.delete(sev):state.facets.a11y.add(sev); logEvent('INFO','UI a11y severity filter changed',{operationId:createOperationId(),severity:sev,enabled:state.facets.a11y.has(sev)}); render();});
+
+  const verboseBtn = document.getElementById('toggle-verbose');
+  if(verboseBtn) verboseBtn.onclick = async ()=>{
+    await fetch('/api/log-level',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({level:'DEBUG'})});
+    logEvent('INFO','UI verbose logging enabled',{operationId:createOperationId()});
+  };
+
+  const diagBtn = document.getElementById('export-diagnostics');
+  if(diagBtn) diagBtn.onclick = async ()=>{
+    const operationId=createOperationId();
+    logEvent('INFO','UI export diagnostics requested',{operationId});
+    const res = await fetch('/api/diagnostics/export',{method:'POST'});
+    const body = await res.json();
+    alert(`Diagnostics exported: ${body.file}`);
+    logEvent('INFO','UI export diagnostics completed',{operationId,filePath:body.file});
+  };
 }
 
 function bindTabEvents(u){
-  document.querySelectorAll('.tab').forEach((b)=>b.onclick=()=>{state.selectedTab=b.dataset.tab; state.selectedDomain=null; render();});
+  document.querySelectorAll('.tab').forEach((b)=>b.onclick=()=>{const operationId=createOperationId(); state.selectedTab=b.dataset.tab; state.selectedDomain=null; logEvent('INFO','UI tab changed',{operationId,urlId:u.id,section:state.selectedTab,view:state.selectedTab}); render();});
   loadTab(u.id,state.selectedTab);
 }
 
@@ -175,6 +221,9 @@ function unwrapArtifact(raw){
 }
 
 async function loadTab(id, tab){
+  const operationId=createOperationId();
+  const started=performance.now();
+  logEvent('INFO','UI section navigation',{operationId,urlId:id,section:tab,view:tab});
   const el = document.getElementById('tab-content');
   const res = await fetch(`/api/url/${encodeURIComponent(id)}/section/${encodeURIComponent(tab)}`);
   const payload = await res.json();
@@ -205,6 +254,7 @@ async function loadTab(id, tab){
     default: body = '<p>Unsupported section</p>';
   }
   el.innerHTML = `${head}${body}${rawPanel(raw)}`;
+  logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
   el.querySelectorAll('[data-domain]').forEach((b)=>b.onclick=()=>{state.selectedDomain=b.dataset.domain; state.selectedTab='network-requests.json'; render();});
   el.querySelectorAll('[data-sort-scope]').forEach((btn)=>btn.onclick=()=>{const scope=btn.dataset.sortScope;const key=btn.dataset.sortKey;const current=state.sorts[scope];state.sorts[scope]={key,dir:current.key===key&&current.dir==='asc'?'desc':'asc'};loadTab(id, tab);});
@@ -228,4 +278,5 @@ const renderThirdParty = (r={})=>{const rows=r.domains||r; const arr=Array.isArr
 const renderThrottled = (r={})=>`<div class="kpis">${textMetric('Available',r.available===false?'Not executed':'Yes')}${metric('Baseline load',r.baselineLoadMs,'ms')}${metric('Throttled load',r.throttledLoadMs,'ms')}${metric('Degradation',r.degradationFactor,'x')}</div>`;
 const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound?'Yes':'No')}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed?'Yes':'No')}</div>${r.baselineFound===false?'<button>Create baseline from visual-current.png</button>':''}`;
 
-loadIndex().catch((e)=>{app.innerHTML=`<p>Failed to load dashboard: ${e.message}</p>`;});
+logEvent('INFO','UI startup',{view:'startup'});
+loadIndex().catch((e)=>{logEvent('ERROR','UI startup failed',{view:'startup',errorMessage:e.message}); app.innerHTML=`<p>Failed to load dashboard: ${e.message}</p>`;});
