@@ -39,6 +39,16 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
+function renderBrandLogo(): string {
+  return `<svg viewBox="0 0 598 200" role="img" aria-label="Resillion" xmlns="http://www.w3.org/2000/svg">
+  <rect x="228" y="0" width="20" height="20" rx="4" fill="#ff3b24"></rect>
+  <rect x="380" y="0" width="20" height="106" rx="3" fill="#8bc53f"></rect>
+  <rect x="380" y="116" width="20" height="20" rx="3" fill="#8bc53f"></rect>
+  <text x="36" y="132" fill="#ffffff" font-family="Inter,Segoe UI,sans-serif" font-size="84" font-weight="700">Resillion</text>
+  <text x="30" y="185" fill="#8bc53f" font-family="Inter,Segoe UI,sans-serif" font-size="44" font-weight="700">Assure. Secure. Innovate.</text>
+</svg>`;
+}
+
 function renderLayout(title: string, body: string): string {
   return `<!doctype html>
 <html lang="en">
@@ -49,11 +59,95 @@ function renderLayout(title: string, body: string): string {
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-<nav>
-  <a href="/">Overview</a>
-  <a href="/summary">Run Summary</a>
-</nav>
+<header class="site-header">
+  <div class="container header-layout">
+    <a href="/" class="brand-logo d-flex align-items-center" aria-label="Resillion home">${renderBrandLogo()}</a>
+    <nav class="desktop-only" aria-label="Primary">
+      <ul class="main-menu">
+        <li class="menu-item"><a href="/">Overview</a></li>
+        <li class="menu-item"><a href="/summary">Run Summary</a></li>
+        <li class="menu-item has-sub-menu" data-expanded="false">
+          <button type="button" class="menu-trigger" aria-expanded="false" aria-controls="desktop-sub-menu">Sections</button>
+          <ul id="desktop-sub-menu" class="sub-menu" aria-label="Sections submenu">
+            <li><a href="/">URLs</a></li>
+            <li><a href="/summary">Metrics</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+    <div class="buttons-block desktop-only">
+      <a class="btn btn-fade" href="/summary">Summary</a>
+      <a class="btn btn-slide" href="/">Open Dashboard</a>
+    </div>
+    <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mobile-nav">Menu</button>
+  </div>
+  <nav id="mobile-nav" class="mobile-nav" data-open="false" aria-label="Mobile">
+    <ul>
+      <li class="menu-item"><a href="/">Overview</a></li>
+      <li class="menu-item"><a href="/summary">Run Summary</a></li>
+      <li class="menu-item"><a href="#left-nav">Filters</a></li>
+    </ul>
+  </nav>
+</header>
 <main>${body}</main>
+<script>
+(function(){
+  const menuToggle = document.querySelector('.mobile-nav-toggle');
+  const mobileNav = document.getElementById('mobile-nav');
+  if (menuToggle && mobileNav) {
+    const leftNav = document.getElementById('left-nav');
+    const toggleMobile = function(){
+      const open = mobileNav.getAttribute('data-open') === 'true';
+      mobileNav.setAttribute('data-open', String(!open));
+      menuToggle.setAttribute('aria-expanded', String(!open));
+      if (leftNav) {
+        leftNav.setAttribute('data-open', String(!open));
+      }
+    };
+    menuToggle.addEventListener('click', toggleMobile);
+    menuToggle.addEventListener('keydown', function(event){
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleMobile();
+      }
+    });
+  }
+
+  const trigger = document.querySelector('.menu-trigger');
+  const host = document.querySelector('.has-sub-menu');
+  if (trigger && host) {
+    const toggleSubmenu = function(){
+      const expanded = host.getAttribute('data-expanded') === 'true';
+      host.setAttribute('data-expanded', String(!expanded));
+      trigger.setAttribute('aria-expanded', String(!expanded));
+    };
+    trigger.addEventListener('click', toggleSubmenu);
+    trigger.addEventListener('keydown', function(event){
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleSubmenu();
+      }
+    });
+  }
+
+  const detailToggle = document.querySelector('[data-detail-toggle]');
+  const detailPanel = document.querySelector('.right-panel');
+  if (detailToggle && detailPanel) {
+    const toggleDetail = function(){
+      const open = detailPanel.getAttribute('data-open') === 'true';
+      detailPanel.setAttribute('data-open', String(!open));
+      detailToggle.setAttribute('aria-expanded', String(!open));
+    };
+    detailToggle.addEventListener('click', toggleDetail);
+    detailToggle.addEventListener('keydown', function(event){
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleDetail();
+      }
+    });
+  }
+})();
+</script>
 </body>
 </html>`;
 }
@@ -117,55 +211,105 @@ function renderOverview(requestUrl: URL, rows: readonly OverviewRow[]): string {
   const direction: SortDirection = requestUrl.searchParams.get('direction') === 'desc' ? 'desc' : 'asc';
   const filteredRows = filterRows(rows, requestUrl);
   const sortedRows = sortRows(filteredRows, sortBy, direction);
+  const selectedUrlId = requestUrl.searchParams.get('selectedUrlId');
+  const selectedRow = sortedRows.find((row) => row.folderName === selectedUrlId) ?? sortedRows[0];
 
-  const recColumn = (counts: Record<string, number>): string =>
-    Object.entries(counts)
-      .map(([severity, count]) => `${escapeHtml(severity)}:${count}`)
-      .join(', ');
-
-  const tableRows = sortedRows
-    .map(
-      (row) => `<tr>
-<td><a href="/page/${encodeURIComponent(row.folderName)}">${escapeHtml(row.url)}</a></td>
-<td>${row.critical}/${row.serious}/${row.moderate}/${row.minor}</td>
-<td>${row.ttfbMs}</td><td>${row.dclMs}</td><td>${row.loadEventMs}</td>
-<td>${row.totalTransferSize}</td><td>${row.resourceCount}</td>
-<td>${row.requestCount}</td><td>${row.failedRequestCount}</td><td>${row.networkTransferSize}</td><td>${row.slowestRequestMs}</td>
-<td>${escapeHtml(recColumn(row.recommendationCounts) || '-')}</td>
-</tr>`
-    )
+  const cardMarkup = sortedRows
+    .map((row) => {
+      const cardUrl = new URL(requestUrl.pathname || '/', 'http://localhost');
+      requestUrl.searchParams.forEach((value, key) => {
+        if (key !== 'selectedUrlId') {
+          cardUrl.searchParams.set(key, value);
+        }
+      });
+      cardUrl.searchParams.set('selectedUrlId', row.folderName);
+      const selectedClass = selectedRow?.folderName === row.folderName ? ' is-selected' : '';
+      return `<article class="card${selectedClass}">
+  <header class="card-header">${escapeHtml(row.url)}</header>
+  <div class="card-body">
+    <div class="metric-line"><span>A11y C/S</span><strong>${row.critical}/${row.serious}</strong></div>
+    <div class="metric-line"><span>Load Event</span><strong>${row.loadEventMs} ms</strong></div>
+    <div class="metric-line"><span>Requests</span><strong>${row.requestCount}</strong></div>
+  </div>
+  <footer class="card-footer"><a class="btn btn-fade w-100 text-center" href="${escapeHtml(`${cardUrl.pathname}${cardUrl.search}`)}">View details</a></footer>
+</article>`;
+    })
     .join('');
 
   return renderLayout(
     'Artifacts Dashboard Overview',
-    `<h1>Artifacts Overview</h1>
-<form method="get" class="filters">
-<label>URL search <input type="text" name="search" value="${escapeHtml(requestUrl.searchParams.get('search') ?? '')}" /></label>
-<label><input type="checkbox" name="hasCriticalOrSerious" value="1" ${requestUrl.searchParams.get('hasCriticalOrSerious') === '1' ? 'checked' : ''}/> Has critical/serious</label>
-<label><input type="checkbox" name="hasFailures" value="1" ${requestUrl.searchParams.get('hasFailures') === '1' ? 'checked' : ''}/> Has network failures</label>
-<label>loadEventMs &gt; <input type="number" name="loadEventMin" value="${escapeHtml(requestUrl.searchParams.get('loadEventMin') ?? '')}" /></label>
-<label>Sort by
-<select name="sortBy">${Object.keys(SORTABLE_COLUMNS)
-      .map((key) => `<option value="${key}" ${sortBy === key ? 'selected' : ''}>${key}</option>`)
-      .join('')}</select>
-</label>
-<label>Direction
-<select name="direction"><option value="asc" ${direction === 'asc' ? 'selected' : ''}>asc</option><option value="desc" ${direction === 'desc' ? 'selected' : ''}>desc</option></select>
-</label>
-<button type="submit">Apply</button>
-</form>
-<table>
-<thead><tr><th>URL</th><th>A11y C/S/M/Mn</th><th>TTFB</th><th>DCL</th><th>Load</th><th>Perf Transfer</th><th>Resources</th><th>Requests</th><th>Failed</th><th>Net Transfer</th><th>Slowest Req</th><th>Recommendations</th></tr></thead>
-<tbody>${tableRows}</tbody>
-</table>
-<p>Total visible rows: ${sortedRows.length}</p>`
+    `<section class="page-block gradient-bg">
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <div class="dashboard-grid align-items-stretch">
+      <aside id="left-nav" class="left-nav panel" data-open="false" aria-label="Dashboard filters">
+        <div class="panel-header">LeftNav</div>
+        <div class="panel-body filter-stack">
+          <form method="get">
+            <label for="search">Search URL
+              <input id="search" type="text" name="search" value="${escapeHtml(requestUrl.searchParams.get('search') ?? '')}" />
+            </label>
+            <label><input type="checkbox" name="hasCriticalOrSerious" value="1" ${requestUrl.searchParams.get('hasCriticalOrSerious') === '1' ? 'checked' : ''}/> Has critical/serious</label>
+            <label><input type="checkbox" name="hasFailures" value="1" ${requestUrl.searchParams.get('hasFailures') === '1' ? 'checked' : ''}/> Has network failures</label>
+            <label>loadEventMs above
+              <input type="number" name="loadEventMin" value="${escapeHtml(requestUrl.searchParams.get('loadEventMin') ?? '')}" />
+            </label>
+            <label>Sort by
+              <select name="sortBy">${Object.keys(SORTABLE_COLUMNS)
+                .map((key) => `<option value="${key}" ${sortBy === key ? 'selected' : ''}>${key}</option>`)
+                .join('')}</select>
+            </label>
+            <label>Direction
+              <select name="direction"><option value="asc" ${direction === 'asc' ? 'selected' : ''}>asc</option><option value="desc" ${direction === 'desc' ? 'selected' : ''}>desc</option></select>
+            </label>
+            ${selectedRow ? `<input type="hidden" name="selectedUrlId" value="${escapeHtml(selectedRow.folderName)}" />` : ''}
+            <button class="btn btn-slide w-100" type="submit">Apply</button>
+          </form>
+          <button type="button" class="btn btn-fade w-100" data-detail-toggle aria-expanded="false">Toggle detail panel</button>
+        </div>
+      </aside>
+
+      <section class="main-content" aria-label="Main content">
+        <div class="panel purple-light-bg">
+          <div class="panel-header">MainContent — URL Overview</div>
+          <div class="panel-body">
+            <p class="muted text-center mx-auto">Total visible rows: ${sortedRows.length}</p>
+            <div class="url-grid">${cardMarkup || '<p>No URLs available for selected filters.</p>'}</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="right-panel" data-open="false" aria-label="Selected URL detail">
+        <div class="panel sticky-panel second-half-gradient">
+          <div class="panel-header">RightDetailPanel</div>
+          <div class="panel-body">
+            ${
+              selectedRow
+                ? `<p><strong>${escapeHtml(selectedRow.url)}</strong></p>
+                   <p class="muted">Folder: ${escapeHtml(selectedRow.folderName)}</p>
+                   <div class="metric-line"><span>TTFB</span><strong>${selectedRow.ttfbMs} ms</strong></div>
+                   <div class="metric-line"><span>DCL</span><strong>${selectedRow.dclMs} ms</strong></div>
+                   <div class="metric-line"><span>Load</span><strong>${selectedRow.loadEventMs} ms</strong></div>
+                   <div class="metric-line"><span>Failed reqs</span><strong>${selectedRow.failedRequestCount}</strong></div>
+                   <p><a class="btn btn-slide w-100" href="/page/${encodeURIComponent(selectedRow.folderName)}">Open full details</a></p>`
+                : '<p class="muted">Select a URL card to view detail placeholder.</p>'
+            }
+          </div>
+        </div>
+      </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>`
   );
 }
 
 function renderDrilldown(folderName: string, requestUrl: URL, rows: readonly OverviewRow[]): string {
   const row = rows.find((entry) => entry.folderName === folderName);
   if (!row) {
-    return renderLayout('Not found', `<h1>Page not found</h1><p>No folder named ${escapeHtml(folderName)}.</p>`);
+    return renderLayout('Not found', `<section class="page-block"><div class="container"><h1>Page not found</h1><p>No folder named ${escapeHtml(folderName)}.</p></div></section>`);
   }
 
   const statusFilter = requestUrl.searchParams.get('statusClass') ?? 'all';
@@ -212,7 +356,7 @@ function renderDrilldown(folderName: string, requestUrl: URL, rows: readonly Ove
 
   return renderLayout(
     `Drilldown ${row.url}`,
-    `<h1>${escapeHtml(row.url)}</h1>
+    `<section class="page-block white-bg"><div class="container"><h1>${escapeHtml(row.url)}</h1>
 <p>Folder: ${escapeHtml(row.folderName)}</p>
 <p><a href="${escapeHtml(row.url)}" target="_blank" rel="noreferrer">Open URL</a></p>
 <h2>Accessibility Issues</h2>
@@ -232,7 +376,7 @@ ${row.accessibilityIssues
 <li>Resource transfer size: ${row.totalTransferSize}</li>
 </ul>
 <h2>Network Requests</h2>
-<form method="get">
+<form method="get" class="filters">
 <label>Status class
 <select name="statusClass">
 <option value="all" ${statusFilter === 'all' ? 'selected' : ''}>all</option>
@@ -256,7 +400,7 @@ ${sortedRequests
       .join('')}
 </tbody></table>
 <h2>Recommendations by Severity</h2>
-<ul>${recommendationList}</ul>`
+<ul>${recommendationList}</ul></div></section>`
   );
 }
 
@@ -267,7 +411,7 @@ function renderRunSummary(rows: readonly OverviewRow[]): string {
 
   return renderLayout(
     'Run Summary',
-    `<h1>Run Summary</h1>
+    `<section class="page-block purple-bg"><div class="container"><h1>Run Summary</h1>
 <ul>
 <li>Total pages: ${summary.totalPages}</li>
 <li>Accessibility totals: critical ${summary.accessibilityTotals.critical}, serious ${summary.accessibilityTotals.serious}, moderate ${summary.accessibilityTotals.moderate}, minor ${summary.accessibilityTotals.minor}</li>
@@ -277,7 +421,7 @@ ${worstList(summary.worstByLoadEventMs, 'loadEventMs', (row) => row.loadEventMs)
 <h2>Worst pages by critical accessibility issues</h2>
 ${worstList(summary.worstByCriticalIssues, 'critical', (row) => row.critical)}
 <h2>Worst pages by total transfer size</h2>
-${worstList(summary.worstByTransferSize, 'totalTransferSize', (row) => row.totalTransferSize)}`
+${worstList(summary.worstByTransferSize, 'totalTransferSize', (row) => row.totalTransferSize)}</div></section>`
   );
 }
 
@@ -300,7 +444,7 @@ export function startDashboardServer(options: ServerOptions): http.Server {
     try {
       const requestUrl = new URL(request.url ?? '/', `http://localhost:${options.port}`);
 
-      if (options.staticDir && (requestUrl.pathname.endsWith('.css') || requestUrl.pathname === '/index.html')) {
+      if (options.staticDir && (requestUrl.pathname.endsWith('.css') || requestUrl.pathname === '/index.html' || requestUrl.pathname.startsWith('/styles/'))) {
         if (await sendStaticFile(response, options.staticDir, requestUrl.pathname)) {
           return;
         }
@@ -308,6 +452,14 @@ export function startDashboardServer(options: ServerOptions): http.Server {
 
       if (requestUrl.pathname === '/styles.css') {
         const css = await fs.readFile(path.join(path.dirname(new URL(import.meta.url).pathname), 'styles.css'), 'utf8');
+        response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+        response.end(css);
+        return;
+      }
+
+      if (requestUrl.pathname.startsWith('/styles/')) {
+        const stylePath = path.join(path.dirname(new URL(import.meta.url).pathname), `.${requestUrl.pathname}`);
+        const css = await fs.readFile(stylePath, 'utf8');
         response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
         response.end(css);
         return;

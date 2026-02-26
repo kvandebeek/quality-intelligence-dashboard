@@ -1,0 +1,30 @@
+:root {
+  --color-bg: #0f111a;
+  --color-surface: #171b27;
+  --color-surface-soft: #1f2433;
+  --color-surface-raised: #252c3f;
+  --color-text: #f4f5f7;
+  --color-text-muted: #a8b0c3;
+  --color-border: #31384d;
+  --color-accent: #8bc53f;
+  --color-accent-strong: #6fad2c;
+  --color-accent-soft: #2f4618;
+  --color-purple: #6f52d9;
+  --color-purple-light: #8d79e2;
+  --color-white: #ffffff;
+  --gradient-main: linear-gradient(135deg, #15182a 0%, #291d44 42%, #161a2e 100%);
+  --gradient-half: linear-gradient(180deg, rgba(111, 82, 217, 0.12) 0%, rgba(111, 82, 217, 0.12) 50%, rgba(20, 23, 35, 0.96) 50%, rgba(20, 23, 35, 0.96) 100%);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+  --font-base: Inter, "Segoe UI", Roboto, sans-serif;
+}
