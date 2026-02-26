@@ -36,10 +36,7 @@ export interface RunPathOptions {
 
 export function resolveRunPath(options: RunPathOptions): string {
   const value = options.cliRunPath ?? options.envRunPath;
-  if (!value) {
-    throw new Error('Missing run folder path. Provide --run <path> or ARTIFACT_RUN_DIR.');
-  }
-  return path.resolve(value);
+  return value ? path.resolve(value) : process.cwd();
 }
 
 function stableSort<T>(items: readonly T[], getKey: (item: T) => string): T[] {
