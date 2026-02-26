@@ -3,10 +3,74 @@ import type { CrawlConfig, CrawlPageMetadata, CrawlSkipReason, CrawlSkipRecord }
 const SKIP_REASON: Record<string, CrawlSkipReason> = {
   DUPLICATE: 'duplicate_url',
   DISALLOWED_DOMAIN: 'disallowed_domain',
+  EXCLUDED_RESOURCE_TYPE: 'excluded_resource_type',
   INVALID_URL: 'invalid_url',
   DEPTH_EXCEEDED: 'depth_exceeded',
   MAX_PAGES_EXCEEDED: 'max_pages_exceeded'
 };
+
+const EXCLUDED_EXTENSIONS = new Set<string>([
+  // Documents and archives
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.csv',
+  '.zip',
+  '.rar',
+  '.7z',
+  '.tar',
+  '.gz',
+  '.bz2',
+
+  // Executables and installers
+  '.exe',
+  '.msi',
+  '.bat',
+  '.cmd',
+  '.com',
+  '.scr',
+  '.app',
+  '.dmg',
+  '.pkg',
+  '.deb',
+  '.rpm',
+  '.apk',
+
+  // Images
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.webp',
+  '.svg',
+  '.ico',
+  '.bmp',
+  '.tiff',
+  '.tif',
+  '.avif',
+
+  // Audio/video and other binary assets
+  '.mp3',
+  '.wav',
+  '.ogg',
+  '.m4a',
+  '.mp4',
+  '.webm',
+  '.avi',
+  '.mov',
+  '.wmv',
+  '.flv',
+  '.mkv',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.otf',
+  '.eot'
+]);
 
 interface CrawlQueueItem {
   url: string;
@@ -65,6 +129,11 @@ function isDomainAllowed(url: string, baseDomain: string, config: CrawlConfig): 
   return allowedDomains.has(hostname);
 }
 
+function hasExcludedExtension(url: string): boolean {
+  const pathname = new URL(url).pathname.toLowerCase();
+  return Array.from(EXCLUDED_EXTENSIONS).some((extension) => pathname.endsWith(extension));
+}
+
 function sortedUnique(values: string[]): string[] {
   return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
 }
@@ -120,6 +189,11 @@ export async function runBfsCrawl(
 
       if (!normalized) {
         skippedUrls.push(makeSkip(href, current.url, nextDepth, SKIP_REASON.INVALID_URL));
+        continue;
+      }
+
+      if (hasExcludedExtension(normalized)) {
+        skippedUrls.push(makeSkip(normalized, current.url, nextDepth, SKIP_REASON.EXCLUDED_RESOURCE_TYPE));
         continue;
       }
 

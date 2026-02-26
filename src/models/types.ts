@@ -3,6 +3,7 @@ export type BrowserName = 'chromium' | 'firefox' | 'webkit';
 export type CrawlSkipReason =
   | 'duplicate_url'
   | 'disallowed_domain'
+  | 'excluded_resource_type'
   | 'invalid_url'
   | 'depth_exceeded'
   | 'max_pages_exceeded';
