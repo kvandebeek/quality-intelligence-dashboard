@@ -277,6 +277,109 @@ function renderStateBox(stateName, reason=''){
 
 function rawPanel(raw){ return `<details><summary>Raw JSON</summary><pre>${raw?JSON.stringify(raw,null,2):MISSING}</pre></details>`; }
 
+const EXPLANATIONS = {
+  'target-summary.json': {
+    what: 'A high-level overview of the results for this specific URL.',
+    why: 'It gives a quick snapshot of overall quality without needing to open every detailed section.',
+    how: ['Look at the overall score or status indicators.', 'Identify whether the run completed successfully.', 'Check environment and run details.', 'Use this as the starting point before diving deeper.']
+  },
+  'a11y-beyond-axe.json': {
+    what: 'An extended accessibility analysis that goes beyond standard automated checks.',
+    why: 'Some accessibility issues are not detected by basic tools. This section highlights deeper risks that may affect users with disabilities.',
+    how: ['Review any flagged issues.', 'Focus on contrast, usability, and structural concerns.', 'Pay attention to items marked as high impact.', 'Consider these findings as potential user experience blockers.']
+  },
+  'accessibility.json': {
+    what: 'An automated accessibility scan of the page.',
+    why: 'Accessibility ensures that people with disabilities can use the website effectively.',
+    how: ['Look at the total number of issues found.', 'Prioritize critical or serious violations.', 'Check recurring issue types.', 'Fewer issues generally indicate better compliance.']
+  },
+  'api-monitoring.json': {
+    what: 'A summary of how backend APIs responded during the test.',
+    why: 'If APIs are slow or failing, the user experience will suffer.',
+    how: ['Check response times.', 'Look for failed or error responses.', 'Identify unstable endpoints.', 'Consistent fast responses are ideal.']
+  },
+  'broken-links.json': {
+    what: 'A scan of links that do not work or return errors.',
+    why: 'Broken links damage user trust and harm SEO.',
+    how: ['Look at the number of broken links.', 'Check which pages contain them.', 'Prioritize fixing links that users click most often.', 'Zero broken links is the goal.']
+  },
+  'core-web-vitals.json': {
+    what: 'Measurements of key performance indicators defined by Google.',
+    why: 'These metrics reflect real user experience, especially loading speed and visual stability.',
+    how: ['Focus on loading speed and visual shift scores.', 'Green values are good, red indicates problems.', 'Large layout shifts often frustrate users.', 'Slow load times may impact search ranking.']
+  },
+  'lighthouse-summary.json': {
+    what: 'A summary of Lighthouse scores across performance, accessibility, SEO, and best practices.',
+    why: 'It provides a balanced quality overview using a widely recognized scoring model.',
+    how: ['Review category scores.', 'Identify the lowest scoring category.', 'Use it as a benchmark over time.', 'Improvements should increase the overall score.']
+  },
+  'memory-profile.json': {
+    what: 'Information about how much memory the page consumes.',
+    why: 'High memory usage can slow down devices and cause crashes.',
+    how: ['Look for unusually high memory values.', 'Compare with previous runs.', 'Large spikes may indicate leaks.', 'Stable memory usage is preferred.']
+  },
+  'network-recommendations.json': {
+    what: 'Suggestions for improving how resources are loaded.',
+    why: 'Optimized resource loading improves speed and reduces bandwidth use.',
+    how: ['Review suggested optimizations.', 'Look for large unused files.', 'Check caching recommendations.', 'Prioritize high-impact suggestions.']
+  },
+  'network-requests.json': {
+    what: 'A detailed list of all network calls made while loading the page.',
+    why: 'Too many or slow requests increase load time.',
+    how: ['Count total requests.', 'Identify slowest requests.', 'Look for large file sizes.', 'Fewer and faster requests are better.']
+  },
+  'performance.json': {
+    what: 'Overall performance timing metrics for the page.',
+    why: 'Slow pages reduce user satisfaction and conversion.',
+    how: ['Check time to first content.', 'Review full load time.', 'Compare against benchmarks.', 'Aim for consistent fast performance.']
+  },
+  'security-scan.json': {
+    what: 'A scan for common security weaknesses.',
+    why: 'Security flaws expose users and the organization to risk.',
+    how: ['Review detected vulnerabilities.', 'Focus on high-severity findings.', 'Ensure HTTPS is properly configured.', 'Address critical risks first.']
+  },
+  'seo-checks.json': {
+    what: 'Checks that determine how well the page is optimized for search engines.',
+    why: 'Poor SEO reduces visibility in search results.',
+    how: ['Verify presence of titles and descriptions.', 'Check structured data.', 'Look for missing metadata.', 'Higher compliance improves discoverability.']
+  },
+  'stability.json': {
+    what: 'An evaluation of runtime errors or crashes during the test.',
+    why: 'Errors degrade reliability and trust.',
+    how: ['Look for console errors.', 'Identify repeated failures.', 'Zero runtime errors is ideal.', 'Frequent errors suggest instability.']
+  },
+  'third-party-risk.json': {
+    what: 'An analysis of external scripts and services used by the page.',
+    why: 'Third-party services can introduce performance and security risks.',
+    how: ['Identify critical external providers.', 'Check performance impact.', 'Look for outdated libraries.', 'Reduce unnecessary dependencies.']
+  },
+  'throttled-run.json': {
+    what: 'Performance results under simulated slower network conditions.',
+    why: 'Not all users have fast internet connections.',
+    how: ['Compare with normal run results.', 'Identify major slowdowns.', 'Check usability under limited bandwidth.', 'Ensure acceptable experience on slower networks.']
+  },
+  'visual-current.png': {
+    what: 'A screenshot of the page during this test run.',
+    why: 'It shows what users actually saw.',
+    how: ['Verify layout correctness.', 'Look for missing content.', 'Check for rendering glitches.', 'Compare with expected design.']
+  },
+  'visual-regression.json': {
+    what: 'A comparison between the current screenshot and a previous baseline.',
+    why: 'It detects unintended visual changes.',
+    how: ['Review highlighted differences.', 'Confirm whether changes were intentional.', 'Pay attention to layout shifts.', 'Investigate unexpected differences.']
+  }
+};
+
+function escapeHtml(v){
+  return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+}
+
+function explanationPanel(tab){
+  const data = EXPLANATIONS[tab];
+  if(!data) return '';
+  return `<details class="explanation-panel"><summary>explanation</summary><div class="explanation-body"><p><strong>What it is:</strong> ${escapeHtml(data.what)}</p><p><strong>Why it matters:</strong> ${escapeHtml(data.why)}</p><p><strong>How to read it:</strong></p><ul>${data.how.map((item)=>`<li>${escapeHtml(item)}</li>`).join('')}</ul></div></details>`;
+}
+
 function fmt(value, unit=''){ const n = toNum(value); if(n===null) return MISSING; const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2)); return `${rounded}${unit ? ` ${unit}` : ''}`; }
 function metric(label, value, unit=''){ return `<div class="kpi"><span>${label}</span><strong>${fmt(value, unit)}</strong></div>`; }
 function textMetric(label, value){ return `<div class="kpi"><span>${label}</span><strong>${safe(value)}</strong></div>`; }
@@ -325,7 +428,7 @@ async function loadTab(id, tab){
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     default: body = '<p>Unsupported section</p>';
   }
-  el.innerHTML = `${head}${body}${rawPanel(raw)}`;
+  el.innerHTML = `${explanationPanel(tab)}${head}${body}${rawPanel(raw)}`;
   logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
   el.querySelectorAll('[data-domain]').forEach((b)=>b.onclick=()=>{state.selectedDomain=b.dataset.domain; state.selectedTab='network-requests.json'; render();});
