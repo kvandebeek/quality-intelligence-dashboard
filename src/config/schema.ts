@@ -8,6 +8,12 @@ const crawlSchema = z.object({
   allowedDomains: z.array(z.string().min(1)).default([])
 });
 
+
+const consentSchema = z.object({
+  enabled: z.boolean().default(true),
+  timeoutMs: z.number().int().positive().default(1500)
+});
+
 export const appConfigSchema = z
   .object({
     browser: z.enum(['chromium', 'firefox', 'webkit']).default('chromium'),
@@ -32,6 +38,10 @@ export const appConfigSchema = z
       maxPages: 50,
       includeExternalDomains: false,
       allowedDomains: []
+    }),
+    consent: consentSchema.default({
+      enabled: true,
+      timeoutMs: 1500
     }),
     elasticsearch: z
       .object({
