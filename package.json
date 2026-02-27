@@ -13,7 +13,8 @@
     "dashboard": "tsx src/dashboard/server.ts",
     "dashboard:cli": "tsx src/dashboard/cli.ts",
     "dashboard:build": "tsc -p tsconfig.dashboard.json && tsx src/dashboard/build.ts",
-    "dashboard:serve": "node dist/dashboard/server.js --static"
+    "dashboard:serve": "node dist/dashboard/server.js --static",
+    "test:playwright": "playwright test"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.2",
