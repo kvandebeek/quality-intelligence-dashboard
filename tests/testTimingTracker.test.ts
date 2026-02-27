@@ -37,4 +37,42 @@ describe('TestTimingTracker', () => {
 
     await rm(outputRoot, { recursive: true, force: true });
   });
+
+  it('prints all test durations with nested steps in summary', async () => {
+    const runId = `run-${Date.now()}-summary`;
+    const tracker = new TestTimingTracker(runId);
+
+    const fastTestReference = tracker.startTest('tests/sample.spec.ts', 'fast test', 0);
+    await tracker.step(fastTestReference, 'fast step', async () => Promise.resolve());
+    tracker.endTest(fastTestReference, 'passed');
+
+    const slowTestReference = tracker.startTest('tests/sample.spec.ts', 'slow test', 0);
+    await tracker.step(slowTestReference, 'slow step', async () => Promise.resolve());
+    tracker.endTest(slowTestReference, 'passed');
+
+    const outputRoot = mkdtempSync(path.join(tmpdir(), 'timing-summary-'));
+    const runRoot = path.join(outputRoot, runId);
+
+    const stdoutChunks: string[] = [];
+    const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdoutChunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      await tracker.persist(runRoot);
+    } finally {
+      process.stdout.write = originalStdoutWrite;
+      await rm(outputRoot, { recursive: true, force: true });
+    }
+
+    const stdoutOutput = stdoutChunks.join('');
+    expect(stdoutOutput).toContain('All test durations:');
+    expect(stdoutOutput).toContain('fast test (tests/sample.spec.ts)');
+    expect(stdoutOutput).toContain('slow test (tests/sample.spec.ts)');
+    expect(stdoutOutput).toContain('Steps:');
+    expect(stdoutOutput).toContain('fast step');
+    expect(stdoutOutput).toContain('slow step');
+  });
 });

@@ -237,6 +237,17 @@ PASS    1.23s    target-summary › shows run id (tests/target-summary.spec.ts)
 FAIL    8.91s    a11y-beyond-axe › computes contrast score (tests/a11y.spec.ts) retry=1
 ```
 
+Summary now includes an all-tests breakdown (sorted by duration) with nested step timings:
+
+```text
+All test durations:
+  - 97.32s   Start URL (src/core/runEngine.ts) SLOW
+    Steps:
+      * 0.65s    Create browser context
+      * 93.10s   Navigate to target URL
+      * 2.84s    Capture accessibility scan
+```
+
 Optional step lines (`LOG_TEST_STEPS=true`):
 
 ```text
