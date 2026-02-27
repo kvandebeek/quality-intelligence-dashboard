@@ -7,6 +7,7 @@ import { parseArgs } from 'node:util';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { buildDashboardIndexWithLogger, resolveRunPath, SECTION_FILES, type ArtifactStore, type DashboardIndex } from './data.js';
+import { SECTION_DEFINITIONS, SECTION_GROUPS } from './sectionCatalog.js';
 import { createLogger, newOperationId, sanitizeForDiagnostics, type LogContext, type LogLevel } from './logging.js';
 
 const execFileAsync = promisify(execFile);
@@ -120,6 +121,12 @@ export function startDashboardServer(options: ServerOptions): http.Server {
         await ensureIndex();
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         response.end(JSON.stringify(indexState));
+        return;
+      }
+
+      if (requestUrl.pathname === '/api/sections') {
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ order: SECTION_FILES, categories: SECTION_GROUPS, definitions: SECTION_DEFINITIONS }));
         return;
       }
 
