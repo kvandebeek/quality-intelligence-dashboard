@@ -377,7 +377,7 @@ function escapeHtml(v){
 function explanationPanel(tab){
   const data = EXPLANATIONS[tab];
   if(!data) return '';
-  return `<details class="explanation-panel"><summary>explanation</summary><div class="explanation-body"><p><strong>What it is:</strong> ${escapeHtml(data.what)}</p><p><strong>Why it matters:</strong> ${escapeHtml(data.why)}</p><p><strong>How to read it:</strong></p><ul>${data.how.map((item)=>`<li>${escapeHtml(item)}</li>`).join('')}</ul></div></details>`;
+  return `<details class="explanation-panel"><summary>Explanation</summary><div class="explanation-body"><table class="explanation-table"><tbody><tr><th>What it is</th><td>${escapeHtml(data.what)}</td></tr><tr><th>Why it matters</th><td>${escapeHtml(data.why)}</td></tr><tr><th>How to read</th><td><ul>${data.how.map((item)=>`<li>${escapeHtml(item)}</li>`).join('')}</ul></td></tr></tbody></table></div></details>`;
 }
 
 function fmt(value, unit=''){ const n = toNum(value); if(n===null) return MISSING; const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2)); return `${rounded}${unit ? ` ${unit}` : ''}`; }

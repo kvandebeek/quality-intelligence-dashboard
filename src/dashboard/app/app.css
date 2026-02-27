@@ -30,6 +30,11 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px
 .slow{background:rgba(239,106,106,0.12)}
 .state{padding:10px;border-radius:8px;margin-bottom:10px}.state.missing{background:#3a2f2f}.state.na{background:#3b3630}.state.error{background:#462f37}
 details{margin-top:12px}pre{overflow:auto;max-height:300px;background:#0f1218;padding:8px;border-radius:8px}
+.explanation-panel{margin:16px 0 12px}
+.explanation-panel summary{font-weight:600}
+.explanation-body{margin-top:12px}
+.explanation-table th{width:170px;color:var(--muted);font-weight:600}
+.explanation-table ul{margin:0;padding-left:18px}
 .image-wrap{overflow:auto;max-height:70vh}.image-wrap img{max-width:100%}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}.cards article{background:var(--panel2);padding:10px;border:1px solid var(--line);border-radius:8px}
 .link{border:0;background:none;color:#8cb4ff;cursor:pointer;padding:0}
