@@ -385,6 +385,15 @@ async function loadTab(id, tab){
     case 'throttled-run.json': body = renderThrottled(unwrapped.payload); break;
     case 'visual-current.png': body = payload.summary?.image ? `<div class="image-wrap"><img src="${payload.summary.image}"></div>` : `<p>${MISSING}</p>`; break;
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
+    case 'client-errors.json': body = renderClientErrors(unwrapped.payload); break;
+    case 'ux-friction.json': body = renderUxFriction(unwrapped.payload); break;
+    case 'memory-leaks.json': body = renderMemoryLeaks(unwrapped.payload); break;
+    case 'cache-analysis.json': body = renderCacheAnalysis(unwrapped.payload); break;
+    case 'third-party-resilience.json': body = renderThirdPartyResilience(unwrapped.payload); break;
+    case 'privacy-audit.json': body = renderPrivacyAudit(unwrapped.payload); break;
+    case 'runtime-security.json': body = renderRuntimeSecurity(unwrapped.payload); break;
+    case 'dependency-risk.json': body = renderDependencyRisk(unwrapped.payload); break;
+    case 'regression-summary.json': body = renderRegressionSummary(unwrapped.payload, selected); break;
     default: body = '<p>Unsupported section</p>';
   }
   el.innerHTML = `${explanationPanel(tab)}${head}${body}${rawPanel(raw, tab)}`;
@@ -428,6 +437,20 @@ const renderTarget = (r={}, m={}, indexMeta={})=>`<div class="kpis">${textMetric
 const renderThirdParty = (r={})=>{const rows=r.domains||r; const arr=Array.isArray(rows)?rows:Object.entries(rows||{}).map(([d,v])=>({domain:d,...v})); return `<table><tr><th>Domain</th><th>Requests</th><th>Bytes</th><th>Avg duration</th><th>Tracker</th></tr>${arr.slice(0,150).map(x=>`<tr><td><button class="link" data-domain="${x.domain}">${x.domain}</button></td><td>${safe(x.requests ?? x.requestCount ?? 0)}</td><td>${fmt(x.transferSize ?? x.bytes,'bytes')}</td><td>${fmt(x.avgDurationMs ?? x.avgDuration,'ms')}</td><td>${x.trackerHeuristic?'Yes':'No'}</td></tr>`).join('')}</table>`;};
 const renderThrottled = (r={})=>`<div class="kpis">${textMetric('Available',r.available===false?'Not executed':'Yes')}${metric('Baseline load',r.baselineLoadMs,'ms')}${metric('Throttled load',r.throttledLoadMs,'ms')}${metric('Degradation',r.degradationFactor,'x')}</div>`;
 const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound)}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed)}</div>${r.baselineFound===false?'<p class="inline-hint">No baseline exists yet. Create one to enable visual change detection.</p><button>Create baseline from visual-current.png</button>':''}`;
+
+const renderClientErrors = (r={})=>`<div class="kpis">${metric('Total errors',r.totalErrors)}${metric('Severity score',r.severityScore)}${metric('Console errors',r.consoleErrors)}${metric('Unhandled rejections',r.unhandledRejections)}</div><table><tr><th>Message</th><th>Count</th></tr>${(r.topErrors||[]).slice(0,20).map((item)=>`<tr><td>${safe(item.message)}</td><td>${safe(item.count)}</td></tr>`).join('')}</table>`;
+const renderUxFriction = (r={})=>`<div class="kpis">${metric('UX score',r.uxScore)}${metric('Rage clicks',r.rageClicks)}${metric('Dead clicks',r.deadClicks)}${metric('Long tasks',r.longTasks)}${metric('Layout shifts',r.layoutShifts)}</div><table><tr><th>Selector</th><th>Count</th></tr>${(r.topSelectors||[]).map((item)=>`<tr><td>${safe(item.selector)}</td><td>${safe(item.count)}</td></tr>`).join('')}</table>`;
+const renderMemoryLeaks = (r={})=>`<div class="kpis">${textMetric('Mode',r.mode)}${metric('Initial heap',r.initialHeapMB,'MB')}${metric('Final heap',r.finalHeapMB,'MB')}${metric('Growth',r.growthMB,'MB')}${textMetric('Leak risk',r.leakRisk)}</div><ul>${(r.evidence||[]).map((line)=>`<li>${safe(line)}</li>`).join('')}</ul>`;
+const renderCacheAnalysis = (r={})=>`<div class="kpis">${metric('Cache score',r.cacheScore)}${metric('Improvement',r.improvementPercent,'%')}${metric('Cold LCP',r.cold?.lcpMs,'ms')}${metric('Warm LCP',r.warm?.lcpMs,'ms')}</div><table><tr><th>Asset</th><th>Cache-Control</th></tr>${(r.poorlyCachedAssets||[]).slice(0,40).map((item)=>`<tr><td>${safe(item.url)}</td><td>${safe(item.cacheControl)}</td></tr>`).join('')}</table>`;
+const renderThirdPartyResilience = (r={})=>`<div class="kpis">${textMetric('Functional breakage',r.functionalBreakage)}${textMetric('Layout impact',r.layoutImpact)}${metric('Resilience score',r.resilienceScore)}</div><p>Blocked domains: ${(r.blockedDomains||[]).join(', ') || 'None'}</p>`;
+const renderPrivacyAudit = (r={})=>`<div class="kpis">${textMetric('Consent banner detected',r.consentBannerDetected)}${metric('Cookies before consent',(r.cookiesBeforeConsent||[]).length)}${metric('Insecure cookies',(r.insecureCookies||[]).length)}${metric('Trackers before consent',(r.thirdPartyTrackers||[]).length)}${textMetric('GDPR risk',r.gdprRisk)}</div>`;
+const renderRuntimeSecurity = (r={})=>`<div class="kpis">${metric('Security score',r.securityScore)}${textMetric('CSP strength',r.cspStrength)}${metric('Missing headers',(r.missingHeaders||[]).length)}${metric('Mixed content',(r.mixedContent||[]).length)}${metric('Eval signals',r.evalSignals)}</div>`;
+const renderDependencyRisk = (r={})=>`<div class="kpis">${metric('Dependency risk score',r.dependencyRiskScore)}${metric('Third-party domains',(r.domainInventory||[]).length)}</div><table><tr><th>Domain</th><th>Category</th><th>Scripts</th></tr>${(r.domainInventory||[]).slice(0,50).map((item)=>`<tr><td>${safe(item.domain)}</td><td>${safe(item.category)}</td><td>${safe(item.scripts)}</td></tr>`).join('')}</table>`;
+const renderRegressionSummary = (r={})=> {
+  if(r.baseline === 'no baseline') return `<div class="state na">No baseline available yet. Run again to enable comparisons.</div>`;
+  return `<div class="kpis">${textMetric('Compared run',r.comparedRun)}${metric('OK',r.summary?.ok ?? 0)}${metric('Watch',r.summary?.watch ?? 0)}${metric('Elevated',r.summary?.elevated ?? 0)}</div><table><tr><th>Target</th><th>Risk</th><th>Client error Δ</th><th>Security Δ</th></tr>${(r.targets||[]).map((item)=>`<tr><td>${safe(item.targetName)}</td><td>${safe(item.riskLevel)}</td><td>${safe(item.deltas?.clientErrorSeverityDelta)}</td><td>${safe(item.deltas?.runtimeSecurityDelta)}</td></tr>`).join('')}</table>`;
+};
+
 
 logEvent('INFO','UI startup',{view:'startup'});
 window.addEventListener('hashchange', ()=>{

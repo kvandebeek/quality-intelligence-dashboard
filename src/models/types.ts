@@ -130,6 +130,54 @@ export interface ElasticConfig {
   indexPrefix?: string;
 }
 
+
+
+export interface AssuranceModulesConfig {
+  enabled: {
+    clientErrors: boolean;
+    uxFriction: boolean;
+    memoryLeaks: boolean;
+    cacheAnalysis: boolean;
+    thirdPartyResilience: boolean;
+    privacyAudit: boolean;
+    runtimeSecurity: boolean;
+    dependencyRisk: boolean;
+    regressionDelta: boolean;
+  };
+  clientErrors: {
+    topErrorsLimit: number;
+    ignoreMessages: string[];
+  };
+  ux: {
+    rageClickWindowMs: number;
+    rageClickThreshold: number;
+    deadClickWindowMs: number;
+  };
+  memory: {
+    interactionLoops: number;
+    growthThresholdMB: number;
+  };
+  cache: {
+    minStaticTtlSeconds: number;
+  };
+  thirdPartyResilience: {
+    mode: 'trackers-only' | 'all-third-party';
+    defaultBlocklist: string[];
+  };
+  privacy: {
+    consentSelectors: string[];
+    mode: 'pre-consent' | 'post-consent';
+    trackerDomains: string[];
+  };
+  dependencyRisk: {
+    categoryRules: Record<string, string>;
+  };
+  regression: {
+    elevatedThreshold: number;
+    watchThreshold: number;
+  };
+}
+
 export interface AppConfig {
   browser: BrowserName;
   headless: boolean;
@@ -145,4 +193,5 @@ export interface AppConfig {
     timeoutMs: number;
   };
   elasticsearch: ElasticConfig;
+  assuranceModules: AssuranceModulesConfig;
 }

@@ -28,7 +28,16 @@ export const SECTION_FILES = [
   'third-party-risk.json',
   'seo-checks.json',
   'visual-current.png',
-  'visual-regression.json'
+  'visual-regression.json',
+  'client-errors.json',
+  'ux-friction.json',
+  'memory-leaks.json',
+  'cache-analysis.json',
+  'third-party-resilience.json',
+  'privacy-audit.json',
+  'runtime-security.json',
+  'dependency-risk.json',
+  'regression-summary.json'
 ] as const;
 
 export type SectionFile = (typeof SECTION_FILES)[number];
@@ -295,6 +304,43 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
   if (section === 'lighthouse-summary.json') {
     if (obj.available === false) return { state: 'not_available', raw, summary: { reason: obj.reason ?? 'Not available' } };
     return { state: 'ok', raw, summary: { performance: toNum(obj.performance), accessibility: toNum(obj.accessibility), seo: toNum(obj.seo) } };
+  }
+
+  if (section === 'client-errors.json') {
+    const score = toNum(obj.severityScore) ?? 100;
+    return { state: score < 70 ? 'issues' : 'ok', raw, summary: { severityScore: score, totalErrors: toNum(obj.totalErrors) ?? 0 } };
+  }
+  if (section === 'ux-friction.json') {
+    const score = toNum(obj.uxScore) ?? 100;
+    return { state: score < 75 ? 'issues' : 'ok', raw, summary: { uxScore: score, rageClicks: toNum(obj.rageClicks) ?? 0, deadClicks: toNum(obj.deadClicks) ?? 0 } };
+  }
+  if (section === 'memory-leaks.json') {
+    const risk = String(obj.leakRisk ?? 'unknown');
+    return { state: risk === 'high' || risk === 'medium' ? 'issues' : 'ok', raw, summary: { leakRisk: risk, growthMB: toNum(obj.growthMB) } };
+  }
+  if (section === 'cache-analysis.json') {
+    const score = toNum(obj.cacheScore) ?? 0;
+    return { state: score < 60 ? 'issues' : 'ok', raw, summary: { cacheScore: score, improvementPercent: toNum(obj.improvementPercent) ?? 0 } };
+  }
+  if (section === 'third-party-resilience.json') {
+    const broken = obj.functionalBreakage === true;
+    return { state: broken ? 'issues' : 'ok', raw, summary: { resilienceScore: toNum(obj.resilienceScore) ?? 0, functionalBreakage: broken } };
+  }
+  if (section === 'privacy-audit.json') {
+    const risk = String(obj.gdprRisk ?? 'low');
+    return { state: risk === 'high' || risk === 'medium' ? 'issues' : 'ok', raw, summary: { gdprRisk: risk, trackers: Array.isArray(obj.thirdPartyTrackers) ? obj.thirdPartyTrackers.length : 0 } };
+  }
+  if (section === 'runtime-security.json') {
+    const score = toNum(obj.securityScore) ?? 100;
+    return { state: score < 70 ? 'issues' : 'ok', raw, summary: { securityScore: score, missingHeaders: Array.isArray(obj.missingHeaders) ? obj.missingHeaders.length : 0 } };
+  }
+  if (section === 'dependency-risk.json') {
+    const score = toNum(obj.dependencyRiskScore) ?? 100;
+    return { state: score < 70 ? 'issues' : 'ok', raw, summary: { dependencyRiskScore: score } };
+  }
+  if (section === 'regression-summary.json') {
+    if (obj.baseline === 'no baseline') return { state: 'not_available', raw, summary: { reason: obj.message ?? 'No baseline' } };
+    return { state: 'ok', raw, summary: asRecord(obj.summary) };
   }
 
   const issueHint = toNum(obj.issueCount ?? obj.errors ?? obj.failures ?? obj.failed ?? obj.regressions ?? obj.riskCount);

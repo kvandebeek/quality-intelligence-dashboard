@@ -43,7 +43,17 @@ export const artifactSchemas = {
   thirdPartyRisk: wrapped(z.array(z.object({ domain: z.string(), requests: z.number(), transferSize: z.number(), avgDurationMs: z.number(), trackerHeuristic: z.boolean() }))),
   accessibilityBeyondAxe: wrapped(z.object({ keyboardReachable: z.boolean(), possibleFocusTrap: z.boolean(), contrastSimulationScore: z.number().nullable(), contrastSimulationScoreReason: z.string().nullable().optional() })),
   stability: wrapped(z.object({ iterations: z.number(), loadEventSamples: z.array(z.number()), stdDevLoadMs: z.number(), coefficientOfVariation: z.number(), unstable: z.boolean() })),
-  memory: wrapped(z.object({ samples: z.array(z.number()), growth: z.number().nullable() }))
+  memory: wrapped(z.object({ samples: z.array(z.number()), growth: z.number().nullable() })),
+
+  clientErrors: wrapped(z.object({ totalErrors: z.number(), severityScore: z.number(), uncaughtExceptions: z.number(), unhandledRejections: z.number(), consoleErrors: z.number(), consoleWarnings: z.number(), failedRequests: z.array(z.object({ url: z.string(), type: z.string(), reason: z.string() })), topErrors: z.array(z.object({ message: z.string(), count: z.number(), example: z.string().optional() })) })),
+  uxFriction: wrapped(z.object({ rageClicks: z.number(), deadClicks: z.number(), longTasks: z.number(), layoutShifts: z.number(), topSelectors: z.array(z.object({ selector: z.string(), count: z.number() })), uxScore: z.number() })),
+  memoryLeaks: wrapped(z.object({ available: z.boolean(), mode: z.enum(['cdp', 'performance.memory', 'not_supported']), initialHeapMB: z.number().nullable(), finalHeapMB: z.number().nullable(), growthMB: z.number().nullable(), leakRisk: z.enum(['low', 'medium', 'high', 'unknown']), evidence: z.array(z.string()) })),
+  cacheAnalysis: wrapped(z.object({ cold: z.object({ ttfbMs: z.number().nullable(), fcpMs: z.number().nullable(), lcpMs: z.number().nullable() }), warm: z.object({ ttfbMs: z.number().nullable(), fcpMs: z.number().nullable(), lcpMs: z.number().nullable() }), improvementPercent: z.number(), cacheScore: z.number(), poorlyCachedAssets: z.array(z.object({ url: z.string(), cacheControl: z.string(), expires: z.string(), etag: z.string(), lastModified: z.string() })) })),
+  thirdPartyResilience: wrapped(z.object({ blockedDomains: z.array(z.string()), functionalBreakage: z.boolean(), layoutImpact: z.enum(['none', 'low', 'moderate', 'high']), resilienceScore: z.number() })),
+  privacyAudit: wrapped(z.object({ consentBannerDetected: z.boolean(), cookiesBeforeConsent: z.array(z.object({ name: z.string(), value: z.string() })), insecureCookies: z.array(z.object({ name: z.string(), issue: z.string() })), thirdPartyTrackers: z.array(z.string()), gdprRisk: z.enum(['low', 'medium', 'high']) })),
+  runtimeSecurity: wrapped(z.object({ missingHeaders: z.array(z.string()), cspStrength: z.enum(['none', 'weak', 'ok', 'strong']), mixedContent: z.array(z.string()), inlineScripts: z.number(), evalSignals: z.number(), securityScore: z.number() })),
+  dependencyRisk: wrapped(z.object({ domainInventory: z.array(z.object({ domain: z.string(), category: z.string(), scripts: z.number(), iframes: z.number(), images: z.number(), fonts: z.number() })), dependencyRiskScore: z.number(), topRiskyDependencies: z.array(z.object({ domain: z.string(), category: z.string(), score: z.number() })) }))
+
 };
 
 export function writeValidatedArtifact<K extends keyof typeof artifactSchemas>(

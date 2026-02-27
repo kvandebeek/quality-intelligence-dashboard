@@ -8,11 +8,63 @@ const crawlSchema = z.object({
   allowedDomains: z.array(z.string().min(1)).default([])
 });
 
-
 const consentSchema = z.object({
   enabled: z.boolean().default(true),
   timeoutMs: z.number().int().positive().default(1500)
 });
+
+const assuranceModulesSchema = z.object({
+  enabled: z.object({
+    clientErrors: z.boolean().default(true),
+    uxFriction: z.boolean().default(true),
+    memoryLeaks: z.boolean().default(true),
+    cacheAnalysis: z.boolean().default(true),
+    thirdPartyResilience: z.boolean().default(true),
+    privacyAudit: z.boolean().default(true),
+    runtimeSecurity: z.boolean().default(true),
+    dependencyRisk: z.boolean().default(true),
+    regressionDelta: z.boolean().default(true)
+  }).default({}),
+  clientErrors: z.object({
+    topErrorsLimit: z.number().int().positive().default(10),
+    ignoreMessages: z.array(z.string()).default([])
+  }).default({}),
+  ux: z.object({
+    rageClickWindowMs: z.number().int().positive().default(1200),
+    rageClickThreshold: z.number().int().min(2).default(3),
+    deadClickWindowMs: z.number().int().positive().default(700)
+  }).default({}),
+  memory: z.object({
+    interactionLoops: z.number().int().positive().default(5),
+    growthThresholdMB: z.number().positive().default(8)
+  }).default({}),
+  cache: z.object({
+    minStaticTtlSeconds: z.number().int().nonnegative().default(3600)
+  }).default({}),
+  thirdPartyResilience: z.object({
+    mode: z.enum(['trackers-only', 'all-third-party']).default('trackers-only'),
+    defaultBlocklist: z.array(z.string()).default(['google-analytics.com', 'googletagmanager.com', 'doubleclick.net'])
+  }).default({}),
+  privacy: z.object({
+    consentSelectors: z.array(z.string()).default(['[id*="consent"]', '[class*="cookie"]', '[aria-label*="consent"]']),
+    mode: z.enum(['pre-consent', 'post-consent']).default('pre-consent'),
+    trackerDomains: z.array(z.string()).default(['google-analytics.com', 'googletagmanager.com', 'doubleclick.net', 'facebook.net'])
+  }).default({}),
+  dependencyRisk: z.object({
+    categoryRules: z.record(z.string(), z.string()).default({
+      'google-analytics': 'analytics',
+      'googletagmanager': 'analytics',
+      'doubleclick': 'ads',
+      'cdn': 'cdn',
+      'stripe': 'payment',
+      'intercom': 'chat'
+    })
+  }).default({}),
+  regression: z.object({
+    elevatedThreshold: z.number().int().min(1).default(35),
+    watchThreshold: z.number().int().min(1).default(15)
+  }).default({})
+}).default({});
 
 export const appConfigSchema = z
   .object({
@@ -52,7 +104,8 @@ export const appConfigSchema = z
         password: z.string().optional(),
         indexPrefix: z.string().default('quality-signal')
       })
-      .default({ enabled: false })
+      .default({ enabled: false }),
+    assuranceModules: assuranceModulesSchema
   })
   .superRefine((value, ctx) => {
     if (value.crawl.enabled && value.crawl.allowedDomains.length === 0) {
