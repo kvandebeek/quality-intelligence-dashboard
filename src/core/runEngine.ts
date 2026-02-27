@@ -82,30 +82,50 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     }
 
     const meta: ArtifactMeta = { runId, url: target.url, urlSlug, timestamp, toolVersion: TOOL_VERSION, schemaVersion: SCHEMA_VERSION };
-    const [perfMetrics, accessibility, hrefs, coreWebVitals] = await timing.step(testReference, 'Collect core artifacts', async () => Promise.all([collectPerformance(page, target.url), collectAccessibility(page, target.url), scrapePageLinks(page), collectCoreWebVitals(page)]));
-  const memorySamples = await page.evaluate(() => {
+    const runArtifactStep = async <T>(stepName: string, operation: () => Promise<T>): Promise<T> => {
+      return timing.step(testReference, stepName, async () => {
+        try {
+          return await operation();
+        } catch (error) {
+          const details = error instanceof Error ? error.stack ?? error.message : String(error);
+          process.stderr.write(`Artifact step failed [${stepName}] for ${target.name}: ${details}\n`);
+          throw error;
+        }
+      });
+    };
+
+    const [perfMetrics, accessibility, hrefs, coreWebVitals] = await timing.step(testReference, 'Collect core artifacts', async () => {
+      const performancePromise = runArtifactStep('Artifact: Performance metrics', async () => collectPerformance(page, target.url));
+      const accessibilityPromise = runArtifactStep('Artifact: Accessibility', async () => collectAccessibility(page, target.url));
+      const pageLinksPromise = runArtifactStep('Artifact: Page links', async () => scrapePageLinks(page));
+      const webVitalsPromise = runArtifactStep('Artifact: Core Web Vitals', async () => collectCoreWebVitals(page));
+
+      return Promise.all([performancePromise, accessibilityPromise, pageLinksPromise, webVitalsPromise]);
+    });
+
+    const memorySamples = await page.evaluate(() => {
     const value = (window.performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize;
     return value ? [value] : [];
-  });
-
-  const loadSamples: number[] = [];
-  const loadSampleTimestamps: string[] = [];
-  const iterations = 5;
-  for (let i = 0; i < iterations; i += 1) {
-    await page.goto(target.url, { waitUntil: 'load' });
-    const loadEventMs = await page.evaluate(() => {
-      const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-      return nav ? Math.round(nav.loadEventEnd - nav.startTime) : 0;
     });
-    loadSamples.push(loadEventMs);
-    loadSampleTimestamps.push(new Date().toISOString());
-    const heap = await page.evaluate(() => (window.performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null);
-    if (typeof heap === 'number') memorySamples.push(heap);
-  }
+
+    const loadSamples: number[] = [];
+    const loadSampleTimestamps: string[] = [];
+    const iterations = 5;
+    for (let i = 0; i < iterations; i += 1) {
+      await page.goto(target.url, { waitUntil: 'load' });
+      const loadEventMs = await page.evaluate(() => {
+        const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+        return nav ? Math.round(nav.loadEventEnd - nav.startTime) : 0;
+      });
+      loadSamples.push(loadEventMs);
+      loadSampleTimestamps.push(new Date().toISOString());
+      const heap = await page.evaluate(() => (window.performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null);
+      if (typeof heap === 'number') memorySamples.push(heap);
+    }
 
 
-  const requests = ENABLE_HAR_TESTS ? parseHar(harPath) : [];
-  const recommendations = recommendNetworkOptimizations(requests);
+    const requests = ENABLE_HAR_TESTS ? parseHar(harPath) : [];
+    const recommendations = recommendNetworkOptimizations(requests);
 
   const securityHeaders = response?.headers() ?? {};
   const securityScan: Record<string, boolean | string | null> = {
