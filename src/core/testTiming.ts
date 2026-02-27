@@ -236,6 +236,7 @@ export class TestTimingTracker {
 
   private printSummary(artifact: TestTimingArtifact, outputPath: string): void {
     const slowest = [...artifact.tests].sort((a, b) => b.durationMs - a.durationMs).slice(0, this.logSlowestN);
+    const allTestsByDuration = [...artifact.tests].sort((a, b) => b.durationMs - a.durationMs);
 
     process.stdout.write('\n=== Test Timing Summary ===\n');
     process.stdout.write(`Run ID: ${artifact.runId}\n`);
@@ -249,6 +250,21 @@ export class TestTimingTracker {
       for (const test of slowest) {
         const slowSuffix = test.isSlow ? ' SLOW' : '';
         process.stdout.write(`  - ${pad(toSeconds(test.durationMs), 8)} ${test.testName} (${test.file})${slowSuffix}\n`);
+      }
+    }
+
+    if (allTestsByDuration.length > 0) {
+      process.stdout.write('All test durations:\n');
+      for (const test of allTestsByDuration) {
+        const slowSuffix = test.isSlow ? ' SLOW' : '';
+        process.stdout.write(`  - ${pad(toSeconds(test.durationMs), 8)} ${test.testName} (${test.file})${slowSuffix}\n`);
+
+        if (test.steps.length > 0) {
+          process.stdout.write('    Steps:\n');
+          for (const step of test.steps) {
+            process.stdout.write(`      * ${pad(toSeconds(step.durationMs), 8)} ${step.name}\n`);
+          }
+        }
       }
     }
     process.stdout.write('===========================\n\n');
