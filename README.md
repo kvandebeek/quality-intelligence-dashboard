@@ -101,67 +101,52 @@ See [DIAGNOSTICS.md](./DIAGNOSTICS.md) for field definitions and troubleshooting
 
 ## Test Timing & Logging
 
-Test timing is captured during `quality-signal run` execution (the Playwright-based runner in `src/core/runEngine.ts`).
-No test-file changes are required.
+Playwright test timing is now captured by a dedicated custom reporter that runs alongside existing reporters (`list` + timing reporter). The reporter is configured in `playwright.config.ts` and writes a structured artifact for each run.
 
 ### What gets measured
 
-- **Per target/test execution**: file, test name, status (`passed|failed|skipped|timedOut`), retry index, start/end timestamps, duration, `isSlow`.
-- **Per logical step**: reusable wrapper timing for key pipeline stages (create context/page, navigation, artifact collection, summary write, context close).
-- **Suite/run timing**: total start/end, total duration, and pass/fail/skip counts.
+- **Per test**: file, title, status (`passed|failed|skipped|timedOut`), retry index, start/end timestamps, duration, and `isSlow`.
+- **Per step**: each `test.step()` block with start/end timestamps, duration, and parent test reference.
+- **Per suite run**: suite start/end, total duration, total tests, passed/failed/skipped counts.
 
-### Console output
+### Output artifacts
 
-A line is emitted when each test/target completes:
+- Path: `artifacts/<runId>/test-timing.json`
+- `runId` is generated once per run.
+- JSON is the source of truth for both persistence and console output.
 
-```text
-PASS    1.23s    Start URL (src/core/runEngine.ts)
-FAIL    8.91s    Crawled Page 3 (src/core/runEngine.ts)
-```
-
-Optional per-step lines are shown when `LOG_TEST_STEPS=true`.
-
-At run end, a summary block prints total duration, test counts, configured slow threshold, and slowest `N` tests.
-
-### JSON artifact
-
-The run writes:
-
-- `artifacts/<runId>/test-timing.json` (when `outputDir` is default `artifacts`)
-- otherwise: `<outputDir>/<runId>/test-timing.json`
-
-Example schema:
+Example JSON:
 
 ```json
 {
-  "runId": "20260227T125011Z-chromium-i1",
+  "runId": "1740652739012",
   "suite": {
-    "startTime": "2026-02-27T12:50:11.114Z",
-    "endTime": "2026-02-27T12:50:26.117Z",
-    "durationMs": 15003,
-    "totalTests": 2,
-    "passed": 1,
+    "startTime": "2026-02-27T12:11:59.013Z",
+    "endTime": "2026-02-27T12:12:24.230Z",
+    "durationMs": 25217,
+    "totalTests": 3,
+    "passed": 2,
     "failed": 1,
     "skipped": 0
   },
   "tests": [
     {
-      "reference": "src/core/runEngine.ts::Start URL#0",
-      "file": "src/core/runEngine.ts",
-      "testName": "Start URL",
-      "status": "passed",
-      "retry": 0,
-      "startTime": "2026-02-27T12:50:11.121Z",
-      "endTime": "2026-02-27T12:50:15.121Z",
-      "durationMs": 4000,
-      "isSlow": false,
+      "id": "abc#0",
+      "file": "tests/a11y.spec.ts",
+      "testName": "a11y-beyond-axe › computes contrast score",
+      "status": "failed",
+      "retry": 1,
+      "startTime": "2026-02-27T12:12:01.100Z",
+      "endTime": "2026-02-27T12:12:10.010Z",
+      "durationMs": 8910,
+      "isSlow": true,
       "steps": [
         {
-          "name": "Navigate to target URL",
-          "startTime": "2026-02-27T12:50:11.221Z",
-          "endTime": "2026-02-27T12:50:11.721Z",
-          "durationMs": 500,
-          "parentTestReference": "src/core/runEngine.ts::Start URL#0"
+          "name": "Navigate to target",
+          "startTime": "2026-02-27T12:12:01.120Z",
+          "endTime": "2026-02-27T12:12:01.570Z",
+          "durationMs": 450,
+          "parentTestId": "abc#1"
         }
       ]
     }
@@ -169,14 +154,41 @@ Example schema:
 }
 ```
 
-### Environment variables
+### Live console output
 
-- `SLOW_TEST_THRESHOLD_MS` (default `5000`)
-- `LOG_TEST_STEPS` (default `false`)
-- `LOG_SLOWEST_N` (default `10`)
+Per-test line (always):
 
-### Extension points
+```text
+PASS    1.23s    target-summary › shows run id (tests/target-summary.spec.ts)
+FAIL    8.91s    a11y-beyond-axe › computes contrast score (tests/a11y.spec.ts) retry=1
+```
 
-- The JSON model is stable and dashboard-friendly (`runId`, `suite`, `tests`, `steps`).
-- Future trend/regression jobs can diff durations by `file + testName` and aggregate over historical runs.
+Optional step lines (`LOG_TEST_STEPS=true`):
 
+```text
+PASS    2.01s    core-web-vitals › collects metrics (tests/cwv.spec.ts)
+  STEP 0.45s     Navigate to target
+  STEP 0.32s     Collect metrics
+  STEP 1.10s     Save artifacts
+```
+
+End-of-run summary includes:
+
+- total suite duration
+- total tests
+- passed/failed/skipped counts
+- slow test threshold
+- slowest `N` tests (`LOG_SLOWEST_N`, default 10)
+
+### Environment configuration
+
+- `SLOW_TEST_THRESHOLD_MS` (default: `5000`)
+- `LOG_TEST_STEPS` (default: `false`)
+- `LOG_SLOWEST_N` (default: `10`)
+
+### Architecture and extension points
+
+- The reporter centralizes timing capture in one place, so existing tests require no modification.
+- The JSON schema is stable and dashboard-friendly (`runId`, `suite`, `tests`, `steps`), allowing ingestion and historical comparisons later.
+- Future regressions/trend detection can read `artifacts/*/test-timing.json` and compute deltas by `file + testName`.
+- Slow test detection is threshold-based and environment-configurable to support CI and local tuning.
