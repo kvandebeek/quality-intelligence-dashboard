@@ -10,27 +10,7 @@ export function resolveRunPath(options: RunPathOptions): string {
 
 type JsonValue = Record<string, unknown> | unknown[];
 
-type SectionFile =
-  | 'a11y-beyond-axe.json'
-  | 'accessibility.json'
-  | 'api-monitoring.json'
-  | 'broken-links.json'
-  | 'core-web-vitals.json'
-  | 'lighthouse-summary.json'
-  | 'memory-profile.json'
-  | 'network-recommendations.json'
-  | 'network-requests.json'
-  | 'performance.json'
-  | 'security-scan.json'
-  | 'seo-checks.json'
-  | 'stability.json'
-  | 'target-summary.json'
-  | 'third-party-risk.json'
-  | 'throttled-run.json'
-  | 'visual-regression.json'
-  | 'visual-current.png';
-
-export const SECTION_FILES: SectionFile[] = [
+export const SECTION_FILES = [
   'a11y-beyond-axe.json',
   'accessibility.json',
   'api-monitoring.json',
@@ -49,7 +29,9 @@ export const SECTION_FILES: SectionFile[] = [
   'throttled-run.json',
   'visual-current.png',
   'visual-regression.json'
-];
+] as const;
+
+export type SectionFile = (typeof SECTION_FILES)[number];
 
 export interface ValidationEntry { scope: 'global' | 'url'; id: string; found: string[]; missing: string[] }
 

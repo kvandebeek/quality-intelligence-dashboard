@@ -1,16 +1,22 @@
 const app = document.getElementById('app');
 
-const SECTION_ORDER = [
-  'target-summary.json','a11y-beyond-axe.json','accessibility.json','api-monitoring.json','broken-links.json','core-web-vitals.json','lighthouse-summary.json','memory-profile.json','network-recommendations.json','network-requests.json','performance.json','security-scan.json','seo-checks.json','stability.json','third-party-risk.json','throttled-run.json','visual-current.png','visual-regression.json'
-];
+const CATEGORY_STATE_KEY = 'qic-category-state';
+const INFO_STATE_KEY = 'qic-info-panel-state';
+
+function loadSessionState(key){
+  try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; }
+}
 
 const state = {
   index: null,
+  sections: null,
   selectedId: null,
   selectedTab: 'target-summary.json',
   search: '',
   regex: false,
   selectedDomain: null,
+  categoryOpen: loadSessionState(CATEGORY_STATE_KEY),
+  infoPanelOpen: loadSessionState(INFO_STATE_KEY),
   facets: { failures:false, broken:false, visualFailed:false, throttled:false, lighthouse:false, a11y:new Set() },
   sorts: { netRec: { key: 'severity', dir: 'asc' }, netReq: { key: 'url', dir: 'asc' }, stability: { key: 'index', dir: 'asc' } }
 };
@@ -39,13 +45,29 @@ function summarizeInput(value){
   return { length: text.length, hasWhitespace: /\s/.test(text) };
 }
 
+
+function saveSessionState(key, value){
+  sessionStorage.setItem(key, JSON.stringify(value));
+}
+
+async function loadSectionConfig(){
+  const res = await fetch('/api/sections');
+  if(!res.ok) throw new Error(`Failed to load section config: ${res.status}`);
+  state.sections = await res.json();
+  const validTabs = new Set(state.sections.order);
+  if(!validTabs.has(state.selectedTab)) state.selectedTab = state.sections.order[0];
+  state.sections.categories.forEach((category)=>{
+    if(typeof state.categoryOpen[category.id] !== 'boolean') state.categoryOpen[category.id] = true;
+  });
+}
+
 async function loadIndex(){
   const opId = createOperationId();
   const started = performance.now();
   await logEvent('INFO', 'UI index load started', { operationId: opId, view: 'index' });
-  const res = await fetch('/api/index');
-  if(!res.ok) throw new Error(`Failed to load index: ${res.status}`);
-  state.index = await res.json();
+  const [indexRes] = await Promise.all([fetch('/api/index'), loadSectionConfig()]);
+  if(!indexRes.ok) throw new Error(`Failed to load index: ${indexRes.status}`);
+  state.index = await indexRes.json();
   state.selectedId = state.index.urls[0]?.id ?? null;
   await logEvent('INFO', 'UI index load completed', { operationId: opId, view: 'index', count: state.index.urls.length, durationMs: Math.round(performance.now()-started) });
   render();
@@ -74,7 +96,7 @@ function filterUrls(){
 
 function render(options = {}){
   const renderStart = performance.now();
-  if(!state.index){ app.innerHTML = '<p>Loading…</p>'; return; }
+  if(!state.index || !state.sections){ app.innerHTML = '<p>Loading…</p>'; return; }
   const urls = filterUrls();
   const selected = urls.find((u)=>u.id===state.selectedId) ?? state.index.urls.find((u)=>u.id===state.selectedId) ?? urls[0];
   if(selected) state.selectedId = selected.id;
@@ -159,9 +181,51 @@ function renderDetailsShell(u){
       <span>Visual: ${visual===undefined?MISSING:visual?'Pass':'Fail'}</span>
     </div>
   </header>
-  <nav class="tabs">${SECTION_ORDER.map((s)=>`<button class="tab ${state.selectedTab===s?'active':''}" data-tab="${s}">${s.replace('.json','')}</button>`).join('')}</nav>
+  <nav class="tabs">${renderSectionTabs()}</nav>
   <section id="tab-content" class="tab-content"><p>Loading ${state.selectedTab}…</p></section>
   <section class="parse-errors">${(state.index.parseErrors||[]).slice(-10).map((e)=>`<div>⚠ ${e.file}: ${e.message}</div>`).join('') || ''}</section>`;
+}
+
+
+
+function renderSectionTabs(){
+  return state.sections.categories.map((category)=>{
+    const expanded = state.categoryOpen[category.id] !== false;
+    const icon = expanded ? '▾' : '▸';
+    const sectionButtons = expanded ? category.sections.map((section)=>{
+      const label = state.sections.definitions[section].label;
+      return `<button class="tab ${state.selectedTab===section?'active':''}" data-tab="${section}">${label}</button>`;
+    }).join('') : '';
+    return `<div class="tab-group"><button class="tab-group-toggle" data-category-toggle="${category.id}" aria-expanded="${expanded}"><span>${icon}</span>${category.label}</button><div class="tab-group-body" ${expanded?'':'hidden'}>${sectionButtons}</div></div>`;
+  }).join('');
+}
+
+function renderInfoPanel(section){
+  const info = state.sections.definitions[section]?.info;
+  if(!info) return '';
+  const isOpen = state.infoPanelOpen[section] === true;
+  const panelId = `section-info-${section.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  return `<section class="info-panel"><button class="info-toggle" data-info-toggle="${section}" aria-expanded="${isOpen}" aria-controls="${panelId}">${isOpen?'▾':'▸'} What does this mean?</button><div id="${panelId}" class="info-content" ${isOpen?'':'hidden'}><p><strong>What it is:</strong> ${info.whatItIs}</p><p><strong>Why it matters:</strong> ${info.whyItMatters}</p><p><strong>How to read it:</strong></p><ul>${info.howToRead.map((item)=>`<li>${item}</li>`).join('')}</ul></div></section>`;
+}
+
+function bindDisclosureEvents(){
+  document.querySelectorAll('[data-category-toggle]').forEach((btn)=>{
+    btn.onclick = ()=>{
+      const category = btn.dataset.categoryToggle;
+      const next = !(state.categoryOpen[category] !== false);
+      state.categoryOpen[category] = next;
+      saveSessionState(CATEGORY_STATE_KEY, state.categoryOpen);
+      render();
+    };
+  });
+  document.querySelectorAll('[data-info-toggle]').forEach((btn)=>{
+    btn.onclick = ()=>{
+      const section = btn.dataset.infoToggle;
+      state.infoPanelOpen[section] = !(state.infoPanelOpen[section] === true);
+      saveSessionState(INFO_STATE_KEY, state.infoPanelOpen);
+      render();
+    };
+  });
 }
 
 function bindFilters(){
@@ -192,6 +256,7 @@ function bindFilters(){
 }
 
 function bindTabEvents(u){
+  bindDisclosureEvents();
   document.querySelectorAll('.tab').forEach((b)=>b.onclick=()=>{const operationId=createOperationId(); state.selectedTab=b.dataset.tab; state.selectedDomain=null; logEvent('INFO','UI tab changed',{operationId,urlId:u.id,section:state.selectedTab,view:state.selectedTab}); render();});
   loadTab(u.id,state.selectedTab);
 }
@@ -253,7 +318,7 @@ async function loadTab(id, tab){
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     default: body = '<p>Unsupported section</p>';
   }
-  el.innerHTML = `${head}${body}${rawPanel(raw)}`;
+  el.innerHTML = `${renderInfoPanel(tab)}${head}${body}${rawPanel(raw)}`;
   logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
   el.querySelectorAll('[data-domain]').forEach((b)=>b.onclick=()=>{state.selectedDomain=b.dataset.domain; state.selectedTab='network-requests.json'; render();});
