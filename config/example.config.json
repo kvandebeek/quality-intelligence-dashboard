@@ -23,5 +23,18 @@
   "consent": {
     "enabled": true,
     "timeoutMs": 1500
+  },
+  "assuranceModules": {
+    "enabled": {
+      "clientErrors": true,
+      "uxFriction": true,
+      "memoryLeaks": true,
+      "cacheAnalysis": true,
+      "thirdPartyResilience": true,
+      "privacyAudit": true,
+      "runtimeSecurity": true,
+      "dependencyRisk": true,
+      "regressionDelta": true
+    }
   }
 }

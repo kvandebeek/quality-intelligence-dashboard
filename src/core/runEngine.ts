@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { chromium, firefox, webkit, type BrowserType, type Page, type BrowserContext } from 'playwright';
 import type { AppConfig, CrawlPageMetadata, RunMetadata, RunSummary, RunTarget, TargetRunArtifacts } from '../models/types.js';
+import { collectCacheAnalysis, collectClientErrors, collectDependencyRisk, collectMemoryLeaks, collectPrivacyAudit, collectRuntimeSecurity, collectThirdPartyResilience, collectUxFriction, installErrorAndUxObservers } from '../collectors/extensionPackCollector.js';
 import { compactTimestamp, stableRunId } from '../utils/time.js';
 import { ensureDir, writeJson } from '../utils/file.js';
 import { collectPerformance } from '../collectors/performanceCollector.js';
@@ -16,7 +17,7 @@ import { buildRunIndex, percentileSummary } from './normalization.js';
 import { TestTimingTracker } from './testTiming.js';
 import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 
-const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json'] as const;
+const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json'] as const;
 const ENABLE_HAR_TESTS = false;
 
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
@@ -66,7 +67,81 @@ function computeStats(values: number[]): { stdDevLoadMs: number; coefficientOfVa
   return { stdDevLoadMs, coefficientOfVariation, unstable: coefficientOfVariation > 0.2 };
 }
 
-async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string, timing: TestTimingTracker, consentConfig: AppConfig['consent'], retry = 0): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[] }> {
+
+function parseDomain(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+}
+
+function readJsonIfExists(filePath: string): Record<string, unknown> | null {
+  if (!fs.existsSync(filePath)) return null;
+  const raw = fs.readFileSync(filePath, 'utf8');
+  return JSON.parse(raw) as Record<string, unknown>;
+}
+
+function computeRiskLevel(totalDelta: number, watchThreshold: number, elevatedThreshold: number): 'ok' | 'watch' | 'elevated' {
+  if (totalDelta >= elevatedThreshold) return 'elevated';
+  if (totalDelta >= watchThreshold) return 'watch';
+  return 'ok';
+}
+
+function buildRegressionSummary(runRoot: string, outputDir: string, thresholds: AppConfig['assuranceModules']['regression']): Record<string, unknown> {
+  const latestPointerPath = path.join(outputDir, 'latest-run.json');
+  const latestPointer = readJsonIfExists(latestPointerPath);
+  const previousRunPath = latestPointer && typeof latestPointer.path === 'string' ? String(latestPointer.path) : null;
+  if (!previousRunPath || !fs.existsSync(previousRunPath)) {
+    return { baseline: 'no baseline', message: 'No previous run baseline found. Regression deltas will be available from the next run onward.', targets: [] };
+  }
+
+  const summaryIndex = readJsonIfExists(path.join(runRoot, 'summary-index.json'));
+  const previousSummary = readJsonIfExists(path.join(previousRunPath, 'summary-index.json'));
+  const currentOutputs = Array.isArray(summaryIndex?.outputs) ? summaryIndex?.outputs as Array<Record<string, unknown>> : [];
+  const previousOutputs = Array.isArray(previousSummary?.outputs) ? previousSummary?.outputs as Array<Record<string, unknown>> : [];
+
+  const deltas = currentOutputs.map((output) => {
+    const folder = String(output.folder ?? '');
+    const previous = previousOutputs.find((item) => String(item.folder ?? '') === folder);
+    const currentClientErrors = readJsonIfExists(path.join(runRoot, folder, 'client-errors.json'));
+    const previousClientErrors = previous ? readJsonIfExists(path.join(previousRunPath, folder, 'client-errors.json')) : null;
+    const currentRuntimeSecurity = readJsonIfExists(path.join(runRoot, folder, 'runtime-security.json'));
+    const previousRuntimeSecurity = previous ? readJsonIfExists(path.join(previousRunPath, folder, 'runtime-security.json')) : null;
+
+    const currentErrScore = Number(((currentClientErrors?.payload as Record<string, unknown> | undefined)?.severityScore) ?? 100);
+    const previousErrScore = Number(((previousClientErrors?.payload as Record<string, unknown> | undefined)?.severityScore) ?? 100);
+    const currentSecScore = Number(((currentRuntimeSecurity?.payload as Record<string, unknown> | undefined)?.securityScore) ?? 100);
+    const previousSecScore = Number(((previousRuntimeSecurity?.payload as Record<string, unknown> | undefined)?.securityScore) ?? 100);
+    const totalDelta = Math.max(0, (previousErrScore - currentErrScore)) + Math.max(0, (previousSecScore - currentSecScore));
+
+    return {
+      targetName: output.targetName ?? folder,
+      folder,
+      deltas: {
+        clientErrorSeverityDelta: currentErrScore - previousErrScore,
+        runtimeSecurityDelta: currentSecScore - previousSecScore
+      },
+      riskLevel: computeRiskLevel(totalDelta, thresholds.watchThreshold, thresholds.elevatedThreshold)
+    };
+  });
+
+  const riskCounts = deltas.reduce((acc, item) => {
+    const key = String(item.riskLevel) as 'ok' | 'watch' | 'elevated';
+    acc[key] += 1;
+    return acc;
+  }, { ok: 0, watch: 0, elevated: 0 });
+
+  return {
+    baseline: previousRunPath,
+    comparedRun: path.basename(previousRunPath),
+    generatedAt: new Date().toISOString(),
+    targets: deltas,
+    summary: riskCounts
+  };
+}
+
+async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string, timing: TestTimingTracker, config: AppConfig, retry = 0): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[]; extensionScores: Record<string, number | string | null> }> {
   const urlSlug = sanitizeSlug(target.url);
   const targetFolder = path.join(runRoot, urlSlug);
   ensureDir(targetFolder);
@@ -76,8 +151,10 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const context = await timing.step(testReference, 'Create browser context', async () => browser.newContext(ENABLE_HAR_TESTS ? { recordHar: { path: harPath, mode: 'full' } } : undefined));
   const page = await timing.step(testReference, 'Create page', async () => context.newPage());
 
+  await timing.step(testReference, 'Init extension observers', async () => installErrorAndUxObservers(page, config.assuranceModules));
+
   try {
-    const response = await timing.step(testReference, 'Navigate to target URL', async () => gotoWithConsent(page, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig }).then((result) => result.response));
+    const response = await timing.step(testReference, 'Navigate to target URL', async () => gotoWithConsent(page, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent }).then((result) => result.response));
     if (target.waitForSelector) {
       await timing.step(testReference, `Wait for selector: ${target.waitForSelector}`, async () => page.locator(target.waitForSelector as string).waitFor({ state: 'visible' }));
     }
@@ -113,7 +190,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     const loadSampleTimestamps: string[] = [];
     const iterations = 5;
     for (let i = 0; i < iterations; i += 1) {
-      await gotoWithConsent(page, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
+      await gotoWithConsent(page, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
       const loadEventMs = await page.evaluate(() => {
         const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
         return nav ? Math.round(nav.loadEventEnd - nav.startTime) : 0;
@@ -139,7 +216,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   };
 
   const seoChecks = await browser.newPage().then(async (seoPage) => {
-    await gotoWithConsent(seoPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
+    await gotoWithConsent(seoPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
     const checks = await seoPage.evaluate(() => ({
       title: document.querySelector('title')?.textContent?.trim() ?? null,
       description: document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? null,
@@ -194,7 +271,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   const focusCheck = await browser.newPage().then(async (checkPage) => {
     try {
-      await gotoWithConsent(checkPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
+      await gotoWithConsent(checkPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
       await checkPage.keyboard.press('Tab');
       const active1 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
       await checkPage.keyboard.press('Tab');
@@ -214,7 +291,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const screenshotPath = path.join(targetFolder, 'visual-current.png');
   const visualContext = await browser.newContext();
   const visualPage = await visualContext.newPage();
-  await gotoWithConsent(visualPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
+  await gotoWithConsent(visualPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
   await visualPage.screenshot({ path: screenshotPath, fullPage: true });
   await visualContext.close();
   let baselineFound = fs.existsSync(baselinePath);
@@ -240,7 +317,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     await new Promise((resolve) => setTimeout(resolve, 120));
     await route.continue();
   });
-  await gotoWithConsent(throttledPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
+  await gotoWithConsent(throttledPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
   const throttledLoadMs = await throttledPage.evaluate(() => {
     const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
     return nav ? Math.round(nav.loadEventEnd - nav.startTime) : null;
@@ -279,10 +356,28 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'a11y-beyond-axe.json'), 'accessibilityBeyondAxe', meta, focusCheck);
   writeValidatedArtifact(path.join(targetFolder, 'stability.json'), 'stability', meta, { iterations, loadEventSamples: loadSamples.map((value) => Math.round(value)), timestamps: loadSampleTimestamps, ...navigationStats });
   writeValidatedArtifact(path.join(targetFolder, 'memory-profile.json'), 'memory', meta, { samples: memorySamples, growth: memorySamples.length > 1 ? Math.round(memorySamples[memorySamples.length - 1]! - memorySamples[0]!) : 0 });
+  const clientErrors = config.assuranceModules.enabled.clientErrors ? await timing.step(testReference, 'Extension: Client errors', async () => collectClientErrors(page, config.assuranceModules)) : { totalErrors: 0, severityScore: 100, uncaughtExceptions: 0, unhandledRejections: 0, consoleErrors: 0, consoleWarnings: 0, failedRequests: [], topErrors: [] };
+  const uxFriction = config.assuranceModules.enabled.uxFriction ? await timing.step(testReference, 'Extension: UX friction', async () => collectUxFriction(page, config.assuranceModules)) : { rageClicks: 0, deadClicks: 0, longTasks: 0, layoutShifts: 0, topSelectors: [], uxScore: 100 };
+  const memoryLeaks = config.assuranceModules.enabled.memoryLeaks ? await timing.step(testReference, 'Extension: Memory leaks', async () => collectMemoryLeaks(page, config.assuranceModules)) : { available: false, mode: 'not_supported', initialHeapMB: null, finalHeapMB: null, growthMB: null, leakRisk: 'unknown', evidence: ['disabled'] };
+  const cacheAnalysis = config.assuranceModules.enabled.cacheAnalysis ? await timing.step(testReference, 'Extension: Cache analysis', async () => collectCacheAnalysis(browser, target.url, config.assuranceModules)) : { cold: { ttfbMs: null, fcpMs: null, lcpMs: null }, warm: { ttfbMs: null, fcpMs: null, lcpMs: null }, improvementPercent: 0, cacheScore: 0, poorlyCachedAssets: [] };
+  const thirdPartyDomains = [...new Set(requests.map((request) => parseDomain(request.url)).filter((domain) => domain && domain !== parseDomain(target.url)))];
+  const thirdPartyResilience = config.assuranceModules.enabled.thirdPartyResilience ? await timing.step(testReference, 'Extension: Third-party resilience', async () => collectThirdPartyResilience(browser, target.url, thirdPartyDomains, config.assuranceModules)) : { blockedDomains: [], functionalBreakage: false, layoutImpact: 'none', resilienceScore: 100 };
+  const privacyAudit = config.assuranceModules.enabled.privacyAudit ? await timing.step(testReference, 'Extension: Privacy audit', async () => collectPrivacyAudit(page, config.assuranceModules)) : { consentBannerDetected: false, cookiesBeforeConsent: [], insecureCookies: [], thirdPartyTrackers: [], gdprRisk: 'low' };
+  const runtimeSecurity = config.assuranceModules.enabled.runtimeSecurity ? await timing.step(testReference, 'Extension: Runtime security', async () => collectRuntimeSecurity(page, target.url)) : { missingHeaders: [], cspStrength: 'none', mixedContent: [], inlineScripts: 0, evalSignals: 0, securityScore: 100 };
+  const dependencyRisk = config.assuranceModules.enabled.dependencyRisk ? await timing.step(testReference, 'Extension: Dependency risk', async () => collectDependencyRisk(page, parseDomain(target.url), config.assuranceModules)) : { domainInventory: [], dependencyRiskScore: 100, topRiskyDependencies: [] };
+
+  writeValidatedArtifact(path.join(targetFolder, 'client-errors.json'), 'clientErrors', meta, clientErrors);
+  writeValidatedArtifact(path.join(targetFolder, 'ux-friction.json'), 'uxFriction', meta, uxFriction);
+  writeValidatedArtifact(path.join(targetFolder, 'memory-leaks.json'), 'memoryLeaks', meta, memoryLeaks);
+  writeValidatedArtifact(path.join(targetFolder, 'cache-analysis.json'), 'cacheAnalysis', meta, cacheAnalysis);
+  writeValidatedArtifact(path.join(targetFolder, 'third-party-resilience.json'), 'thirdPartyResilience', meta, thirdPartyResilience);
+  writeValidatedArtifact(path.join(targetFolder, 'privacy-audit.json'), 'privacyAudit', meta, privacyAudit);
+  writeValidatedArtifact(path.join(targetFolder, 'runtime-security.json'), 'runtimeSecurity', meta, runtimeSecurity);
+  writeValidatedArtifact(path.join(targetFolder, 'dependency-risk.json'), 'dependencyRisk', meta, dependencyRisk);
   await timing.step(testReference, 'Write target summary', async () => Promise.resolve(writeJson(path.join(targetFolder, 'target-summary.json'), artifact)));
 
     timing.endTest(testReference, 'passed');
-    return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs };
+    return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs, extensionScores: { clientErrors: clientErrors.severityScore, ux: uxFriction.uxScore, memory: memoryLeaks.growthMB, cache: cacheAnalysis.cacheScore, resilience: thirdPartyResilience.resilienceScore, privacy: privacyAudit.gdprRisk, runtimeSecurity: runtimeSecurity.securityScore, dependency: dependencyRisk.dependencyRiskScore } };
   } catch (error) {
     timing.endTest(testReference, 'failed');
     throw error;
@@ -309,7 +404,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   try {
     if (config.crawl.enabled) {
     const crawlResult = await runBfsCrawl({ startUrl: config.startUrl, crawlConfig: config.crawl }, async ({ url, parentUrl, depth, index }) => {
-      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp, timing, config.consent);
+      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp, timing, config);
       targetArtifacts.push(executed.artifact); outputs.push(executed.output); return { discoveredHrefs: executed.hrefs };
     });
     await browser.close();
@@ -323,13 +418,20 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
       fs.writeFileSync(path.join(runRoot, 'junit.xml'), junit);
       fs.writeFileSync(path.join(runRoot, 'executive-report.pdf'), 'PDF report generation placeholder - include summary and regressions.');
       writeJson(path.join(runRoot, 'normalized-export.json'), index.urls);
+      const regressionSummary = buildRegressionSummary(runRoot, config.outputDir, config.assuranceModules.regression);
+      writeJson(path.join(runRoot, 'regression-summary.json'), regressionSummary);
+      for (const output of outputs) {
+        const folder = path.join(runRoot, output.folder);
+        writeJson(path.join(folder, 'regression-summary.json'), regressionSummary);
+      }
+      writeJson(path.join(config.outputDir, 'latest-run.json'), { path: runRoot, runId, timestamp });
       await publishToElasticsearch(config.elasticsearch, summary, targetArtifacts);
       return summary;
   }
 
     const targets = resolveLinearTargets(config);
     for (const target of targets) {
-    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp, timing, config.consent);
+    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp, timing, config);
     outputs.push(executed.output); targetArtifacts.push(executed.artifact);
   }
     await browser.close();
@@ -343,6 +445,13 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
     fs.writeFileSync(path.join(runRoot, 'junit.xml'), junit);
     fs.writeFileSync(path.join(runRoot, 'executive-report.pdf'), 'PDF report generation placeholder - include summary and regressions.');
     writeJson(path.join(runRoot, 'normalized-export.json'), index.urls);
+    const regressionSummary = buildRegressionSummary(runRoot, config.outputDir, config.assuranceModules.regression);
+    writeJson(path.join(runRoot, 'regression-summary.json'), regressionSummary);
+    for (const output of outputs) {
+      const folder = path.join(runRoot, output.folder);
+      writeJson(path.join(folder, 'regression-summary.json'), regressionSummary);
+    }
+    writeJson(path.join(config.outputDir, 'latest-run.json'), { path: runRoot, runId, timestamp });
     await publishToElasticsearch(config.elasticsearch, summary, targetArtifacts);
     return summary;
   } finally {

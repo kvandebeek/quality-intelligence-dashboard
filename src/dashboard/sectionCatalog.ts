@@ -41,7 +41,12 @@ export type SectionCategory =
   | 'quality-reliability'
   | 'security-risk'
   | 'seo'
-  | 'visual';
+  | 'visual'
+  | 'reliability-client-health'
+  | 'performance-efficiency'
+  | 'resilience'
+  | 'governance-privacy-security'
+  | 'regression-intelligence';
 
 export interface SectionDefinition {
   route: SectionFile;
@@ -174,7 +179,12 @@ export const SECTION_CATEGORIES = [
   { id: 'quality-reliability', label: 'Quality & Reliability' },
   { id: 'security-risk', label: 'Security & Risk' },
   { id: 'seo', label: 'SEO' },
-  { id: 'visual', label: 'Visual' }
+  { id: 'visual', label: 'Visual' },
+  { id: 'reliability-client-health', label: 'Reliability & Client Health' },
+  { id: 'performance-efficiency', label: 'Performance Efficiency' },
+  { id: 'resilience', label: 'Resilience' },
+  { id: 'governance-privacy-security', label: 'Governance, Privacy & Security' },
+  { id: 'regression-intelligence', label: 'Regression Intelligence' }
 ] as const satisfies readonly SectionCategoryDefinition[];
 
 const baseTerms: readonly GlossaryTermId[] = [];
@@ -377,6 +387,42 @@ export const SECTION_DEFINITIONS = {
       howToRead: ['Check whether a baseline exists.', 'Review diff ratio to understand change size.', 'Use passed status to confirm threshold compliance.', 'Validate expected design updates manually.'],
       keyTerms: ['baselineFound', 'diffRatio', 'passed']
     }
+  },
+  'client-errors.json': {
+    route: 'client-errors.json', label: 'client-side-errors', category: 'reliability-client-health',
+    info: { whatItIs: 'Tracks browser-side errors seen by users during page use.', whyItMatters: 'Client errors break journeys, increase support load, and hide conversion issues.', howToRead: ['Check total errors and severity score.', 'Review top repeated messages first.', 'Failed requests often point to API/CDN dependency problems.', 'Fix high-frequency errors before edge-case warnings.'], keyTerms: baseTerms }
+  },
+  'ux-friction.json': {
+    route: 'ux-friction.json', label: 'ux-friction', category: 'reliability-client-health',
+    info: { whatItIs: 'Signals where interactions feel frustrating (rage clicks, dead clicks, long tasks).', whyItMatters: 'Friction directly impacts completion rate and user trust.', howToRead: ['Start with UX score trend.', 'Rage/dead clicks indicate confusion or non-responsive controls.', 'Long tasks suggest UI thread blocking.', 'Prioritize top affected selectors in critical flows.'], keyTerms: baseTerms }
+  },
+  'memory-leaks.json': {
+    route: 'memory-leaks.json', label: 'memory-leaks', category: 'reliability-client-health',
+    info: { whatItIs: 'Checks for suspicious memory growth after repeated interactions.', whyItMatters: 'Leaks can cause slow pages, crashes, and degraded session quality.', howToRead: ['Compare initial vs final heap.', 'Review leak risk label.', 'High growth means investigate retained objects/components.', 'Use evidence notes to reproduce with dev tools.'], keyTerms: baseTerms }
+  },
+  'cache-analysis.json': {
+    route: 'cache-analysis.json', label: 'cache-efficiency', category: 'performance-efficiency',
+    info: { whatItIs: 'Compares cold vs warm loading to validate caching quality.', whyItMatters: 'Good caching improves repeat visit speed and reduces infrastructure cost.', howToRead: ['Check improvement percentage first.', 'Review cache score and offender assets.', 'Missing cache headers are common root cause.', 'Increase TTLs for static assets where safe.'], keyTerms: baseTerms }
+  },
+  'third-party-resilience.json': {
+    route: 'third-party-resilience.json', label: 'third-party-resilience', category: 'resilience',
+    info: { whatItIs: 'Tests how the page behaves when selected third-party services are blocked.', whyItMatters: 'Resilient pages should keep core journeys working even if vendors fail.', howToRead: ['Check blocked domains list and mode.', 'Functional breakage should be zero for critical pages.', 'Layout impact highlights dependency on external scripts.', 'Defer or isolate non-critical third-party code.'], keyTerms: baseTerms }
+  },
+  'privacy-audit.json': {
+    route: 'privacy-audit.json', label: 'privacy-gdpr-audit', category: 'governance-privacy-security',
+    info: { whatItIs: 'Pre-consent privacy checks for cookies, trackers, and consent signals.', whyItMatters: 'Pre-consent tracking can create GDPR and trust risks.', howToRead: ['Verify consent banner detection.', 'Review cookies and trackers before consent.', 'Check insecure cookie attributes.', 'Prioritize high-risk findings with legal/security teams.'], keyTerms: baseTerms }
+  },
+  'runtime-security.json': {
+    route: 'runtime-security.json', label: 'runtime-security', category: 'governance-privacy-security',
+    info: { whatItIs: 'Audits runtime security posture from headers, mixed content, and script behavior.', whyItMatters: 'Missing protections increase exploit and data exposure risk.', howToRead: ['Review security score and missing headers.', 'Check CSP strength and mixed-content list.', 'Inline/eval signals indicate hardening opportunities.', 'Address high-impact headers first (CSP, HSTS, XCTO).'], keyTerms: baseTerms }
+  },
+  'dependency-risk.json': {
+    route: 'dependency-risk.json', label: 'dependency-risk', category: 'governance-privacy-security',
+    info: { whatItIs: 'Inventories third-party dependencies and estimates operational risk.', whyItMatters: 'Every dependency expands privacy, security, and reliability attack surface.', howToRead: ['Review inventory size and categories.', 'Focus on high-score risky domains.', 'Critical-path scripts deserve stricter governance.', 'Remove or sandbox low-value dependencies.'], keyTerms: baseTerms }
+  },
+  'regression-summary.json': {
+    route: 'regression-summary.json', label: 'regression-delta-summary', category: 'regression-intelligence',
+    info: { whatItIs: 'Compares this run to the previous run and summarizes changes.', whyItMatters: 'Fast regression visibility reduces release risk and triage time.', howToRead: ['If baseline missing, rerun once to establish history.', 'Check per-target deltas and risk level.', 'Watch elevated changes first.', 'Use as a release gate signal with other artifacts.'], keyTerms: baseTerms }
   }
 } as const satisfies Record<SectionFile, SectionDefinition>;
 
