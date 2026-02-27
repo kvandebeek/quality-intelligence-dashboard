@@ -277,3 +277,51 @@ End-of-run summary includes:
 - The JSON schema is stable and dashboard-friendly (`runId`, `suite`, `tests`, `steps`), allowing ingestion and historical comparisons later.
 - Future regressions/trend detection can read `artifacts/*/test-timing.json` and compute deltas by `file + testName`.
 - Slow test detection is threshold-based and environment-configurable to support CI and local tuning.
+
+## Automatic cookie-consent handling
+
+The Playwright framework now includes automatic consent dismissal for common cookie banners.
+
+### What it does
+
+- Attempts fast CMP selectors first (e.g., OneTrust and Cookiebot), then role/text-based button matching (`Accept all`, `Accept all cookies`, etc.).
+- Scans both the main document and iframes.
+- Runs automatically after `page.goto(...)` when using the instrumented Playwright page utilities.
+- Provides structured logs such as:
+
+```text
+[consent] handled=true strategy=cmp-selector detail=#onetrust-accept-btn-handler elapsedMs=87
+[consent] handled=false strategy=none elapsedMs=14
+```
+
+### How to disable
+
+- Runtime env toggle for Playwright flows:
+  - `CONSENT_ENABLED=false`
+  - `CONSENT_TIMEOUT_MS=1500` (override timeout)
+- Runner config toggle (`config/*.json`):
+
+```json
+{
+  "consent": {
+    "enabled": false,
+    "timeoutMs": 1500
+  }
+}
+```
+
+Use this for measurement-sensitive scenarios where you need zero consent interaction.
+
+### Manual usage
+
+```ts
+import { handleConsent } from './src/utils/consent/consent-handler.js';
+import { gotoWithConsent } from './src/utils/consent/goto-with-consent.js';
+
+await gotoWithConsent(page, 'https://example.com');
+const result = await handleConsent(page, { timeoutMs: 1500 });
+```
+
+### Performance note
+
+For timing-sensitive metrics, ensure consent is handled before collecting measurements so banners do not skew visual/layout/network results.

@@ -1,5 +1,7 @@
 import type { APIRequestContext, Locator, Page, Response, Request } from 'playwright/test';
 import { emitLog, isTraceEnabled, measureOperation, type LogContext } from './runtimeLogger.js';
+import { handleConsent } from '../utils/consent/consent-handler.js';
+import { getConsentOptionsFromEnv } from './consentRuntime.js';
 
 const LOCATOR_METHODS = new Set(['click', 'fill', 'type', 'press', 'check', 'uncheck', 'selectOption', 'waitFor']);
 const PAGE_METHODS = new Set(['goto', 'waitForSelector', 'waitForLoadState', 'waitForResponse', 'waitForRequest', 'screenshot']);
@@ -87,6 +89,9 @@ export const instrumentPage = (page: Page, context: Omit<LogContext, 'durationMs
         const actionName = `page.${String(property)}`;
         return measureOperation('action', actionName, async () => {
           const result = await Reflect.apply(value, target, args);
+          if (property === 'goto') {
+            await handleConsent(target, getConsentOptionsFromEnv());
+          }
           return result as unknown;
         }, {
           ...context,

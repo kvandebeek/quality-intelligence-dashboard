@@ -14,6 +14,7 @@ import { SCHEMA_VERSION, TOOL_VERSION, type ArtifactMeta } from '../models/platf
 import { writeValidatedArtifact } from './artifactValidation.js';
 import { buildRunIndex, percentileSummary } from './normalization.js';
 import { TestTimingTracker } from './testTiming.js';
+import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 
 const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json'] as const;
 const ENABLE_HAR_TESTS = false;
@@ -65,7 +66,7 @@ function computeStats(values: number[]): { stdDevLoadMs: number; coefficientOfVa
   return { stdDevLoadMs, coefficientOfVariation, unstable: coefficientOfVariation > 0.2 };
 }
 
-async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string, timing: TestTimingTracker, retry = 0): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[] }> {
+async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string, timing: TestTimingTracker, consentConfig: AppConfig['consent'], retry = 0): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[] }> {
   const urlSlug = sanitizeSlug(target.url);
   const targetFolder = path.join(runRoot, urlSlug);
   ensureDir(targetFolder);
@@ -76,7 +77,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const page = await timing.step(testReference, 'Create page', async () => context.newPage());
 
   try {
-    const response = await timing.step(testReference, 'Navigate to target URL', async () => page.goto(target.url, { waitUntil: 'load' }));
+    const response = await timing.step(testReference, 'Navigate to target URL', async () => gotoWithConsent(page, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig }).then((result) => result.response));
     if (target.waitForSelector) {
       await timing.step(testReference, `Wait for selector: ${target.waitForSelector}`, async () => page.locator(target.waitForSelector as string).waitFor({ state: 'visible' }));
     }
@@ -112,7 +113,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     const loadSampleTimestamps: string[] = [];
     const iterations = 5;
     for (let i = 0; i < iterations; i += 1) {
-      await page.goto(target.url, { waitUntil: 'load' });
+      await gotoWithConsent(page, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
       const loadEventMs = await page.evaluate(() => {
         const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
         return nav ? Math.round(nav.loadEventEnd - nav.startTime) : 0;
@@ -138,7 +139,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   };
 
   const seoChecks = await browser.newPage().then(async (seoPage) => {
-    await seoPage.goto(target.url, { waitUntil: 'load' });
+    await gotoWithConsent(seoPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
     const checks = await seoPage.evaluate(() => ({
       title: document.querySelector('title')?.textContent?.trim() ?? null,
       description: document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? null,
@@ -193,7 +194,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   const focusCheck = await browser.newPage().then(async (checkPage) => {
     try {
-      await checkPage.goto(target.url, { waitUntil: 'load' });
+      await gotoWithConsent(checkPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
       await checkPage.keyboard.press('Tab');
       const active1 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
       await checkPage.keyboard.press('Tab');
@@ -213,7 +214,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const screenshotPath = path.join(targetFolder, 'visual-current.png');
   const visualContext = await browser.newContext();
   const visualPage = await visualContext.newPage();
-  await visualPage.goto(target.url, { waitUntil: 'load' });
+  await gotoWithConsent(visualPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
   await visualPage.screenshot({ path: screenshotPath, fullPage: true });
   await visualContext.close();
   let baselineFound = fs.existsSync(baselinePath);
@@ -239,7 +240,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     await new Promise((resolve) => setTimeout(resolve, 120));
     await route.continue();
   });
-  await throttledPage.goto(target.url, { waitUntil: 'load' });
+  await gotoWithConsent(throttledPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: consentConfig });
   const throttledLoadMs = await throttledPage.evaluate(() => {
     const nav = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
     return nav ? Math.round(nav.loadEventEnd - nav.startTime) : null;
@@ -308,7 +309,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   try {
     if (config.crawl.enabled) {
     const crawlResult = await runBfsCrawl({ startUrl: config.startUrl, crawlConfig: config.crawl }, async ({ url, parentUrl, depth, index }) => {
-      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp, timing);
+      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp, timing, config.consent);
       targetArtifacts.push(executed.artifact); outputs.push(executed.output); return { discoveredHrefs: executed.hrefs };
     });
     await browser.close();
@@ -328,7 +329,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
 
     const targets = resolveLinearTargets(config);
     for (const target of targets) {
-    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp, timing);
+    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp, timing, config.consent);
     outputs.push(executed.output); targetArtifacts.push(executed.artifact);
   }
     await browser.close();

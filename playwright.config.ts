@@ -7,7 +7,7 @@ if (!process.env.PW_RUN_START_NS) {
 }
 
 const playwrightConfig = defineConfig({
-  testMatch: ['**/*.spec.ts'],
+  testMatch: ['**/*.spec.ts', '**/*.e2e.ts'],
   reporter: [['list'], ['./src/playwright/testTimingReporter.cts']],
 });
 

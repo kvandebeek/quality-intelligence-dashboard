@@ -19,5 +19,9 @@
   "elasticsearch": {
     "enabled": false,
     "indexPrefix": "quality-signal"
+  },
+  "consent": {
+    "enabled": true,
+    "timeoutMs": 1500
   }
 }

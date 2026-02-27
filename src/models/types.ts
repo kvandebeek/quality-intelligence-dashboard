@@ -140,5 +140,9 @@ export interface AppConfig {
   startUrl: string;
   targets: RunTarget[];
   crawl: CrawlConfig;
+  consent: {
+    enabled: boolean;
+    timeoutMs: number;
+  };
   elasticsearch: ElasticConfig;
 }
