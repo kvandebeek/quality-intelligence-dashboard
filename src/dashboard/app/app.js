@@ -12,8 +12,12 @@ const state = {
   sorts: { netRec: { key: 'severity', dir: 'asc' }, netReq: { key: 'url', dir: 'asc' }, stability: { key: 'index', dir: 'asc' } }
 };
 
-const MISSING = '—';
-const safe = (v, fallback=MISSING) => (v === null || v === undefined || v === '' ? fallback : v);
+const MISSING = 'Not available';
+const safe = (v, fallback=MISSING) => {
+  if (v === 'not measured') return v;
+  if (v === null || v === undefined || v === '' || v === 'null') return fallback;
+  return v;
+};
 const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 const CLIENT_RUN_ID = (()=>{ try { return crypto.randomUUID(); } catch { return `client-${Date.now()}`; } })();
@@ -212,12 +216,12 @@ function renderDetailsShell(u){
 
 function renderSectionTabs(){
   const activeCategory = selectedCategory();
-  const categories = state.sections.categories.map((category)=>`<button class="tab group-tab ${activeCategory?.id===category.id?'active':''}" data-group="${category.id}">${category.label}</button>`).join('');
+  const categories = state.sections.categories.map((category)=>`<button class="tab group-tab ${activeCategory?.id===category.id?'active':''}" data-group="${category.id}" role="tab" aria-selected="${activeCategory?.id===category.id?'true':'false'}">${category.label}</button>`).join('');
   const sections = (activeCategory?.sections ?? []).map((section)=>{
     const label = state.sections.definitions[section].label;
-    return `<button class="tab subgroup-tab ${state.selectedTab===section?'active':''}" data-tab="${section}">${label}</button>`;
+    return `<button class="tab subgroup-tab ${state.selectedTab===section?'active':''}" data-tab="${section}" role="tab" aria-selected="${state.selectedTab===section?'true':'false'}">${label}</button>`;
   }).join('');
-  return `<div class="tabs-sticky"><div class="tab-row groups-row" role="tablist" aria-label="Groups">${categories}</div><div class="tab-row subgroups-row" role="tablist" aria-label="Sub-groups">${sections}</div></div>`;
+  return `<div class="tabs-sticky"><div class="tab-row groups-row" role="tablist" aria-label="Categories">${categories}</div><div class="tab-row subgroups-row" role="tablist" aria-label="Sections">${sections}</div></div>`;
 }
 
 function bindFilters(){
@@ -275,114 +279,69 @@ function renderStateBox(stateName, reason=''){
   return '';
 }
 
-function rawPanel(raw){ return `<details><summary>Raw JSON</summary><pre>${raw?JSON.stringify(raw,null,2):MISSING}</pre></details>`; }
+function renderKeyTerms(tab){
+  const definition = state.sections?.definitions?.[tab];
+  const glossary = state.sections?.glossary ?? {};
+  const keys = definition?.info?.keyTerms ?? [];
+  if(!keys.length) return '<p class="muted-copy">No key terms in this view.</p>';
+  const seen = new Set();
+  const items = keys.filter((key)=>{ if(seen.has(key)) return false; seen.add(key); return true; }).map((key)=>{
+    const term = glossary[key];
+    if(!term) return '';
+    const termLabel = term.expanded ? `${term.label} (${term.expanded})` : term.label;
+    return `<div class="definition-item"><dt>${escapeHtml(termLabel)} — ${escapeHtml(term.meaning)}</dt><dd><strong>Why it matters:</strong> ${escapeHtml(term.whyItMatters)}</dd></div>`;
+  }).join('');
+  return `<dl class="definition-list">${items}</dl>`;
+}
 
-const EXPLANATIONS = {
-  'target-summary.json': {
-    what: 'A high-level overview of the results for this specific URL.',
-    why: 'It gives a quick snapshot of overall quality without needing to open every detailed section.',
-    how: ['Look at the overall score or status indicators.', 'Identify whether the run completed successfully.', 'Check environment and run details.', 'Use this as the starting point before diving deeper.']
-  },
-  'a11y-beyond-axe.json': {
-    what: 'An extended accessibility analysis that goes beyond standard automated checks.',
-    why: 'Some accessibility issues are not detected by basic tools. This section highlights deeper risks that may affect users with disabilities.',
-    how: ['Review any flagged issues.', 'Focus on contrast, usability, and structural concerns.', 'Pay attention to items marked as high impact.', 'Consider these findings as potential user experience blockers.']
-  },
-  'accessibility.json': {
-    what: 'An automated accessibility scan of the page.',
-    why: 'Accessibility ensures that people with disabilities can use the website effectively.',
-    how: ['Look at the total number of issues found.', 'Prioritize critical or serious violations.', 'Check recurring issue types.', 'Fewer issues generally indicate better compliance.']
-  },
-  'api-monitoring.json': {
-    what: 'A summary of how backend APIs responded during the test.',
-    why: 'If APIs are slow or failing, the user experience will suffer.',
-    how: ['Check response times.', 'Look for failed or error responses.', 'Identify unstable endpoints.', 'Consistent fast responses are ideal.']
-  },
-  'broken-links.json': {
-    what: 'A scan of links that do not work or return errors.',
-    why: 'Broken links damage user trust and harm SEO.',
-    how: ['Look at the number of broken links.', 'Check which pages contain them.', 'Prioritize fixing links that users click most often.', 'Zero broken links is the goal.']
-  },
-  'core-web-vitals.json': {
-    what: 'Measurements of key performance indicators defined by Google.',
-    why: 'These metrics reflect real user experience, especially loading speed and visual stability.',
-    how: ['Focus on loading speed and visual shift scores.', 'Green values are good, red indicates problems.', 'Large layout shifts often frustrate users.', 'Slow load times may impact search ranking.']
-  },
-  'lighthouse-summary.json': {
-    what: 'A summary of Lighthouse scores across performance, accessibility, SEO, and best practices.',
-    why: 'It provides a balanced quality overview using a widely recognized scoring model.',
-    how: ['Review category scores.', 'Identify the lowest scoring category.', 'Use it as a benchmark over time.', 'Improvements should increase the overall score.']
-  },
-  'memory-profile.json': {
-    what: 'Information about how much memory the page consumes.',
-    why: 'High memory usage can slow down devices and cause crashes.',
-    how: ['Look for unusually high memory values.', 'Compare with previous runs.', 'Large spikes may indicate leaks.', 'Stable memory usage is preferred.']
-  },
-  'network-recommendations.json': {
-    what: 'Suggestions for improving how resources are loaded.',
-    why: 'Optimized resource loading improves speed and reduces bandwidth use.',
-    how: ['Review suggested optimizations.', 'Look for large unused files.', 'Check caching recommendations.', 'Prioritize high-impact suggestions.']
-  },
-  'network-requests.json': {
-    what: 'A detailed list of all network calls made while loading the page.',
-    why: 'Too many or slow requests increase load time.',
-    how: ['Count total requests.', 'Identify slowest requests.', 'Look for large file sizes.', 'Fewer and faster requests are better.']
-  },
-  'performance.json': {
-    what: 'Overall performance timing metrics for the page.',
-    why: 'Slow pages reduce user satisfaction and conversion.',
-    how: ['Check time to first content.', 'Review full load time.', 'Compare against benchmarks.', 'Aim for consistent fast performance.']
-  },
-  'security-scan.json': {
-    what: 'A scan for common security weaknesses.',
-    why: 'Security flaws expose users and the organization to risk.',
-    how: ['Review detected vulnerabilities.', 'Focus on high-severity findings.', 'Ensure HTTPS is properly configured.', 'Address critical risks first.']
-  },
-  'seo-checks.json': {
-    what: 'Checks that determine how well the page is optimized for search engines.',
-    why: 'Poor SEO reduces visibility in search results.',
-    how: ['Verify presence of titles and descriptions.', 'Check structured data.', 'Look for missing metadata.', 'Higher compliance improves discoverability.']
-  },
-  'stability.json': {
-    what: 'An evaluation of runtime errors or crashes during the test.',
-    why: 'Errors degrade reliability and trust.',
-    how: ['Look for console errors.', 'Identify repeated failures.', 'Zero runtime errors is ideal.', 'Frequent errors suggest instability.']
-  },
-  'third-party-risk.json': {
-    what: 'An analysis of external scripts and services used by the page.',
-    why: 'Third-party services can introduce performance and security risks.',
-    how: ['Identify critical external providers.', 'Check performance impact.', 'Look for outdated libraries.', 'Reduce unnecessary dependencies.']
-  },
-  'throttled-run.json': {
-    what: 'Performance results under simulated slower network conditions.',
-    why: 'Not all users have fast internet connections.',
-    how: ['Compare with normal run results.', 'Identify major slowdowns.', 'Check usability under limited bandwidth.', 'Ensure acceptable experience on slower networks.']
-  },
-  'visual-current.png': {
-    what: 'A screenshot of the page during this test run.',
-    why: 'It shows what users actually saw.',
-    how: ['Verify layout correctness.', 'Look for missing content.', 'Check for rendering glitches.', 'Compare with expected design.']
-  },
-  'visual-regression.json': {
-    what: 'A comparison between the current screenshot and a previous baseline.',
-    why: 'It detects unintended visual changes.',
-    how: ['Review highlighted differences.', 'Confirm whether changes were intentional.', 'Pay attention to layout shifts.', 'Investigate unexpected differences.']
-  }
-};
+function collapsiblePanel(id, label, content){
+  return `<section class="collapsible-panel"><button type="button" class="collapsible-trigger" data-collapse-target="${id}" aria-expanded="false">${label}</button><div id="${id}" class="collapsible-content" hidden>${content}</div></section>`;
+}
+
+function bindCollapsiblePanels(scope){
+  scope.querySelectorAll('[data-collapse-target]').forEach((button)=>{
+    button.onclick=()=>{
+      const target = scope.querySelector(`#${button.dataset.collapseTarget}`);
+      if(!target) return;
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      target.hidden = expanded;
+    };
+  });
+}
+
+function rawPanel(raw, section){
+  const panelId = `raw-${section.replace(/[^a-z0-9_-]/gi,'-')}`;
+  return collapsiblePanel(panelId, 'Raw JSON', `<pre>${raw?JSON.stringify(raw,null,2):MISSING}</pre>`);
+}
 
 function escapeHtml(v){
   return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 }
 
 function explanationPanel(tab){
-  const data = EXPLANATIONS[tab];
-  if(!data) return '';
-  return `<details class="explanation-panel"><summary>Explanation</summary><div class="explanation-body"><table class="explanation-table"><tbody><tr><th>What it is</th><td>${escapeHtml(data.what)}</td></tr><tr><th>Why it matters</th><td>${escapeHtml(data.why)}</td></tr><tr><th>How to read</th><td><ul>${data.how.map((item)=>`<li>${escapeHtml(item)}</li>`).join('')}</ul></td></tr></tbody></table></div></details>`;
+  const definition = state.sections?.definitions?.[tab];
+  if(!definition?.info) return '';
+  const panelId = `explanation-${tab.replace(/[^a-z0-9_-]/gi,'-')}`;
+  const info = definition.info;
+  const content = `<div class="explanation-body"><table class="explanation-table"><tbody><tr><th>What it is</th><td>${escapeHtml(info.whatItIs)}</td></tr><tr><th>Why it matters</th><td>${escapeHtml(info.whyItMatters)}</td></tr><tr><th>How to read</th><td><ul>${info.howToRead.map((item)=>`<li>${escapeHtml(item)}</li>`).join('')}</ul></td></tr><tr><th>Key terms in this view</th><td>${renderKeyTerms(tab)}</td></tr></tbody></table></div>`;
+  return collapsiblePanel(panelId, 'Explanation', content);
 }
 
-function fmt(value, unit=''){ const n = toNum(value); if(n===null) return MISSING; const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2)); return `${rounded}${unit ? ` ${unit}` : ''}`; }
+function normalizeDisplay(value){
+  if(value === null || value === undefined || value === '') return MISSING;
+  if(typeof value === 'string'){
+    if(value.toLowerCase() === 'null') return MISSING;
+    if(value === 'not measured') return value;
+    return value;
+  }
+  if(typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return String(value);
+}
+
+function fmt(value, unit=''){ const n = toNum(value); if(n===null) return (value === 'not measured' ? 'not measured' : MISSING); const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2)); return `${rounded}${unit ? ` ${unit}` : ''}`; }
 function metric(label, value, unit=''){ return `<div class="kpi"><span>${label}</span><strong>${fmt(value, unit)}</strong></div>`; }
-function textMetric(label, value){ return `<div class="kpi"><span>${label}</span><strong>${safe(value)}</strong></div>`; }
+function textMetric(label, value){ return `<div class="kpi"><span>${label}</span><strong>${escapeHtml(normalizeDisplay(value))}</strong></div>`; }
 function severityRank(value){ const ranks = { low:1, medium:2, high:3, critical:4 }; return ranks[String(value).toLowerCase()] ?? 0; }
 function sortRows(rows, sort){ const dir = sort.dir === 'asc' ? 1 : -1; return [...rows].sort((a,b)=>{ const av=a[sort.key]; const bv=b[sort.key]; if(sort.key==='severity') return (severityRank(av)-severityRank(bv))*dir; const an=toNum(av); const bn=toNum(bv); if(an!==null&&bn!==null) return (an-bn)*dir; return String(av??'').localeCompare(String(bv??''))*dir;}); }
 function sortableHeader(label, scope, key){ const s=state.sorts[scope]; const arrow=s.key===key?(s.dir==='asc'?'↑':'↓'):''; return `<th><button class="sort-btn" data-sort-scope="${scope}" data-sort-key="${key}">${label} ${arrow}</button></th>`; }
@@ -428,7 +387,8 @@ async function loadTab(id, tab){
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     default: body = '<p>Unsupported section</p>';
   }
-  el.innerHTML = `${explanationPanel(tab)}${head}${body}${rawPanel(raw)}`;
+  el.innerHTML = `${explanationPanel(tab)}${head}${body}${rawPanel(raw, tab)}`;
+  bindCollapsiblePanels(el);
   logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
   el.querySelectorAll('[data-domain]').forEach((b)=>b.onclick=()=>{state.selectedDomain=b.dataset.domain; state.selectedTab='network-requests.json'; render();});
@@ -439,7 +399,7 @@ const renderA11yHeuristics = (r={})=>{
   const score = toNum(r.contrastSimulationScore);
   const reason = safe(r.contrastSimulationScoreReason, '');
   const scoreValue = score === null ? MISSING : score;
-  return `<div class="kpis">${textMetric('keyboardReachable',String(r.keyboardReachable))}${textMetric('possibleFocusTrap',String(r.possibleFocusTrap))}${textMetric('contrastSimulationScore',scoreValue)}</div>${score===null&&reason?`<p>contrastSimulationScore reason: ${reason}</p>`:''}<p>Manual checks are shown when flags indicate potential focus/keyboard issues.</p>`;
+  return `<div class="kpis">${textMetric('keyboardReachable',r.keyboardReachable)}${textMetric('possibleFocusTrap',r.possibleFocusTrap)}${textMetric('contrastSimulationScore',scoreValue)}</div>${score===null&&reason?`<p>contrastSimulationScore reason: ${escapeHtml(reason)}</p>`:''}<p>Manual checks are shown when flags indicate potential focus and keyboard issues.</p>`;
 };
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
 const renderApi = (r={})=>`<div class="kpis">${metric('Count',r.count,'','Total API endpoints tested')}${metric('Error rate',(toNum(r.errorRate)??0)*100,'%','API responses with status >= 400')}${metric('P95 latency',r.p95LatencyMs ?? r.p95Ms,'ms','95th percentile response latency')}${metric('Avg payload',r.avgPayloadSize ?? r.avgSize,'bytes','Mean API payload size')}</div>`;
@@ -467,7 +427,7 @@ const resolveOverallScore = (r={}) => {
 const renderTarget = (r={}, m={}, indexMeta={})=>`<div class="kpis">${textMetric('URL',r.url ?? r.target?.url ?? m.url)}${textMetric('Run ID',r.runId ?? m.runId ?? indexMeta.runId)}${textMetric('Environment',r.environment ?? r.meta?.environment ?? indexMeta.environment)}${metric('Overall score',resolveOverallScore(r),'%')}</div>`;
 const renderThirdParty = (r={})=>{const rows=r.domains||r; const arr=Array.isArray(rows)?rows:Object.entries(rows||{}).map(([d,v])=>({domain:d,...v})); return `<table><tr><th>Domain</th><th>Requests</th><th>Bytes</th><th>Avg duration</th><th>Tracker</th></tr>${arr.slice(0,150).map(x=>`<tr><td><button class="link" data-domain="${x.domain}">${x.domain}</button></td><td>${safe(x.requests ?? x.requestCount ?? 0)}</td><td>${fmt(x.transferSize ?? x.bytes,'bytes')}</td><td>${fmt(x.avgDurationMs ?? x.avgDuration,'ms')}</td><td>${x.trackerHeuristic?'Yes':'No'}</td></tr>`).join('')}</table>`;};
 const renderThrottled = (r={})=>`<div class="kpis">${textMetric('Available',r.available===false?'Not executed':'Yes')}${metric('Baseline load',r.baselineLoadMs,'ms')}${metric('Throttled load',r.throttledLoadMs,'ms')}${metric('Degradation',r.degradationFactor,'x')}</div>`;
-const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound?'Yes':'No')}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed?'Yes':'No')}</div>${r.baselineFound===false?'<button>Create baseline from visual-current.png</button>':''}`;
+const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound)}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed)}</div>${r.baselineFound===false?'<p class="inline-hint">No baseline exists yet. Create one to enable visual change detection.</p><button>Create baseline from visual-current.png</button>':''}`;
 
 logEvent('INFO','UI startup',{view:'startup'});
 window.addEventListener('hashchange', ()=>{
