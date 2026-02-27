@@ -1,12 +1,5 @@
 const app = document.getElementById('app');
 
-const CATEGORY_STATE_KEY = 'qic-category-state';
-const INFO_STATE_KEY = 'qic-info-panel-state';
-
-function loadSessionState(key){
-  try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; }
-}
-
 const state = {
   index: null,
   sections: null,
@@ -15,8 +8,6 @@ const state = {
   search: '',
   regex: false,
   selectedDomain: null,
-  categoryOpen: loadSessionState(CATEGORY_STATE_KEY),
-  infoPanelOpen: loadSessionState(INFO_STATE_KEY),
   facets: { failures:false, broken:false, visualFailed:false, throttled:false, lighthouse:false, a11y:new Set() },
   sorts: { netRec: { key: 'severity', dir: 'asc' }, netReq: { key: 'url', dir: 'asc' }, stability: { key: 'index', dir: 'asc' } }
 };
@@ -45,9 +36,42 @@ function summarizeInput(value){
   return { length: text.length, hasWhitespace: /\s/.test(text) };
 }
 
+function parseTabFromHash(){
+  const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  if(!raw || !state.sections) return null;
+  const target = decodeURIComponent(raw).toLowerCase();
+  return state.sections.order.find((section)=>{
+    const definition = state.sections.definitions[section];
+    if(!definition) return false;
+    return section.toLowerCase() === target || String(definition.label).toLowerCase() === target;
+  }) ?? null;
+}
 
-function saveSessionState(key, value){
-  sessionStorage.setItem(key, JSON.stringify(value));
+function tabToHash(tab){
+  const label = state.sections?.definitions?.[tab]?.label ?? tab;
+  return `#/${encodeURIComponent(label)}`;
+}
+
+function selectedCategory(){
+  return state.sections?.categories.find((category)=>category.sections.includes(state.selectedTab)) ?? state.sections?.categories[0] ?? null;
+}
+
+function syncTabFromLocation(){
+  const fromHash = parseTabFromHash();
+  if(fromHash && fromHash !== state.selectedTab){
+    state.selectedTab = fromHash;
+    return true;
+  }
+  return false;
+}
+
+function setSelectedTab(nextTab, options = { pushHash: true }){
+  if(nextTab === state.selectedTab && !options.pushHash) return;
+  state.selectedTab = nextTab;
+  if(options.pushHash){
+    const nextHash = tabToHash(nextTab);
+    if(window.location.hash !== nextHash) window.location.hash = nextHash;
+  }
 }
 
 async function loadSectionConfig(){
@@ -55,10 +79,8 @@ async function loadSectionConfig(){
   if(!res.ok) throw new Error(`Failed to load section config: ${res.status}`);
   state.sections = await res.json();
   const validTabs = new Set(state.sections.order);
-  if(!validTabs.has(state.selectedTab)) state.selectedTab = state.sections.order[0];
-  state.sections.categories.forEach((category)=>{
-    if(typeof state.categoryOpen[category.id] !== 'boolean') state.categoryOpen[category.id] = true;
-  });
+  const hashTab = parseTabFromHash();
+  state.selectedTab = hashTab && validTabs.has(hashTab) ? hashTab : state.sections.order[0];
 }
 
 async function loadIndex(){
@@ -181,7 +203,7 @@ function renderDetailsShell(u){
       <span>Visual: ${visual===undefined?MISSING:visual?'Pass':'Fail'}</span>
     </div>
   </header>
-  <nav class="tabs">${renderSectionTabs()}</nav>
+  <nav class="tabs" aria-label="Dashboard navigation">${renderSectionTabs()}</nav>
   <section id="tab-content" class="tab-content"><p>Loading ${state.selectedTab}…</p></section>
   <section class="parse-errors">${(state.index.parseErrors||[]).slice(-10).map((e)=>`<div>⚠ ${e.file}: ${e.message}</div>`).join('') || ''}</section>`;
 }
@@ -189,43 +211,13 @@ function renderDetailsShell(u){
 
 
 function renderSectionTabs(){
-  return state.sections.categories.map((category)=>{
-    const expanded = state.categoryOpen[category.id] !== false;
-    const icon = expanded ? '▾' : '▸';
-    const sectionButtons = expanded ? category.sections.map((section)=>{
-      const label = state.sections.definitions[section].label;
-      return `<button class="tab ${state.selectedTab===section?'active':''}" data-tab="${section}">${label}</button>`;
-    }).join('') : '';
-    return `<div class="tab-group"><button class="tab-group-toggle" data-category-toggle="${category.id}" aria-expanded="${expanded}"><span>${icon}</span>${category.label}</button><div class="tab-group-body" ${expanded?'':'hidden'}>${sectionButtons}</div></div>`;
+  const activeCategory = selectedCategory();
+  const categories = state.sections.categories.map((category)=>`<button class="tab group-tab ${activeCategory?.id===category.id?'active':''}" data-group="${category.id}">${category.label}</button>`).join('');
+  const sections = (activeCategory?.sections ?? []).map((section)=>{
+    const label = state.sections.definitions[section].label;
+    return `<button class="tab subgroup-tab ${state.selectedTab===section?'active':''}" data-tab="${section}">${label}</button>`;
   }).join('');
-}
-
-function renderInfoPanel(section){
-  const info = state.sections.definitions[section]?.info;
-  if(!info) return '';
-  const isOpen = state.infoPanelOpen[section] === true;
-  const panelId = `section-info-${section.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-  return `<section class="info-panel"><button class="info-toggle" data-info-toggle="${section}" aria-expanded="${isOpen}" aria-controls="${panelId}">${isOpen?'▾':'▸'} What does this mean?</button><div id="${panelId}" class="info-content" ${isOpen?'':'hidden'}><p><strong>What it is:</strong> ${info.whatItIs}</p><p><strong>Why it matters:</strong> ${info.whyItMatters}</p><p><strong>How to read it:</strong></p><ul>${info.howToRead.map((item)=>`<li>${item}</li>`).join('')}</ul></div></section>`;
-}
-
-function bindDisclosureEvents(){
-  document.querySelectorAll('[data-category-toggle]').forEach((btn)=>{
-    btn.onclick = ()=>{
-      const category = btn.dataset.categoryToggle;
-      const next = !(state.categoryOpen[category] !== false);
-      state.categoryOpen[category] = next;
-      saveSessionState(CATEGORY_STATE_KEY, state.categoryOpen);
-      render();
-    };
-  });
-  document.querySelectorAll('[data-info-toggle]').forEach((btn)=>{
-    btn.onclick = ()=>{
-      const section = btn.dataset.infoToggle;
-      state.infoPanelOpen[section] = !(state.infoPanelOpen[section] === true);
-      saveSessionState(INFO_STATE_KEY, state.infoPanelOpen);
-      render();
-    };
-  });
+  return `<div class="tabs-sticky"><div class="tab-row groups-row" role="tablist" aria-label="Groups">${categories}</div><div class="tab-row subgroups-row" role="tablist" aria-label="Sub-groups">${sections}</div></div>`;
 }
 
 function bindFilters(){
@@ -256,8 +248,23 @@ function bindFilters(){
 }
 
 function bindTabEvents(u){
-  bindDisclosureEvents();
-  document.querySelectorAll('.tab').forEach((b)=>b.onclick=()=>{const operationId=createOperationId(); state.selectedTab=b.dataset.tab; state.selectedDomain=null; logEvent('INFO','UI tab changed',{operationId,urlId:u.id,section:state.selectedTab,view:state.selectedTab}); render();});
+  document.querySelectorAll('[data-group]').forEach((button)=>button.onclick=()=>{
+    const group = state.sections.categories.find((category)=>category.id===button.dataset.group);
+    if(!group || !group.sections.length) return;
+    const nextTab = group.sections.includes(state.selectedTab) ? state.selectedTab : group.sections[0];
+    const operationId=createOperationId();
+    state.selectedDomain=null;
+    setSelectedTab(nextTab);
+    logEvent('INFO','UI group changed',{operationId,urlId:u.id,group:group.id,section:nextTab,view:nextTab});
+    render();
+  });
+  document.querySelectorAll('[data-tab]').forEach((button)=>button.onclick=()=>{
+    const operationId=createOperationId();
+    state.selectedDomain=null;
+    setSelectedTab(button.dataset.tab);
+    logEvent('INFO','UI tab changed',{operationId,urlId:u.id,section:state.selectedTab,view:state.selectedTab});
+    render();
+  });
   loadTab(u.id,state.selectedTab);
 }
 
@@ -318,7 +325,7 @@ async function loadTab(id, tab){
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     default: body = '<p>Unsupported section</p>';
   }
-  el.innerHTML = `${renderInfoPanel(tab)}${head}${body}${rawPanel(raw)}`;
+  el.innerHTML = `${head}${body}${rawPanel(raw)}`;
   logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
   el.querySelectorAll('[data-domain]').forEach((b)=>b.onclick=()=>{state.selectedDomain=b.dataset.domain; state.selectedTab='network-requests.json'; render();});
@@ -360,4 +367,8 @@ const renderThrottled = (r={})=>`<div class="kpis">${textMetric('Available',r.av
 const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound?'Yes':'No')}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed?'Yes':'No')}</div>${r.baselineFound===false?'<button>Create baseline from visual-current.png</button>':''}`;
 
 logEvent('INFO','UI startup',{view:'startup'});
+window.addEventListener('hashchange', ()=>{
+  if(!state.sections || !state.index) return;
+  if(syncTabFromLocation()) render();
+});
 loadIndex().catch((e)=>{logEvent('ERROR','UI startup failed',{view:'startup',errorMessage:e.message}); app.innerHTML=`<p>Failed to load dashboard: ${e.message}</p>`;});
