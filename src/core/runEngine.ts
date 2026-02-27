@@ -13,6 +13,7 @@ import { extractAnchorHrefs, runBfsCrawl } from './crawler.js';
 import { SCHEMA_VERSION, TOOL_VERSION, type ArtifactMeta } from '../models/platform.js';
 import { writeValidatedArtifact } from './artifactValidation.js';
 import { buildRunIndex, percentileSummary } from './normalization.js';
+import { TestTimingTracker } from './testTiming.js';
 
 const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json'] as const;
 const ENABLE_HAR_TESTS = false;
@@ -64,19 +65,24 @@ function computeStats(values: number[]): { stdDevLoadMs: number; coefficientOfVa
   return { stdDevLoadMs, coefficientOfVariation, unstable: coefficientOfVariation > 0.2 };
 }
 
-async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[] }> {
+async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string, timing: TestTimingTracker, retry = 0): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[] }> {
   const urlSlug = sanitizeSlug(target.url);
   const targetFolder = path.join(runRoot, urlSlug);
   ensureDir(targetFolder);
   const harPath = path.join(targetFolder, 'network.har');
+  const testReference = timing.startTest('src/core/runEngine.ts', target.name, retry);
 
-  const context = await browser.newContext(ENABLE_HAR_TESTS ? { recordHar: { path: harPath, mode: 'full' } } : undefined);
-  const page = await context.newPage();
-  const response = await page.goto(target.url, { waitUntil: 'load' });
-  if (target.waitForSelector) await page.locator(target.waitForSelector).waitFor({ state: 'visible' });
+  const context = await timing.step(testReference, 'Create browser context', async () => browser.newContext(ENABLE_HAR_TESTS ? { recordHar: { path: harPath, mode: 'full' } } : undefined));
+  const page = await timing.step(testReference, 'Create page', async () => context.newPage());
 
-  const meta: ArtifactMeta = { runId, url: target.url, urlSlug, timestamp, toolVersion: TOOL_VERSION, schemaVersion: SCHEMA_VERSION };
-  const [perfMetrics, accessibility, hrefs, coreWebVitals] = await Promise.all([collectPerformance(page, target.url), collectAccessibility(page, target.url), scrapePageLinks(page), collectCoreWebVitals(page)]);
+  try {
+    const response = await timing.step(testReference, 'Navigate to target URL', async () => page.goto(target.url, { waitUntil: 'load' }));
+    if (target.waitForSelector) {
+      await timing.step(testReference, `Wait for selector: ${target.waitForSelector}`, async () => page.locator(target.waitForSelector as string).waitFor({ state: 'visible' }));
+    }
+
+    const meta: ArtifactMeta = { runId, url: target.url, urlSlug, timestamp, toolVersion: TOOL_VERSION, schemaVersion: SCHEMA_VERSION };
+    const [perfMetrics, accessibility, hrefs, coreWebVitals] = await timing.step(testReference, 'Collect core artifacts', async () => Promise.all([collectPerformance(page, target.url), collectAccessibility(page, target.url), scrapePageLinks(page), collectCoreWebVitals(page)]));
   const memorySamples = await page.evaluate(() => {
     const value = (window.performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize;
     return value ? [value] : [];
@@ -97,7 +103,6 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     if (typeof heap === 'number') memorySamples.push(heap);
   }
 
-  await context.close();
 
   const requests = ENABLE_HAR_TESTS ? parseHar(harPath) : [];
   const recommendations = recommendNetworkOptimizations(requests);
@@ -253,9 +258,16 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'a11y-beyond-axe.json'), 'accessibilityBeyondAxe', meta, focusCheck);
   writeValidatedArtifact(path.join(targetFolder, 'stability.json'), 'stability', meta, { iterations, loadEventSamples: loadSamples.map((value) => Math.round(value)), timestamps: loadSampleTimestamps, ...navigationStats });
   writeValidatedArtifact(path.join(targetFolder, 'memory-profile.json'), 'memory', meta, { samples: memorySamples, growth: memorySamples.length > 1 ? Math.round(memorySamples[memorySamples.length - 1]! - memorySamples[0]!) : 0 });
-  writeJson(path.join(targetFolder, 'target-summary.json'), artifact);
+  await timing.step(testReference, 'Write target summary', async () => Promise.resolve(writeJson(path.join(targetFolder, 'target-summary.json'), artifact)));
 
-  return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs };
+    timing.endTest(testReference, 'passed');
+    return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs };
+  } catch (error) {
+    timing.endTest(testReference, 'failed');
+    throw error;
+  } finally {
+    await timing.step(testReference, 'Close browser context', async () => context.close());
+  }
 }
 
 function resolveLinearTargets(config: AppConfig): RunTarget[] { return config.targets.length > 0 ? config.targets : [{ name: 'Start URL', url: config.startUrl }]; }
@@ -267,18 +279,40 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   const runRoot = path.join(config.outputDir, runId);
   ensureDir(runRoot);
   writeJson(path.join(runRoot, 'run-metadata.json'), metadata);
+  const timing = new TestTimingTracker(runId);
 
   const browser = await browserFactory(config.browser).launch({ headless: config.headless });
   const targetArtifacts: TargetRunArtifacts[] = [];
   const outputs: RunSummary['outputs'] = [];
 
-  if (config.crawl.enabled) {
+  try {
+    if (config.crawl.enabled) {
     const crawlResult = await runBfsCrawl({ startUrl: config.startUrl, crawlConfig: config.crawl }, async ({ url, parentUrl, depth, index }) => {
-      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp);
+      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp, timing);
       targetArtifacts.push(executed.artifact); outputs.push(executed.output); return { discoveredHrefs: executed.hrefs };
     });
     await browser.close();
     const summary: RunSummary = { metadata, outputs, crawl: { totalPagesDiscovered: crawlResult.totalPagesDiscovered, totalPagesExecuted: crawlResult.totalPagesExecuted, pages: crawlResult.executedPages, skippedUrls: crawlResult.skippedUrls } };
+      writeJson(path.join(runRoot, 'summary-index.json'), summary);
+      const index = buildRunIndex(runRoot, runId, timestamp, TOOL_VERSION, SCHEMA_VERSION);
+      writeJson(path.join(runRoot, 'index.json'), index);
+      writeJson(path.join(runRoot, 'history.json'), { runId, timestamp, urls: index.urls.map((entry) => ({ url: entry.meta.url, scores: entry.enterpriseScore })) });
+      writeJson(path.join(runRoot, 'ci-summary.json'), { runId, totalUrls: index.summary.totalUrls, worstPerformance: index.summary.rankings.performance.at(-1) ?? null });
+      const junit = `<?xml version="1.0" encoding="UTF-8"?><testsuite name="quality-signal" tests="${index.urls.length}">${index.urls.map((entry) => `<testcase classname="url" name="${entry.meta.url}"><system-out>performance=${entry.enterpriseScore.performance}</system-out></testcase>`).join('')}</testsuite>`;
+      fs.writeFileSync(path.join(runRoot, 'junit.xml'), junit);
+      fs.writeFileSync(path.join(runRoot, 'executive-report.pdf'), 'PDF report generation placeholder - include summary and regressions.');
+      writeJson(path.join(runRoot, 'normalized-export.json'), index.urls);
+      await publishToElasticsearch(config.elasticsearch, summary, targetArtifacts);
+      return summary;
+  }
+
+    const targets = resolveLinearTargets(config);
+    for (const target of targets) {
+    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp, timing);
+    outputs.push(executed.output); targetArtifacts.push(executed.artifact);
+  }
+    await browser.close();
+    const summary: RunSummary = { metadata, outputs };
     writeJson(path.join(runRoot, 'summary-index.json'), summary);
     const index = buildRunIndex(runRoot, runId, timestamp, TOOL_VERSION, SCHEMA_VERSION);
     writeJson(path.join(runRoot, 'index.json'), index);
@@ -290,24 +324,12 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
     writeJson(path.join(runRoot, 'normalized-export.json'), index.urls);
     await publishToElasticsearch(config.elasticsearch, summary, targetArtifacts);
     return summary;
+  } finally {
+    try {
+      await browser.close();
+    } catch {
+      // best effort close
+    }
+    await timing.persist(runRoot);
   }
-
-  const targets = resolveLinearTargets(config);
-  for (const target of targets) {
-    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp);
-    outputs.push(executed.output); targetArtifacts.push(executed.artifact);
-  }
-  await browser.close();
-  const summary: RunSummary = { metadata, outputs };
-  writeJson(path.join(runRoot, 'summary-index.json'), summary);
-  const index = buildRunIndex(runRoot, runId, timestamp, TOOL_VERSION, SCHEMA_VERSION);
-  writeJson(path.join(runRoot, 'index.json'), index);
-  writeJson(path.join(runRoot, 'history.json'), { runId, timestamp, urls: index.urls.map((entry) => ({ url: entry.meta.url, scores: entry.enterpriseScore })) });
-  writeJson(path.join(runRoot, 'ci-summary.json'), { runId, totalUrls: index.summary.totalUrls, worstPerformance: index.summary.rankings.performance.at(-1) ?? null });
-  const junit = `<?xml version="1.0" encoding="UTF-8"?><testsuite name="quality-signal" tests="${index.urls.length}">${index.urls.map((entry) => `<testcase classname="url" name="${entry.meta.url}"><system-out>performance=${entry.enterpriseScore.performance}</system-out></testcase>`).join('')}</testsuite>`;
-  fs.writeFileSync(path.join(runRoot, 'junit.xml'), junit);
-  fs.writeFileSync(path.join(runRoot, 'executive-report.pdf'), 'PDF report generation placeholder - include summary and regressions.');
-  writeJson(path.join(runRoot, 'normalized-export.json'), index.urls);
-  await publishToElasticsearch(config.elasticsearch, summary, targetArtifacts);
-  return summary;
 }
