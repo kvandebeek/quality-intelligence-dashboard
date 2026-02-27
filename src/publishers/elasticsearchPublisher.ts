@@ -17,7 +17,7 @@ export async function publishToElasticsearch(config: ElasticConfig, summary: Run
 
   const index = `${config.indexPrefix ?? 'quality-signal'}-runs`;
 
-  await client.indices.putTemplate({
+  await client.indices.putIndexTemplate({
     name: `${index}-template`,
     index_patterns: [`${config.indexPrefix ?? 'quality-signal'}-*`],
     template: {

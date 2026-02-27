@@ -1,4 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
+import { AxeBuilder } from '@axe-core/playwright';
 import type { Page } from 'playwright';
 import type { AccessibilityIssue, AccessibilityReport, Severity } from '../models/types.js';
 
@@ -17,7 +17,7 @@ function toSeverity(value: string | null | undefined): Severity {
 
 export async function collectAccessibility(page: Page, url: string): Promise<AccessibilityReport> {
   const results = await new AxeBuilder({ page }).analyze();
-  const issues: AccessibilityIssue[] = results.violations.map((violation) => ({
+  const issues: AccessibilityIssue[] = results.violations.map((violation): AccessibilityIssue => ({
     id: violation.id,
     impact: toSeverity(violation.impact),
     description: violation.description,
