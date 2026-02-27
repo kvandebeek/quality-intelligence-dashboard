@@ -5,6 +5,7 @@ const TEST_TIMING_FILE_NAME = 'test-timing.json';
 const DEFAULT_SLOW_TEST_THRESHOLD_MS = 5000;
 const DEFAULT_LOG_TEST_STEPS = false;
 const DEFAULT_LOG_SLOWEST_N = 10;
+const DEFAULT_LIVE_LOGGING = true;
 
 type TestStatus = 'passed' | 'failed' | 'skipped' | 'timedOut';
 
@@ -107,6 +108,8 @@ export class TestTimingTracker {
 
   private readonly runId: string;
 
+  private readonly liveLogging: boolean;
+
   private readonly suiteStartMs: number;
 
   private readonly tests = new Map<string, TestRecordMutable>();
@@ -117,6 +120,7 @@ export class TestTimingTracker {
     this.slowTestThresholdMs = parsePositiveInteger(process.env.SLOW_TEST_THRESHOLD_MS, DEFAULT_SLOW_TEST_THRESHOLD_MS);
     this.logTestSteps = parseBoolean(process.env.LOG_TEST_STEPS, DEFAULT_LOG_TEST_STEPS);
     this.logSlowestN = parsePositiveInteger(process.env.LOG_SLOWEST_N, DEFAULT_LOG_SLOWEST_N);
+    this.liveLogging = parseBoolean(process.env.LIVE_TEST_LOGGING, DEFAULT_LIVE_LOGGING);
   }
 
   public startTest(file: string, testName: string, retry = 0): string {
@@ -129,6 +133,11 @@ export class TestTimingTracker {
       start: Date.now(),
       steps: [],
     });
+
+    if (this.liveLogging) {
+      process.stdout.write(`START   ${testName} (${file})${retry > 0 ? ` retry=${retry}` : ''}\n`);
+    }
+
     return reference;
   }
 
@@ -140,13 +149,18 @@ export class TestTimingTracker {
       const stepEnd = Date.now();
       const test = this.tests.get(testReference);
       if (test) {
-        test.steps.push({
+        const stepRecord: TimingStep = {
         name: stepName,
         startTime: toIso(stepStart),
         endTime: toIso(stepEnd),
         durationMs: Math.max(stepEnd - stepStart, 0),
         parentTestReference: testReference,
-        });
+        };
+        test.steps.push(stepRecord);
+
+        if (this.liveLogging) {
+          process.stdout.write(`  STEP ${pad(toSeconds(stepRecord.durationMs), 8)} ${test.testName}: ${stepRecord.name}\n`);
+        }
       }
     }
   }
