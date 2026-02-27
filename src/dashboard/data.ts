@@ -11,22 +11,22 @@ export function resolveRunPath(options: RunPathOptions): string {
 type JsonValue = Record<string, unknown> | unknown[];
 
 export const SECTION_FILES = [
+  'target-summary.json',
+  'broken-links.json',
+  'stability.json',
   'a11y-beyond-axe.json',
   'accessibility.json',
-  'api-monitoring.json',
-  'broken-links.json',
   'core-web-vitals.json',
   'lighthouse-summary.json',
   'memory-profile.json',
+  'performance.json',
+  'throttled-run.json',
+  'api-monitoring.json',
   'network-recommendations.json',
   'network-requests.json',
-  'performance.json',
   'security-scan.json',
-  'seo-checks.json',
-  'stability.json',
-  'target-summary.json',
   'third-party-risk.json',
-  'throttled-run.json',
+  'seo-checks.json',
   'visual-current.png',
   'visual-regression.json'
 ] as const;

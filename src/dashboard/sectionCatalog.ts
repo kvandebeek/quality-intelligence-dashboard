@@ -28,10 +28,10 @@ export interface SectionCategoryDefinition {
 }
 
 export const SECTION_CATEGORIES = [
+  { id: 'quality-reliability', label: 'Quality & Reliability' },
   { id: 'accessibility', label: 'Accessibility' },
   { id: 'performance', label: 'Performance' },
   { id: 'network', label: 'Network' },
-  { id: 'quality-reliability', label: 'Quality & Reliability' },
   { id: 'security-risk', label: 'Security & Risk' },
   { id: 'seo', label: 'SEO' },
   { id: 'visual', label: 'Visual' }
