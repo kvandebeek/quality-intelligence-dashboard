@@ -90,7 +90,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   const loadSamples: number[] = [];
   const loadSampleTimestamps: string[] = [];
-  const iterations = 100;
+  const iterations = 5;
   for (let i = 0; i < iterations; i += 1) {
     await page.goto(target.url, { waitUntil: 'load' });
     const loadEventMs = await page.evaluate(() => {
