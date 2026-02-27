@@ -141,6 +141,31 @@ Example schema:
     "durationMs": 15003,
     "totalTests": 2,
     "passed": 1,
+Playwright test timing is now captured by a dedicated custom reporter that runs alongside existing reporters (`list` + timing reporter). The reporter is configured in `playwright.config.ts` and writes a structured artifact for each run.
+
+### What gets measured
+
+- **Per test**: file, title, status (`passed|failed|skipped|timedOut`), retry index, start/end timestamps, duration, and `isSlow`.
+- **Per step**: each `test.step()` block with start/end timestamps, duration, and parent test reference.
+- **Per suite run**: suite start/end, total duration, total tests, passed/failed/skipped counts.
+
+### Output artifacts
+
+- Path: `artifacts/<runId>/test-timing.json`
+- `runId` is generated once per run.
+- JSON is the source of truth for both persistence and console output.
+
+Example JSON:
+
+```json
+{
+  "runId": "1740652739012",
+  "suite": {
+    "startTime": "2026-02-27T12:11:59.013Z",
+    "endTime": "2026-02-27T12:12:24.230Z",
+    "durationMs": 25217,
+    "totalTests": 3,
+    "passed": 2,
     "failed": 1,
     "skipped": 0
   },
@@ -180,3 +205,64 @@ Example schema:
 - The JSON model is stable and dashboard-friendly (`runId`, `suite`, `tests`, `steps`).
 - Future trend/regression jobs can diff durations by `file + testName` and aggregate over historical runs.
 
+      "id": "abc#0",
+      "file": "tests/a11y.spec.ts",
+      "testName": "a11y-beyond-axe › computes contrast score",
+      "status": "failed",
+      "retry": 1,
+      "startTime": "2026-02-27T12:12:01.100Z",
+      "endTime": "2026-02-27T12:12:10.010Z",
+      "durationMs": 8910,
+      "isSlow": true,
+      "steps": [
+        {
+          "name": "Navigate to target",
+          "startTime": "2026-02-27T12:12:01.120Z",
+          "endTime": "2026-02-27T12:12:01.570Z",
+          "durationMs": 450,
+          "parentTestId": "abc#1"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Live console output
+
+Per-test line (always):
+
+```text
+PASS    1.23s    target-summary › shows run id (tests/target-summary.spec.ts)
+FAIL    8.91s    a11y-beyond-axe › computes contrast score (tests/a11y.spec.ts) retry=1
+```
+
+Optional step lines (`LOG_TEST_STEPS=true`):
+
+```text
+PASS    2.01s    core-web-vitals › collects metrics (tests/cwv.spec.ts)
+  STEP 0.45s     Navigate to target
+  STEP 0.32s     Collect metrics
+  STEP 1.10s     Save artifacts
+```
+
+End-of-run summary includes:
+
+- total suite duration
+- total tests
+- passed/failed/skipped counts
+- slow test threshold
+- slowest `N` tests (`LOG_SLOWEST_N`, default 10)
+
+### Environment configuration
+
+- `SLOW_TEST_THRESHOLD_MS` (default: `5000`)
+- `LOG_TEST_STEPS` (default: `false`)
+- `LOG_SLOWEST_N` (default: `10`)
+
+### Architecture and extension points
+
+- The reporter centralizes timing capture in one place, so existing tests require no modification.
+- The JSON schema is stable and dashboard-friendly (`runId`, `suite`, `tests`, `steps`), allowing ingestion and historical comparisons later.
+- Future regressions/trend detection can read `artifacts/*/test-timing.json` and compute deltas by `file + testName`.
+- Slow test detection is threshold-based and environment-configurable to support CI and local tuning.
