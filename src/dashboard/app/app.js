@@ -197,7 +197,7 @@ function renderVirtualList(urls){
       const top=(start+i)*rowH;
       return `<button class="url-row ${u.id===state.selectedId?'active':''}" data-id="${u.id}" style="top:${top}px">
         <div class="title">${u.url}</div>
-        <div class="row-badges">${badge(u.badges.a11y)}${badge(u.badges.perf)}${badge(u.badges.net)}${badge(u.badges.sec)}${badge(u.badges.seo)}${badge(u.badges.visual)}${badge(u.badges.stability)}</div>
+        <div class="row-badges">${badge(u.badges.a11y)}${badge(u.badges.perf)}${badge(u.badges.net)}${badge(u.badges.sec)}${badge(u.badges.seo)}${badge(u.badges.visual)}${badge(u.badges.ux)}${badge(u.badges.stability)}</div>
       </button>`;
     }).join('')}</div>`;
     container.querySelectorAll('.url-row').forEach((el)=>el.onclick=()=>{const operationId=createOperationId(); state.selectedId=el.dataset.id; state.selectedDomain=null; logEvent('INFO','UI URL selection changed',{operationId,urlId:state.selectedId,view:state.selectedTab}); render();});
@@ -420,6 +420,16 @@ async function loadTab(id, tab){
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     case 'client-errors.json': body = renderClientErrors(unwrapped.payload); break;
     case 'ux-friction.json': body = renderUxFriction(unwrapped.payload); break;
+    case 'ux-overview.json': body = renderUxOverview(unwrapped.payload, selected); break;
+    case 'ux-sanity.json':
+    case 'ux-layout-stability.json':
+    case 'ux-interaction.json':
+    case 'ux-click-friction.json':
+    case 'ux-keyboard.json':
+    case 'ux-overlays.json':
+    case 'ux-readability.json':
+    case 'ux-forms.json':
+    case 'ux-visual-regression.json': body = renderUxGeneric(tab, unwrapped.payload, selected); break;
     case 'memory-leaks.json': body = renderMemoryLeaks(unwrapped.payload); break;
     case 'cache-analysis.json': body = renderCacheAnalysis(unwrapped.payload); break;
     case 'third-party-resilience.json': body = renderThirdPartyResilience(unwrapped.payload); break;
@@ -500,6 +510,18 @@ const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found'
 
 const renderClientErrors = (r={})=>`<div class="kpis">${metric('Total errors',r.totalErrors)}${metric('Severity score',r.severityScore)}${metric('Console errors',r.consoleErrors)}${metric('Unhandled rejections',r.unhandledRejections)}</div><table><tr><th>Message</th><th>Count</th></tr>${(r.topErrors||[]).slice(0,20).map((item)=>`<tr><td>${safe(item.message)}</td><td>${safe(item.count)}</td></tr>`).join('')}</table>`;
 const renderUxFriction = (r={})=>`<div class="kpis">${metric('UX score',r.uxScore)}${metric('Rage clicks',r.rageClicks)}${metric('Dead clicks',r.deadClicks)}${metric('Long tasks',r.longTasks)}${metric('Layout shifts',r.layoutShifts)}</div><table><tr><th>Selector</th><th>Count</th></tr>${(r.topSelectors||[]).map((item)=>`<tr><td>${safe(item.selector)}</td><td>${safe(item.count)}</td></tr>`).join('')}</table>`;
+const renderUxOverview = (r={})=>{
+  const artifacts = r.signals?.artifacts || {};
+  const rows = Object.entries(artifacts);
+  const issues = (r.topIssues||[]).slice(0,20);
+  return `<div class="kpis">${metric('UX suite score',r.score)}${textMetric('Status',r.meta?.status ?? r.status)}${metric('Top issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>
+  <table><tr><th>Artifact</th><th>Status</th><th>Score</th></tr>${rows.map(([k,v])=>`<tr><td>${safe(k)}</td><td>${safe(v.status)}</td><td>${safe(v.score)}</td></tr>`).join('')}</table>
+  <h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Title</th></tr>${issues.map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.title)}</td></tr>`).join('')}</table>`;
+};
+const renderUxGeneric = (tab, r={})=>{
+  const screens = tab === 'ux-visual-regression.json' ? `<div class="image-wrap"><a href="/artifacts/${encodeURIComponent(state.selectedId)}/ux-visual-above-the-fold.png" target="_blank">Above the fold screenshot</a><br><a href="/artifacts/${encodeURIComponent(state.selectedId)}/ux-visual-fullpage.png" target="_blank">Full page screenshot</a></div>` : '';
+  return `<div class="kpis">${textMetric('Status',r.meta?.status ?? r.status)}${metric('Score',r.score)}${metric('Issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>${screens}<h4>Signals</h4><pre>${escapeHtml(JSON.stringify(r.signals||{},null,2))}</pre><h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Description</th></tr>${(r.topIssues||[]).map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.description)}</td></tr>`).join('')}</table>`;
+};
 const renderMemoryLeaks = (r={})=>`<div class="kpis">${textMetric('Mode',r.mode)}${metric('Initial heap',r.initialHeapMB,'MB')}${metric('Final heap',r.finalHeapMB,'MB')}${metric('Growth',r.growthMB,'MB')}${textMetric('Leak risk',r.leakRisk)}</div><ul>${(r.evidence||[]).map((line)=>`<li>${safe(line)}</li>`).join('')}</ul>`;
 const renderCacheAnalysis = (r={})=>`<div class="kpis">${metric('Cache score',r.cacheScore)}${metric('Improvement',r.improvementPercent,'%')}${metric('Cold LCP',r.cold?.lcpMs,'ms')}${metric('Warm LCP',r.warm?.lcpMs,'ms')}</div><table><tr><th>Asset</th><th>Cache-Control</th></tr>${(r.poorlyCachedAssets||[]).slice(0,40).map((item)=>`<tr><td>${safe(item.url)}</td><td>${safe(item.cacheControl)}</td></tr>`).join('')}</table>`;
 const renderThirdPartyResilience = (r={})=>`<div class="kpis">${textMetric('Functional breakage',r.functionalBreakage)}${textMetric('Layout impact',r.layoutImpact)}${metric('Resilience score',r.resilienceScore)}</div><p>Blocked domains: ${(r.blockedDomains||[]).join(', ') || 'None'}</p>`;

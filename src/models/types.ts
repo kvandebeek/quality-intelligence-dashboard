@@ -180,6 +180,7 @@ export interface AssuranceModulesConfig {
     runtimeSecurity: boolean;
     dependencyRisk: boolean;
     regressionDelta: boolean;
+    uxSuite: boolean;
   };
   clientErrors: {
     topErrorsLimit: number;
@@ -212,6 +213,11 @@ export interface AssuranceModulesConfig {
   regression: {
     elevatedThreshold: number;
     watchThreshold: number;
+  };
+  uxSuite: {
+    maxClickCandidates: number;
+    maxTabSteps: number;
+    observationWindowMs: number;
   };
 }
 

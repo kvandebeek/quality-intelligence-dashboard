@@ -44,6 +44,7 @@ export type SectionCategory =
   | 'security-risk'
   | 'seo'
   | 'visual'
+  | 'ux'
   | 'reliability-client-health'
   | 'performance-efficiency'
   | 'resilience'
@@ -194,6 +195,7 @@ export const SECTION_CATEGORIES = [
   { id: 'security-risk', label: 'Security & Risk' },
   { id: 'seo', label: 'SEO' },
   { id: 'visual', label: 'Visual' },
+  { id: 'ux', label: 'UX' },
   { id: 'reliability-client-health', label: 'Reliability & Client Health' },
   { id: 'performance-efficiency', label: 'Performance Efficiency' },
   { id: 'resilience', label: 'Resilience' },
@@ -424,6 +426,21 @@ export const SECTION_DEFINITIONS = {
       keyTerms: ['baselineFound', 'diffRatio', 'passed']
     }
   },
+
+  'ux-overview.json': {
+    route: 'ux-overview.json', label: 'ux-overview', category: 'ux',
+    info: { whatItIs: 'Aggregated summary of all generic UX checks.', whyItMatters: 'Gives a single dashboard-ready entry point for UX quality.', howToRead: ['Check overall score and status.', 'Review worst issues first.', 'Open each UX sub-artifact for evidence.', 'Track changes across runs.'], keyTerms: baseTerms }
+  },
+  'ux-sanity.json': { route: 'ux-sanity.json', label: 'ux-sanity', category: 'ux', info: { whatItIs: 'Basic runtime and error sanity signals.', whyItMatters: 'Detects broken pages and soft-404 patterns.', howToRead: ['Inspect status/errors.', 'Check failed requests and console issues.', 'Review soft-404 flag.', 'Address high-severity findings.'], keyTerms: baseTerms } },
+  'ux-layout-stability.json': { route: 'ux-layout-stability.json', label: 'ux-layout-stability', category: 'ux', info: { whatItIs: 'Layout shift and DOM churn checks.', whyItMatters: 'Unstable layouts cause frustration and mis-clicks.', howToRead: ['Review total CLS-like shift.', 'Check mutation churn.', 'Inspect top largest shifts.', 'Fix unstable components.'], keyTerms: ['cls'] } },
+  'ux-interaction.json': { route: 'ux-interaction.json', label: 'ux-interaction', category: 'ux', info: { whatItIs: 'Main-thread responsiveness and interaction latency heuristics.', whyItMatters: 'Slow interactions reduce perceived quality.', howToRead: ['Check long task totals.', 'Review top durations.', 'Compare average response metrics.', 'Reduce blocking scripts/work.'], keyTerms: ['inp'] } },
+  'ux-click-friction.json': { route: 'ux-click-friction.json', label: 'ux-click-friction', category: 'ux', info: { whatItIs: 'Dead-click and click reaction heuristic checks.', whyItMatters: 'Dead clicks indicate broken interaction affordances.', howToRead: ['Review candidate coverage.', 'Count dead clicks.', 'Inspect no-reaction elements.', 'Fix click handlers/states.'], keyTerms: baseTerms } },
+  'ux-keyboard.json': { route: 'ux-keyboard.json', label: 'ux-keyboard', category: 'ux', info: { whatItIs: 'Keyboard tab-flow and focus visibility checks.', whyItMatters: 'Keyboard accessibility is core UX and compliance.', howToRead: ['Check focus-visible percentage.', 'Review unique reachable elements.', 'Watch for trap patterns.', 'Improve focus styles/order.'], keyTerms: ['keyboardReachable','possibleFocusTrap'] } },
+  'ux-overlays.json': { route: 'ux-overlays.json', label: 'ux-overlays', category: 'ux', info: { whatItIs: 'Overlay and obstruction detection signals.', whyItMatters: 'Large overlays can block critical content/actions.', howToRead: ['Check overlay count.', 'Inspect viewport coverage.', 'Review dismiss controls.', 'Reduce intrusive overlays.'], keyTerms: baseTerms } },
+  'ux-readability.json': { route: 'ux-readability.json', label: 'ux-readability', category: 'ux', info: { whatItIs: 'Text size, line length, and language metadata heuristics.', whyItMatters: 'Readability strongly affects comprehension and completion.', howToRead: ['Review under-12/under-14 percentages.', 'Check line-length estimate.', 'Validate html lang attribute.', 'Adjust typography and structure.'], keyTerms: baseTerms } },
+  'ux-forms.json': { route: 'ux-forms.json', label: 'ux-forms', category: 'ux', info: { whatItIs: 'Non-destructive form structure and labeling checks.', whyItMatters: 'Forms are high-friction areas and need clear accessibility.', howToRead: ['Check missing accessible names.', 'Review placeholder-only labeling rate.', 'Inspect required-field hints.', 'Fix labels and validation hints.'], keyTerms: baseTerms } },
+  'ux-visual-regression.json': { route: 'ux-visual-regression.json', label: 'ux-visual-regression', category: 'ux', info: { whatItIs: 'UX screenshots and optional baseline diff status.', whyItMatters: 'Visual snapshots provide quick context for UX findings.', howToRead: ['Open above-the-fold and full-page images.', 'Check diff ratio when baseline exists.', 'Create baseline if skipped.', 'Track visual drift over time.'], keyTerms: ['baselineFound','diffRatio'] } },
+
   'client-errors.json': {
     route: 'client-errors.json', label: 'client-side-errors', category: 'reliability-client-health',
     info: { whatItIs: 'Tracks browser-side errors seen by users during page use.', whyItMatters: 'Client errors break journeys, increase support load, and hide conversion issues.', howToRead: ['Check total errors and severity score.', 'Review top repeated messages first.', 'Failed requests often point to API/CDN dependency problems.', 'Fix high-frequency errors before edge-case warnings.'], keyTerms: baseTerms }

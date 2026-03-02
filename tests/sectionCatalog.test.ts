@@ -12,6 +12,7 @@ describe('section catalog', () => {
       { label: 'Security & Risk', sections: ['security-scan.json', 'third-party-risk.json'] },
       { label: 'SEO', sections: ['seo-checks.json', 'seo-score.json'] },
       { label: 'Visual', sections: ['visual-current.png', 'visual-regression.json'] },
+      { label: 'UX', sections: ['ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] },
       { label: 'Reliability & Client Health', sections: ['client-errors.json', 'ux-friction.json', 'memory-leaks.json'] },
       { label: 'Performance Efficiency', sections: ['cache-analysis.json'] },
       { label: 'Resilience', sections: ['third-party-resilience.json'] },

@@ -34,7 +34,13 @@
       "privacyAudit": true,
       "runtimeSecurity": true,
       "dependencyRisk": true,
-      "regressionDelta": true
+      "regressionDelta": true,
+      "uxSuite": true
+    },
+    "uxSuite": {
+      "maxClickCandidates": 5,
+      "maxTabSteps": 25,
+      "observationWindowMs": 5000
     }
   }
 }
