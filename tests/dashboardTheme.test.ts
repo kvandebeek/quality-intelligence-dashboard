@@ -7,10 +7,9 @@ type FakeWindow = Window & {
     getItem: (key: string) => string | null;
     setItem: (key: string, value: string) => void;
   };
-  matchMedia: (query: string) => { matches: boolean };
 };
 
-function installEnvironment({ stored, prefersDark = false }: { stored?: string | null; prefersDark?: boolean }) {
+function installEnvironment({ stored }: { stored?: string | null }) {
   let storageValue = stored ?? null;
   const fakeWindow = {
     localStorage: {
@@ -18,8 +17,7 @@ function installEnvironment({ stored, prefersDark = false }: { stored?: string |
       setItem: (_key: string, value: string) => {
         storageValue = value;
       }
-    },
-    matchMedia: () => ({ matches: prefersDark })
+    }
   } as unknown as FakeWindow;
 
   const fakeDocument = {
@@ -46,17 +44,17 @@ afterEach(() => {
 
 describe('dashboard theme utility', () => {
   it('uses stored theme when available', () => {
-    installEnvironment({ stored: 'light', prefersDark: true });
+    installEnvironment({ stored: 'light' });
     expect(getInitialTheme()).toBe('light');
   });
 
-  it('falls back to OS preference when no stored value exists', () => {
-    installEnvironment({ stored: null, prefersDark: true });
-    expect(getInitialTheme()).toBe('dark');
+  it('falls back to light when no stored value exists', () => {
+    installEnvironment({ stored: null });
+    expect(getInitialTheme()).toBe('light');
   });
 
   it('persists and applies selected theme', () => {
-    const env = installEnvironment({ stored: null, prefersDark: false });
+    const env = installEnvironment({ stored: null });
     setTheme('dark');
     expect(env.getStorage()).toBe('dark');
     expect(env.getTheme()).toBe('dark');
