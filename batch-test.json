@@ -1,0 +1,48 @@
+{
+  "defaults": {
+    "browser": "chromium",
+    "headless": true,
+    "environment": "local",
+    "iteration": 1,
+    "outputDir": "artifacts",
+    "elasticsearch": {
+      "enabled": false,
+      "indexPrefix": "quality-signal"
+    }
+  },
+  "batch": [
+    {
+      "name": "RESILLION",
+      "startUrl": "https://www.resillion.com",
+      "crawl": {
+        "enabled": true,
+        "maxDepth": 3,
+        "maxPages": 10,
+        "includeExternalDomains": false,
+        "allowedDomains": ["resillion.com"]
+      }
+    },
+    {
+      "name": "OpenAI Docs",
+      "startUrl": "https://platform.openai.com/docs",
+      "crawl": {
+        "enabled": true,
+        "maxDepth": 2,
+        "maxPages": 8,
+        "includeExternalDomains": false,
+        "allowedDomains": ["openai.com"]
+      }
+    },
+    {
+      "name": "NodeJS",
+      "startUrl": "https://nodejs.org/en",
+      "crawl": {
+        "enabled": true,
+        "maxDepth": 2,
+        "maxPages": 6,
+        "includeExternalDomains": false,
+        "allowedDomains": ["nodejs.org"]
+      }
+    }
+  ]
+}
