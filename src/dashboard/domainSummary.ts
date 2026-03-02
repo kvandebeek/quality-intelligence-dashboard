@@ -12,10 +12,32 @@ export interface DomainSummary {
   fcp: { avgSeconds: number | null; minSeconds: number | null; maxSeconds: number | null; coverage: Coverage };
   brokenLinks: { broken: number; total: number; rate: number | null; coverage: Coverage };
   seoScore: { avg: number | null; min: number | null; max: number | null; coverage: Coverage };
-  coreWebVitals: { good: number; needsImprovement: number; poor: number; coverage: Coverage };
+  coreWebVitals: {
+    state: 'not-collected' | 'empty' | 'has-data';
+    good: number;
+    needsImprovement: number;
+    poor: number;
+    coverage: Coverage;
+    metrics: {
+      lcp: { good: number; measured: number };
+      inp: { good: number; measured: number };
+      cls: { good: number; measured: number };
+    };
+  };
   clientErrors: { totalErrors: number; affectedUrls: number; coverage: Coverage };
-  security: { severities: Record<string, number>; totalFindings: number; coverage: Coverage };
-  visualRegression: { changedUrls: number; avgDiffRatio: number | null; baselineFound: number; coverage: Coverage };
+  security: {
+    state: 'ok-empty' | 'ok-has-findings' | 'not-collected' | 'error';
+    severities: Record<string, number>;
+    totalFindings: number;
+    coverage: Coverage;
+  };
+  uxSummary: {
+    state: 'not-collected' | 'empty' | 'has-issues';
+    passingUrls: number;
+    failingUrls: number;
+    topIssues: Array<{ id: string; title: string; count: number }>;
+    coverage: Coverage;
+  };
 }
 
 const asRecord = (value: unknown): Record<string, unknown> => (typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {});
@@ -55,6 +77,12 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
   let cwvGood = 0;
   let cwvNeedsImprovement = 0;
   let cwvPoor = 0;
+  let lcpGood = 0;
+  let lcpMeasured = 0;
+  let inpGood = 0;
+  let inpMeasured = 0;
+  let clsGood = 0;
+  let clsMeasured = 0;
 
   let clientCoverage = 0;
   let totalClientErrors = 0;
@@ -63,13 +91,13 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
   let securityCoverage = 0;
   const securitySeverities: Record<string, number> = {};
 
-  let visualCoverage = 0;
-  let visualChangedUrls = 0;
-  let visualBaselineFound = 0;
-  const visualDiffs: number[] = [];
+  let uxCoverage = 0;
+  let uxPassingUrls = 0;
+  let uxFailingUrls = 0;
+  const uxIssues = new Map<string, { id: string; title: string; count: number }>();
 
   for (const url of index.urls) {
-    const [a11yLoaded, perfLoaded, brokenLoaded, seoLoaded, cwvLoaded, stabilityLoaded, securityLoaded, visualLoaded] = await Promise.all([
+    const [a11yLoaded, perfLoaded, brokenLoaded, seoLoaded, cwvLoaded, stabilityLoaded, securityLoaded, uxLoaded] = await Promise.all([
       store.loadSection(url.id, 'accessibility.json'),
       store.loadSection(url.id, 'performance.json'),
       store.loadSection(url.id, 'broken-links.json'),
@@ -77,7 +105,7 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
       store.loadSection(url.id, 'core-web-vitals.json'),
       store.loadSection(url.id, 'stability.json'),
       store.loadSection(url.id, 'security-scan.json'),
-      store.loadSection(url.id, 'visual-regression.json')
+      store.loadSection(url.id, 'ux-overview.json')
     ]);
 
     if (a11yLoaded.state === 'ok' || a11yLoaded.state === 'issues') {
@@ -128,6 +156,18 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
       const lcpClass = classifyCwv(Number.isFinite(lcp) ? lcp : null, 2.5, 4.0);
       const clsClass = classifyCwv(cls, 0.1, 0.25);
       const inpClass = classifyCwv(inp, 200, 500);
+      if (lcpClass !== 'missing') {
+        lcpMeasured += 1;
+        if (lcpClass === 'good') lcpGood += 1;
+      }
+      if (clsClass !== 'missing') {
+        clsMeasured += 1;
+        if (clsClass === 'good') clsGood += 1;
+      }
+      if (inpClass !== 'missing') {
+        inpMeasured += 1;
+        if (inpClass === 'good') inpGood += 1;
+      }
       if (lcpClass !== 'missing' && clsClass !== 'missing' && inpClass !== 'missing') {
         cwvCoverage += 1;
         if (lcpClass === 'good' && clsClass === 'good' && inpClass === 'good') cwvGood += 1;
@@ -159,24 +199,36 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
         securityCoverage += 1;
         securitySeverities.info = (securitySeverities.info ?? 0) + security.missingHeaders.length;
       }
+    } else if (securityLoaded.state === 'error') {
+      securityCoverage += 1;
     }
 
-    if (visualLoaded.state === 'ok' || visualLoaded.state === 'issues' || visualLoaded.state === 'not_available') {
-      const visual = unwrap(visualLoaded.raw);
-      const diffRatio = toNum(visual.diffRatio ?? visual.diffScore);
-      const threshold = toNum(visual.threshold ?? visual.diffThreshold) ?? 0;
-      const baselineFound = visual.baselineFound !== false;
-      if (baselineFound) visualBaselineFound += 1;
-      if (diffRatio !== null) {
-        visualDiffs.push(diffRatio);
-        visualCoverage += 1;
-        if (diffRatio > threshold || visual.passed === false) visualChangedUrls += 1;
+    if (uxLoaded.state === 'ok' || uxLoaded.state === 'issues') {
+      const ux = unwrap(uxLoaded.raw);
+      const topIssues = Array.isArray(ux.topIssues) ? ux.topIssues : [];
+      uxCoverage += 1;
+      if (topIssues.length > 0) uxFailingUrls += 1;
+      else uxPassingUrls += 1;
+      for (const issue of topIssues) {
+        const row = asRecord(issue);
+        const id = String(row.id ?? row.code ?? 'issue');
+        const title = String(row.title ?? row.description ?? id);
+        const key = `${id}:${title}`;
+        uxIssues.set(key, { id, title, count: (uxIssues.get(key)?.count ?? 0) + 1 });
       }
     }
   }
 
   const a11yTotalIssues = Object.values(a11yCounts).reduce((sum, value) => sum + value, 0);
   const securityTotal = Object.values(securitySeverities).reduce((sum, value) => sum + value, 0);
+  const securityState = securityCoverage === 0
+    ? 'not-collected'
+    : securityTotal === 0
+      ? 'ok-empty'
+      : 'ok-has-findings';
+  const cwvState = cwvCoverage === 0 ? (total === 0 ? 'empty' : 'not-collected') : 'has-data';
+  const uxTopIssues = [...uxIssues.values()].sort((a, b) => b.count - a.count || a.id.localeCompare(b.id)).slice(0, 3);
+  const uxState = uxCoverage === 0 ? (total === 0 ? 'empty' : 'not-collected') : uxFailingUrls > 0 ? 'has-issues' : 'empty';
 
   return {
     runId,
@@ -190,9 +242,20 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
     },
     brokenLinks: { broken, total: totalLinks, rate: totalLinks > 0 ? (broken / totalLinks) * 100 : null, coverage: { measured: brokenCoverage, total } },
     seoScore: { avg: avg(seoValues), min: seoValues.length ? Math.min(...seoValues) : null, max: seoValues.length ? Math.max(...seoValues) : null, coverage: { measured: seoCoverage, total } },
-    coreWebVitals: { good: cwvGood, needsImprovement: cwvNeedsImprovement, poor: cwvPoor, coverage: { measured: cwvCoverage, total } },
+    coreWebVitals: {
+      state: cwvState,
+      good: cwvGood,
+      needsImprovement: cwvNeedsImprovement,
+      poor: cwvPoor,
+      coverage: { measured: cwvCoverage, total },
+      metrics: {
+        lcp: { good: lcpGood, measured: lcpMeasured },
+        inp: { good: inpGood, measured: inpMeasured },
+        cls: { good: clsGood, measured: clsMeasured }
+      }
+    },
     clientErrors: { totalErrors: totalClientErrors, affectedUrls: clientAffectedUrls, coverage: { measured: clientCoverage, total } },
-    security: { severities: securitySeverities, totalFindings: securityTotal, coverage: { measured: securityCoverage, total } },
-    visualRegression: { changedUrls: visualChangedUrls, avgDiffRatio: avg(visualDiffs), baselineFound: visualBaselineFound, coverage: { measured: visualCoverage, total } }
+    security: { state: securityState, severities: securitySeverities, totalFindings: securityTotal, coverage: { measured: securityCoverage, total } },
+    uxSummary: { state: uxState, passingUrls: uxPassingUrls, failingUrls: uxFailingUrls, topIssues: uxTopIssues, coverage: { measured: uxCoverage, total } }
   };
 }
