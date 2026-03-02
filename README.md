@@ -64,3 +64,11 @@ Run-level root:
 ## Traceability
 
 See `TRACEABILITY.md` for artifact -> producer -> dashboard mapping.
+
+## Dashboard theming
+
+- The dashboard now supports `dark` and `light` themes through CSS variable tokens in `src/dashboard/app/app.css`.
+- Theme is applied via `document.documentElement.dataset.theme` (`dark` or `light`).
+- Selection persistence uses `localStorage["theme"]`.
+- Initial theme logic: use saved `theme` if present, otherwise use `prefers-color-scheme`.
+- To tune colors for either theme, edit the token blocks in `src/dashboard/app/app.css` (`:root` for dark and `:root[data-theme='light']` for light).
