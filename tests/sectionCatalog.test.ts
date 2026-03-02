@@ -6,12 +6,17 @@ describe('section catalog', () => {
   it('matches the expected top-level group and section navigation order', () => {
     const expected = [
       { label: 'Accessibility', sections: ['a11y-beyond-axe.json', 'accessibility.json'] },
-      { label: 'Performance', sections: ['core-web-vitals.json', 'lighthouse-summary.json', 'memory-profile.json', 'performance.json', 'throttled-run.json'] },
+      { label: 'Performance', sections: ['core-web-vitals.json', 'lighthouse-summary.json', 'memory-profile.json', 'performance.json', 'cross-browser-performance.json', 'throttled-run.json'] },
       { label: 'Network', sections: ['api-monitoring.json', 'network-recommendations.json', 'network-requests.json'] },
       { label: 'Quality & Reliability', sections: ['target-summary.json', 'broken-links.json', 'stability.json'] },
       { label: 'Security & Risk', sections: ['security-scan.json', 'third-party-risk.json'] },
       { label: 'SEO', sections: ['seo-checks.json'] },
-      { label: 'Visual', sections: ['visual-current.png', 'visual-regression.json'] }
+      { label: 'Visual', sections: ['visual-current.png', 'visual-regression.json'] },
+      { label: 'Reliability & Client Health', sections: ['client-errors.json', 'ux-friction.json', 'memory-leaks.json'] },
+      { label: 'Performance Efficiency', sections: ['cache-analysis.json'] },
+      { label: 'Resilience', sections: ['third-party-resilience.json'] },
+      { label: 'Governance, Privacy & Security', sections: ['privacy-audit.json', 'runtime-security.json', 'dependency-risk.json'] },
+      { label: 'Regression Intelligence', sections: ['regression-summary.json'] }
     ];
 
     expect(SECTION_GROUPS.map((group) => ({ label: group.label, sections: group.sections }))).toEqual(expected);

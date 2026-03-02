@@ -311,6 +311,17 @@ export const SECTION_DEFINITIONS = {
       keyTerms: ['dns', 'tcp', 'ttfb', 'dcl', 'load', 'fp', 'fcp']
     }
   },
+  'cross-browser-performance.json': {
+    route: 'cross-browser-performance.json',
+    label: 'cross-browser-performance',
+    category: 'performance',
+    info: {
+      whatItIs: 'Compares desktop load timing across Chromium, Firefox, and WebKit over five runs each.',
+      whyItMatters: 'Cross-browser timing differences can reveal engine-specific bottlenecks and compatibility issues.',
+      howToRead: ['Start with avg/min/max per browser.', 'Check iteration values for outliers and consistency.', 'Use fastest/slowest labels to prioritize investigation.', 'Review failed browsers separately without blocking available results.'],
+      keyTerms: baseTerms
+    }
+  },
   'security-scan.json': {
     route: 'security-scan.json',
     label: 'security-scan',

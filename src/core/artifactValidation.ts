@@ -44,6 +44,15 @@ export const artifactSchemas = {
   accessibilityBeyondAxe: wrapped(z.object({ keyboardReachable: z.boolean(), possibleFocusTrap: z.boolean(), contrastSimulationScore: z.number().nullable(), contrastSimulationScoreReason: z.string().nullable().optional() })),
   stability: wrapped(z.object({ iterations: z.number(), loadEventSamples: z.array(z.number()), stdDevLoadMs: z.number(), coefficientOfVariation: z.number(), unstable: z.boolean() })),
   memory: wrapped(z.object({ samples: z.array(z.number()), growth: z.number().nullable() })),
+  crossBrowserPerformance: wrapped(z.object({
+    meta: z.object({ url: z.string().url(), runsPerBrowser: z.number(), waitUntil: z.literal('load'), timestamp: z.string() }),
+    browsers: z.object({
+      chromium: z.object({ iterations: z.array(z.object({ iteration: z.number(), loadDurationMs: z.number().nullable(), domContentLoadedMs: z.number().nullable(), loadEventEndMs: z.number().nullable(), responseStartMs: z.number().nullable(), requestStartMs: z.number().nullable() })), avgLoadDurationMs: z.number().nullable(), minLoadDurationMs: z.number().nullable(), maxLoadDurationMs: z.number().nullable(), error: z.string().optional() }),
+      firefox: z.object({ iterations: z.array(z.object({ iteration: z.number(), loadDurationMs: z.number().nullable(), domContentLoadedMs: z.number().nullable(), loadEventEndMs: z.number().nullable(), responseStartMs: z.number().nullable(), requestStartMs: z.number().nullable() })), avgLoadDurationMs: z.number().nullable(), minLoadDurationMs: z.number().nullable(), maxLoadDurationMs: z.number().nullable(), error: z.string().optional() }),
+      webkit: z.object({ iterations: z.array(z.object({ iteration: z.number(), loadDurationMs: z.number().nullable(), domContentLoadedMs: z.number().nullable(), loadEventEndMs: z.number().nullable(), responseStartMs: z.number().nullable(), requestStartMs: z.number().nullable() })), avgLoadDurationMs: z.number().nullable(), minLoadDurationMs: z.number().nullable(), maxLoadDurationMs: z.number().nullable(), error: z.string().optional() })
+    }),
+    comparison: z.object({ fastest: z.enum(['chromium', 'firefox', 'webkit']).nullable(), slowest: z.enum(['chromium', 'firefox', 'webkit']).nullable(), diffMsSlowestVsFastest: z.number().nullable() })
+  })),
 
   clientErrors: wrapped(z.object({ totalErrors: z.number(), severityScore: z.number(), uncaughtExceptions: z.number(), unhandledRejections: z.number(), consoleErrors: z.number(), consoleWarnings: z.number(), failedRequests: z.array(z.object({ url: z.string(), type: z.string(), reason: z.string() })), topErrors: z.array(z.object({ message: z.string(), count: z.number(), example: z.string().optional() })) })),
   uxFriction: wrapped(z.object({ rageClicks: z.number(), deadClicks: z.number(), longTasks: z.number(), layoutShifts: z.number(), topSelectors: z.array(z.object({ selector: z.string(), count: z.number() })), uxScore: z.number() })),
