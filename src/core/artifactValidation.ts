@@ -6,6 +6,15 @@ import { artifactMetaSchema, type ArtifactMeta } from '../models/platform.js';
 
 const wrapped = <T extends z.ZodTypeAny>(payload: T) => z.object({ meta: artifactMetaSchema, payload });
 
+const jsonValueSchema: z.ZodType<unknown> = z.lazy(() => z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(jsonValueSchema),
+  z.record(z.string(), jsonValueSchema)
+]));
+
 const lighthousePayloadSchema = z.preprocess((value) => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
   const payload = value as Record<string, unknown>;
@@ -36,7 +45,7 @@ export const artifactSchemas = {
   lighthouse: wrapped(lighthousePayloadSchema),
   throttled: wrapped(z.object({ available: z.boolean(), baselineLoadMs: z.number().nullable(), throttledLoadMs: z.number().nullable(), degradationFactor: z.number().nullable() })),
   security: wrapped(z.record(z.string(), z.union([z.boolean(), z.string(), z.null()]))),
-  seo: wrapped(z.record(z.string(), z.union([z.boolean(), z.string(), z.number(), z.null()]))),
+  seo: wrapped(z.record(z.string(), jsonValueSchema)),
   seoScore: wrapped(z.object({
     version: z.literal('seo-score-v1'),
     url: z.string().url(),
