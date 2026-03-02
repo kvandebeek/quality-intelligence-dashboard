@@ -68,13 +68,23 @@ export const artifactSchemas = {
   stability: wrapped(z.object({ iterations: z.number(), loadEventSamples: z.array(z.number()), stdDevLoadMs: z.number(), coefficientOfVariation: z.number(), unstable: z.boolean() })),
   memory: wrapped(z.object({ samples: z.array(z.number()), growth: z.number().nullable() })),
   crossBrowserPerformance: wrapped(z.object({
-    meta: z.object({ url: z.string().url(), runsPerBrowser: z.number(), waitUntil: z.literal('load'), timestamp: z.string() }),
-    browsers: z.object({
-      chromium: z.object({ iterations: z.array(z.object({ iteration: z.number(), loadDurationMs: z.number().nullable(), domContentLoadedMs: z.number().nullable(), loadEventEndMs: z.number().nullable(), responseStartMs: z.number().nullable(), requestStartMs: z.number().nullable() })), avgLoadDurationMs: z.number().nullable(), minLoadDurationMs: z.number().nullable(), maxLoadDurationMs: z.number().nullable(), error: z.string().optional() }),
-      firefox: z.object({ iterations: z.array(z.object({ iteration: z.number(), loadDurationMs: z.number().nullable(), domContentLoadedMs: z.number().nullable(), loadEventEndMs: z.number().nullable(), responseStartMs: z.number().nullable(), requestStartMs: z.number().nullable() })), avgLoadDurationMs: z.number().nullable(), minLoadDurationMs: z.number().nullable(), maxLoadDurationMs: z.number().nullable(), error: z.string().optional() }),
-      webkit: z.object({ iterations: z.array(z.object({ iteration: z.number(), loadDurationMs: z.number().nullable(), domContentLoadedMs: z.number().nullable(), loadEventEndMs: z.number().nullable(), responseStartMs: z.number().nullable(), requestStartMs: z.number().nullable() })), avgLoadDurationMs: z.number().nullable(), minLoadDurationMs: z.number().nullable(), maxLoadDurationMs: z.number().nullable(), error: z.string().optional() })
-    }),
-    comparison: z.object({ fastest: z.enum(['chromium', 'firefox', 'webkit']).nullable(), slowest: z.enum(['chromium', 'firefox', 'webkit']).nullable(), diffMsSlowestVsFastest: z.number().nullable() })
+    category: z.literal('performance'),
+    crossBrowserPerformance: z.object({
+      status: z.enum(['tested', 'untested']),
+      reason: z.enum(['disabled', 'missing_config', 'invalid_config', 'skipped_headless', 'no_browsers_configured']).nullable(),
+      config: z.object({
+        enabled: z.boolean(),
+        browsers: z.array(z.enum(['chromium', 'firefox', 'webkit'])),
+        runs: z.number().int().positive()
+      }),
+      results: z.array(z.object({
+        browser: z.enum(['chromium', 'firefox', 'webkit']),
+        avgLoadMs: z.number(),
+        minLoadMs: z.number(),
+        maxLoadMs: z.number(),
+        samples: z.number().int().positive()
+      }))
+    })
   })),
 
   clientErrors: wrapped(z.object({ totalErrors: z.number(), severityScore: z.number(), uncaughtExceptions: z.number(), unhandledRejections: z.number(), consoleErrors: z.number(), consoleWarnings: z.number(), failedRequests: z.array(z.object({ url: z.string(), type: z.string(), reason: z.string() })), topErrors: z.array(z.object({ message: z.string(), count: z.number(), example: z.string().optional() })) })),

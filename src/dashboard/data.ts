@@ -332,9 +332,16 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
   }
 
   if (section === 'cross-browser-performance.json') {
-    const comparison = asRecord(obj.comparison);
-    const diff = toNum(comparison.diffMsSlowestVsFastest);
-    return { state: 'ok', raw, summary: { fastest: comparison.fastest ?? null, slowest: comparison.slowest ?? null, diffMsSlowestVsFastest: diff } };
+    const data = asRecord(obj.crossBrowserPerformance);
+    const status = String(data.status ?? 'untested');
+    if (status === 'untested') {
+      return { state: 'not_available', raw, summary: { status: 'untested', reason: data.reason ?? 'disabled' } };
+    }
+    const results = Array.isArray(data.results) ? data.results as Record<string, unknown>[] : [];
+    const fastest = results.length ? results.reduce((best, row) => ((toNum(row.avgLoadMs) ?? Number.POSITIVE_INFINITY) < (toNum(best.avgLoadMs) ?? Number.POSITIVE_INFINITY) ? row : best)) : null;
+    const slowest = results.length ? results.reduce((worst, row) => ((toNum(row.avgLoadMs) ?? Number.NEGATIVE_INFINITY) > (toNum(worst.avgLoadMs) ?? Number.NEGATIVE_INFINITY) ? row : worst)) : null;
+    const diff = fastest && slowest ? (toNum(slowest.avgLoadMs) ?? 0) - (toNum(fastest.avgLoadMs) ?? 0) : null;
+    return { state: 'ok', raw, summary: { status: 'tested', tested: results.length, fastest: fastest?.browser ?? null, slowest: slowest?.browser ?? null, diffMsSlowestVsFastest: diff } };
   }
 
   if (section === 'client-errors.json') {

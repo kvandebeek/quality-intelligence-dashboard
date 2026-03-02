@@ -9,6 +9,7 @@ import { ensureDir, writeJson } from '../utils/file.js';
 import { ensureUniqueRunRoot } from '../utils/artifactPaths.js';
 import { collectPerformance } from '../collectors/performanceCollector.js';
 import { collectCrossBrowserPerformance } from '../collectors/crossBrowserPerformanceCollector.js';
+import { loadCrossBrowserConfig } from '../config/loadCrossBrowserConfig.js';
 import { collectAccessibility } from '../collectors/accessibilityCollector.js';
 import { parseHar, recommendNetworkOptimizations } from '../collectors/networkCollector.js';
 import { publishToElasticsearch } from '../publishers/elasticsearchPublisher.js';
@@ -355,11 +356,15 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   }
 
   const navigationStats = computeStats(loadSamples);
-  const crossBrowserPerformance = await runArtifactStep('Artifact: Cross-browser performance', async () => collectCrossBrowserPerformance(
-    target.url,
-    config.consent,
-    async (stepName, operation) => timing.step(testReference, stepName, operation)
-  ));
+  const loadedCrossBrowserConfig = loadCrossBrowserConfig();
+  const crossBrowserPerformance = await runArtifactStep('Artifact: Cross-browser performance', async () => collectCrossBrowserPerformance({
+    url: target.url,
+    consent: config.consent,
+    headless: config.headless,
+    loadedConfig: loadedCrossBrowserConfig,
+    stepRunner: async (stepName, operation) => timing.step(testReference, stepName, operation),
+    defaultNavigationTimeoutMs: 30000
+  }));
   const baselineLoadMs = perfMetrics.navigation.loadEventMs ?? null;
   const throttledContext = await browser.newContext();
   const throttledPage = await throttledContext.newPage();

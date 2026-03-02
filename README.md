@@ -85,6 +85,33 @@ Use `assuranceModules` in config to enable/disable modules and tune thresholds:
 
 Defaults are defined in `src/config/schema.ts`.
 
+
+## Cross-browser performance (optional)
+
+`cross-browser-performance` compares desktop load time across Chromium, Firefox, and WebKit using repeated navigations (default: 5 runs per browser).
+
+This feature is opt-in via `config/features.json`. If the file is missing, the collector is treated as disabled and artifacts are written as `untested`.
+
+Example:
+
+```json
+{
+  "enabled": true,
+  "browsers": ["chromium", "firefox", "webkit"],
+  "runs": 5,
+  "navigationTimeoutMs": 30000,
+  "cooldownMs": 0,
+  "skipIfHeadless": false
+}
+```
+
+Untested reasons shown in artifacts/dashboard:
+- `missing_config`
+- `disabled`
+- `invalid_config`
+- `skipped_headless`
+- `no_browsers_configured`
+
 ## New artifacts
 
 Per target URL folder:

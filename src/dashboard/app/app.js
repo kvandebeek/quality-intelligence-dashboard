@@ -233,6 +233,13 @@ function renderDomainOverview(selected){
     ? uxTopIssues.slice(0,3).map((issue)=>`${issue.title} (${issue.count})`).join(' · ')
     : ux.state === 'empty' ? 'No UI/UX issues detected' : `Not collected ${renderHelpTip('UI/UX checks were not available for this run.')}`;
 
+  const cb = s.crossBrowserPerformance || {};
+  const cbPrimary = cb.state === 'tested'
+    ? 'Tested'
+    : cb.state === 'partial'
+      ? 'Partial'
+      : 'Untested';
+
   const header = renderDomainHeader({
     title: 'Domain overview',
     runTime: selected?.runTime,
@@ -242,7 +249,8 @@ function renderDomainOverview(selected){
       `A11y issues: ${a11yTotal}`,
       `Broken links: ${toNum(s.brokenLinks?.broken) ?? 0}`,
       `Security findings: ${secState === 'not-collected' ? 'Not collected' : secTotal}`,
-      `Client-side errors: ${toNum(s.clientErrors?.totalErrors) ?? 0}`
+      `Client-side errors: ${toNum(s.clientErrors?.totalErrors) ?? 0}`,
+      `Cross-browser performance: ${cbPrimary}`
     ]
   });
 
@@ -256,6 +264,7 @@ function renderDomainOverview(selected){
     <article class="summary-card" data-tile="client-errors" data-nav-tab="stability.json"><h3>Client-side errors</h3><p class="primary">${toNum(s.clientErrors?.totalErrors) ?? 'Not measured'}</p><p class="secondary">${toNum(s.clientErrors?.affectedUrls)??0} URLs with errors</p><p class="coverage">${coverageText(s.clientErrors?.coverage)}</p></article>
     <article class="summary-card" data-tile="security-findings" data-nav-tab="security-scan.json"><h3>Security findings by severity</h3>${secState==='ok-has-findings'?renderDonut(secSegments, secTotal):'<div class="donut-empty">No findings</div>'}<p class="primary">${secPrimary}</p><p class="secondary">${secState==='not-collected'?'Not collected':secSecondary}</p><p class="coverage">${coverageText(sec.coverage)}</p></article>
     <article class="summary-card" data-tile="ux-summary" data-nav-tab="ux-overview.json"><h3>UI/UX checks summary</h3><p class="primary">${ux.state==='not-collected'?'Not collected':`${toNum(ux.passingUrls)??0} pass · ${toNum(ux.failingUrls)??0} fail`}</p><p class="secondary">${uxSecondary}</p><p class="coverage">${coverageText(ux.coverage)}</p></article>
+    <article class="summary-card" data-tile="cross-browser-performance" data-nav-tab="cross-browser-performance.json"><h3>Cross-browser performance</h3><p class="primary">${cbPrimary}</p><p class="secondary">tested ${toNum(cb.testedUrls)??0} / total ${toNum(s.totals?.urls)??0}</p><p class="coverage">${coverageText(cb.coverage)}</p></article>
   </section>`;
 }
 
@@ -611,12 +620,26 @@ const renderNetRec = (r=[])=>{const arr=(Array.isArray(r)?r:(r.recommendations||
 const renderNetReq = (r=[])=>{let arr=Array.isArray(r)?r:(r.requests||[]); if(state.selectedDomain) arr=arr.filter((x)=>String(x.url||'').includes(state.selectedDomain)); const rows=arr.map((x)=>({method:safe(x.method),status:toNum(x.status)??0,type:safe(x.type ?? x.resourceType),transfer:toNum(x.transferSize)??0,duration:toNum(x.durationMs ?? x.duration)??0,cache:safe(x.cacheStatus ?? (x.fromCache ? 'HIT':'MISS') ?? x.cached),url:safe(x.url)})); const sorted=sortRows(rows,state.sorts.netReq); return `<div class="kpis">${metric('Rows',arr.length)}${textMetric('Domain filter',state.selectedDomain||'None')}</div><table><tr>${sortableHeader('Method','netReq','method')}${sortableHeader('Status','netReq','status')}${sortableHeader('Type','netReq','type')}${sortableHeader('Transfer','netReq','transfer')}${sortableHeader('Duration','netReq','duration')}${sortableHeader('Cache','netReq','cache')}${sortableHeader('URL','netReq','url')}</tr>${sorted.slice(0,400).map(x=>`<tr><td>${x.method}</td><td>${x.status}</td><td>${x.type}</td><td>${fmt(x.transfer,'bytes')}</td><td>${fmt(x.duration,'ms')}</td><td>${x.cache}</td><td>${x.url}</td></tr>`).join('')}</table>`;};
 const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class="kpis">${metric('DNS',n.dnsMs,'ms')}${metric('TCP',n.tcpMs,'ms')}${metric('TTFB',n.ttfbMs,'ms')}${metric('DCL',n.domContentLoadedMs,'ms')}${metric('Load',n.loadEventMs,'ms')}${metric('FP',r.paint?.fpMs ?? r.paint?.['first-paint'],'ms')}${metric('FCP',r.paint?.fcpMs ?? r.paint?.['first-contentful-paint'],'ms')}</div>`;};
 const renderCrossBrowserPerformance = (r={})=>{
-  const browsers = r.browsers || {};
-  const comparison = r.comparison || {};
-  const rows = ['chromium','firefox','webkit'].map((name)=>({name,data:browsers[name]||{}}));
-  const summary = rows.map(({name,data})=>`<tr class="${comparison.fastest===name?'row-fastest':''} ${comparison.slowest===name?'row-slowest':''}"><td>${name}</td><td>${fmt(data.avgLoadDurationMs,'ms')}</td><td>${fmt(data.minLoadDurationMs,'ms')}</td><td>${fmt(data.maxLoadDurationMs,'ms')}</td><td>${data.error?safe(data.error):''}</td></tr>`).join('');
-  const iterations = rows.map(({name,data})=>`<tr><td>${name}</td><td>${(data.iterations||[]).map((it)=>fmt(it.loadDurationMs,'ms')).join(', ') || MISSING}</td></tr>`).join('');
-  return `<div class="kpis">${textMetric('Fastest',comparison.fastest ?? MISSING)}${textMetric('Slowest',comparison.slowest ?? MISSING)}${metric('Slowest vs fastest',comparison.diffMsSlowestVsFastest,'ms')}</div><table><tr><th>Browser</th><th>Avg</th><th>Min</th><th>Max</th><th>Error</th></tr>${summary}</table><table><tr><th>Browser</th><th>Iteration load durations (5)</th></tr>${iterations}</table>`;
+  const data = r.crossBrowserPerformance || {};
+  const reasonLabels = {
+    disabled: 'Disabled via config/features.json',
+    missing_config: 'Config file missing (defaults to untested)',
+    invalid_config: 'Invalid config file/schema',
+    skipped_headless: 'Skipped because run is headless',
+    no_browsers_configured: 'No browsers configured'
+  };
+
+  if(data.status === 'untested'){
+    const reason = reasonLabels[data.reason] || safe(data.reason, 'Not configured');
+    return `<div class="state na">Untested: ${escapeHtml(String(reason))}</div>`;
+  }
+
+  const results = Array.isArray(data.results) ? data.results : [];
+  const fastest = results.length ? results.reduce((best, row) => (toNum(row.avgLoadMs) ?? Number.POSITIVE_INFINITY) < (toNum(best.avgLoadMs) ?? Number.POSITIVE_INFINITY) ? row : best) : null;
+  const slowest = results.length ? results.reduce((worst, row) => (toNum(row.avgLoadMs) ?? Number.NEGATIVE_INFINITY) > (toNum(worst.avgLoadMs) ?? Number.NEGATIVE_INFINITY) ? row : worst) : null;
+  const diff = fastest && slowest ? (toNum(slowest.avgLoadMs) ?? 0) - (toNum(fastest.avgLoadMs) ?? 0) : null;
+  const summary = results.map((row)=>`<tr class="${fastest?.browser===row.browser?'row-fastest':''} ${slowest?.browser===row.browser?'row-slowest':''}"><td>${safe(row.browser)}</td><td>${fmt(row.avgLoadMs,'ms')}</td><td>${fmt(row.minLoadMs,'ms')}</td><td>${fmt(row.maxLoadMs,'ms')}</td><td>${fmt(row.samples)}</td></tr>`).join('');
+  return `<div class="kpis">${textMetric('Status',data.status ?? MISSING)}${textMetric('Fastest',fastest?.browser ?? MISSING)}${textMetric('Slowest',slowest?.browser ?? MISSING)}${metric('Slowest vs fastest',diff,'ms')}</div><table><tr><th>Browser</th><th>Avg</th><th>Min</th><th>Max</th><th>Samples</th></tr>${summary}</table>`;
 };
 const renderSecurity = (r={})=>`<div class="kpis">${textMetric('TLS',r.tlsVersion)}${textMetric('Missing headers',Array.isArray(r.missingHeaders)?((r.missingHeaders||[]).join(', ')||'None'):'None')}</div>`;
 
