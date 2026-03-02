@@ -7,6 +7,59 @@ npm run run -- --config config/example.config.json
 npm run dashboard -- --run <outputDir>/<runId> --port 4173
 ```
 
+## Batch runs
+
+Existing single-config usage remains unchanged:
+
+```bash
+npm run run -- --config config/example.config.json
+```
+
+You can also execute multiple targets in one invocation:
+
+```bash
+npm run run -- --config batch-test.json
+```
+
+Batch config format:
+- `defaults` is optional and supplies shared values (`browser`, `headless`, `environment`, `iteration`, `outputDir`, `elasticsearch`, etc.).
+- Each item in `batch[]` must define `name`, `startUrl`, and `crawl`.
+- Per-item values override `defaults` for `name`, `startUrl`, and `crawl`.
+
+Artifacts are isolated per batch target under:
+
+```text
+<outputDir>/batch/<index>_<sanitizedName>_<sanitizedHost>/<runId>/...
+```
+
+Example (`batch-test.json`):
+
+```json
+{
+  "defaults": {
+    "browser": "chromium",
+    "headless": true,
+    "environment": "local",
+    "iteration": 1,
+    "outputDir": "artifacts",
+    "elasticsearch": { "enabled": false, "indexPrefix": "quality-signal" }
+  },
+  "batch": [
+    {
+      "name": "RESILLION",
+      "startUrl": "https://www.resillion.com",
+      "crawl": {
+        "enabled": true,
+        "maxDepth": 3,
+        "maxPages": 10,
+        "includeExternalDomains": false,
+        "allowedDomains": ["resillion.com"]
+      }
+    }
+  ]
+}
+```
+
 ## High-ROI + Governance extension pack
 
 New categories added to dashboard (layout/style unchanged):

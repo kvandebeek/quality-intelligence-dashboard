@@ -72,15 +72,31 @@ const assuranceModulesSchema = z.object({
   }).default({})
 }).default({});
 
-export const appConfigSchema = z
-  .object({
+const httpUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => value.startsWith('http://') || value.startsWith('https://'), {
+    message: 'Must be an absolute http/https URL'
+  });
+
+const crawlRuntimeValidatedSchema = crawlSchema.superRefine((value, ctx) => {
+  if (!value.includeExternalDomains && value.allowedDomains.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'crawl.allowedDomains must include at least one domain when includeExternalDomains is false.',
+      path: ['allowedDomains']
+    });
+  }
+});
+
+const appConfigObjectSchema = z.object({
     browser: z.enum(['chromium', 'firefox', 'webkit']).default('chromium'),
     headless: z.boolean().default(true),
     environment: z.string().min(1).default('local'),
     iteration: z.number().int().positive().default(1),
     outputDir: z.string().min(1).default('artifacts'),
     name: z.string().min(1).optional(),
-    startUrl: z.string().url(),
+    startUrl: httpUrlSchema,
     targets: z
       .array(
         z.object({
@@ -112,8 +128,9 @@ export const appConfigSchema = z
       })
       .default({ enabled: false }),
     assuranceModules: assuranceModulesSchema
-  })
-  .superRefine((value, ctx) => {
+});
+
+export const appConfigSchema = appConfigObjectSchema.superRefine((value, ctx) => {
     if (value.crawl.enabled && value.crawl.allowedDomains.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -123,4 +140,23 @@ export const appConfigSchema = z
     }
   });
 
+export const batchItemSchema = z.object({
+  name: z.string().min(1),
+  startUrl: httpUrlSchema,
+  crawl: crawlRuntimeValidatedSchema
+});
+
+export const batchDefaultsSchema = appConfigObjectSchema.partial().omit({
+  name: true,
+  startUrl: true,
+  targets: true,
+  crawl: true
+});
+
+export const batchRunConfigSchema = z.object({
+  defaults: batchDefaultsSchema.optional(),
+  batch: z.array(batchItemSchema).min(1)
+});
+
 export type AppConfigSchema = z.infer<typeof appConfigSchema>;
+export type BatchRunConfigSchema = z.infer<typeof batchRunConfigSchema>;
