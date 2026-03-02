@@ -1,3 +1,5 @@
+import { applyTheme, getInitialTheme, toggleTheme } from './theme.js';
+
 const app = document.getElementById('app');
 
 const state = {
@@ -7,6 +9,7 @@ const state = {
   selectedTab: 'target-summary.json',
   search: '',
   regex: false,
+  theme: getInitialTheme(),
   selectedDomain: null,
   facets: { failures:false, broken:false, visualFailed:false, throttled:false, lighthouse:false, a11y:new Set() },
   sorts: { netRec: { key: 'severity', dir: 'asc' }, netReq: { key: 'url', dir: 'asc' }, stability: { key: 'index', dir: 'asc' } }
@@ -146,6 +149,19 @@ function render(options = {}){
         </div>
       </div>
       <div id="url-list" class="url-list"></div>
+      <div class="theme-block">
+        <span class="theme-label">Theme</span>
+        <button
+          id="theme-toggle"
+          type="button"
+          class="theme-toggle"
+          role="switch"
+          aria-label="Theme"
+          aria-checked="${state.theme === 'dark' ? 'true' : 'false'}"
+        >
+          <span aria-hidden="true">${state.theme === 'dark' ? '🌙 Dark' : '☀️ Light'}</span>
+        </button>
+      </div>
     </aside>
     <main class="main">${selected?renderDetailsShell(selected):'<p>No URLs match filters.</p>'}</main>
   </div>`;
@@ -249,6 +265,21 @@ function bindFilters(){
     alert(`Diagnostics exported: ${body.file}`);
     logEvent('INFO','UI export diagnostics completed',{operationId,filePath:body.file});
   };
+
+  const themeToggle = document.getElementById('theme-toggle');
+  if(themeToggle) {
+    themeToggle.onclick = ()=>{
+      state.theme = toggleTheme(state.theme);
+      logEvent('INFO','UI theme changed',{operationId:createOperationId(),theme:state.theme});
+      render();
+    };
+    themeToggle.onkeydown = (event)=>{
+      if(event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        themeToggle.click();
+      }
+    };
+  }
 }
 
 function bindTabEvents(u){
@@ -453,6 +484,7 @@ const renderRegressionSummary = (r={})=> {
 
 
 logEvent('INFO','UI startup',{view:'startup'});
+state.theme = applyTheme(state.theme);
 window.addEventListener('hashchange', ()=>{
   if(!state.sections || !state.index) return;
   if(syncTabFromLocation()) render();
