@@ -158,12 +158,14 @@ This view aggregates results across all checked URLs and renders 8 tiles:
 - Content load FCP (domain average, min, max)
 - Broken links (broken + total + coverage)
 - SEO score (domain average, min, max)
-- Core Web Vitals pass-rate split (Good / Needs improvement / Poor)
+- Core Web Vitals status by metric (distribution + LCP/INP/CLS Good rates)
 - Client-side errors (total errors + affected URLs)
-- Security findings by severity
-- Visual regression summary (changed URLs, avg diff ratio, baseline coverage)
+- Security findings by severity (explicitly distinguishes `No security findings` from `Not collected`)
+- UI/UX checks summary (pass/fail page counts + top recurring issues)
 
-All tiles include per-metric coverage (e.g., measured URLs / total URLs) and gracefully show “Not measured” when artifacts are missing or null.
+All tiles include per-metric coverage (e.g., measured URLs / total URLs).
+
+`Not collected` means the corresponding collector was disabled, artifact files are missing, or usable metric fields were not produced for that run.
 
 ## Dashboard theming
 

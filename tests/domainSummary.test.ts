@@ -21,7 +21,7 @@ describe('domain summary aggregation', () => {
         'core-web-vitals.json': section('ok', { lcpMs: 2400, cls: 0.08, inpMs: 190 }),
         'stability.json': section('ok', { totalErrors: 3 }),
         'security-scan.json': section('ok', { findings: [{ severity: 'high' }, { severity: 'low' }] }),
-        'visual-regression.json': section('ok', { baselineFound: true, diffRatio: 0.03, threshold: 0.01 })
+        'ux-overview.json': section('ok', { topIssues: [{ id: 'contrast', title: 'Low contrast' }] })
       },
       u2: {
         'accessibility.json': section('issues', { counters: { critical: 0, serious: 1, moderate: 0, minor: 2 } }),
@@ -31,7 +31,7 @@ describe('domain summary aggregation', () => {
         'core-web-vitals.json': section('ok', { lcpMs: 5000, cls: 0.05, inpMs: 100 }),
         'stability.json': section('ok', { totalErrors: 0 }),
         'security-scan.json': section('ok', { findings: [{ severity: 'medium' }] }),
-        'visual-regression.json': section('ok', { baselineFound: false, diffRatio: 0.0, threshold: 0.01 })
+        'ux-overview.json': section('ok', { topIssues: [] })
       },
       u3: {
         'accessibility.json': section('missing', null),
@@ -41,7 +41,7 @@ describe('domain summary aggregation', () => {
         'core-web-vitals.json': section('ok', { lcpMs: null, cls: null, inpMs: null }),
         'stability.json': section('missing', null),
         'security-scan.json': section('ok', { missingHeaders: ['x-frame-options'] }),
-        'visual-regression.json': section('not_available', { baselineFound: true })
+        'ux-overview.json': section('missing', null)
       }
     };
 
@@ -66,18 +66,22 @@ describe('domain summary aggregation', () => {
 
     expect(summary.coreWebVitals.good).toBe(1);
     expect(summary.coreWebVitals.poor).toBe(1);
+    expect(summary.coreWebVitals.state).toBe('has-data');
     expect(summary.coreWebVitals.coverage).toEqual({ measured: 2, total: 3 });
 
     expect(summary.clientErrors.totalErrors).toBe(3);
     expect(summary.clientErrors.affectedUrls).toBe(1);
 
+    expect(summary.security.state).toBe('ok-has-findings');
     expect(summary.security.totalFindings).toBe(4);
     expect(summary.security.severities.high).toBe(1);
     expect(summary.security.severities.medium).toBe(1);
     expect(summary.security.severities.low).toBe(1);
     expect(summary.security.severities.info).toBe(1);
 
-    expect(summary.visualRegression.changedUrls).toBe(1);
-    expect(summary.visualRegression.baselineFound).toBe(2);
+    expect(summary.uxSummary.state).toBe('has-issues');
+    expect(summary.uxSummary.failingUrls).toBe(1);
+    expect(summary.uxSummary.passingUrls).toBe(1);
+    expect(summary.uxSummary.topIssues[0]).toEqual({ id: 'contrast', title: 'Low contrast', count: 1 });
   });
 });

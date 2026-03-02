@@ -25,6 +25,29 @@ const safe = (v, fallback=MISSING) => {
 };
 const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
+
+const CWV_NEEDS_IMPROVEMENT_LABEL = 'Needs improvement';
+const SECURITY_NOT_COLLECTED_HELP = 'Not collected means the security scan was disabled, missing, or did not produce severity counts.';
+
+function renderHelpTip(text){
+  return `<span class="help-tip" role="img" aria-label="${text}" title="${text}">i</span>`;
+}
+
+function renderDomainHeader(data){
+  return `<header class="detail-header domain-header">
+    <h2>${data.title}</h2>
+    <div class="meta">${safe(data.runTime)} · ${safe(data.runId)}</div>
+    <div class="top-issues">${data.topIssues.map((item)=>`<span>${item}</span>`).join('')}</div>
+  </header>`;
+}
+
+function metricGoodRate(metric){
+  const measured = toNum(metric?.measured) ?? 0;
+  const good = toNum(metric?.good) ?? 0;
+  if(measured===0) return 'Not collected';
+  return `${Math.round((good/measured)*100)}% Good (${good}/${measured})`;
+}
+
 const CLIENT_RUN_ID = (()=>{ try { return crypto.randomUUID(); } catch { return `client-${Date.now()}`; } })();
 
 function createOperationId(){
@@ -174,7 +197,8 @@ function renderDonut(segments, total){
   return `<div class="donut" style="background:conic-gradient(${cs.join(',')})"></div>`;
 }
 
-function renderDomainOverview(){
+
+function renderDomainOverview(selected){
   const s = state.domainSummary;
   if(!s) return '<section class="domain-grid"><article class="summary-card">Loading domain overview…</article></section>';
   const a11yTotal = toNum(s.accessibility?.totalIssues) ?? 0;
@@ -187,28 +211,51 @@ function renderDomainOverview(){
   ];
 
   const cwv = s.coreWebVitals || {};
+  const cwvState = cwv.state || 'not-collected';
   const cwvTotal = (toNum(cwv.good)??0)+(toNum(cwv.needsImprovement)??0)+(toNum(cwv.poor)??0);
   const cwvSegments = [
     {label:'Good', value:toNum(cwv.good)??0, color:'var(--success)'},
-    {label:'Needs improvement', value:toNum(cwv.needsImprovement)??0, color:'var(--warning)'},
+    {label:CWV_NEEDS_IMPROVEMENT_LABEL, value:toNum(cwv.needsImprovement)??0, color:'var(--warning)'},
     {label:'Poor', value:toNum(cwv.poor)??0, color:'var(--danger)'}
   ];
 
   const sec = s.security || {};
+  const secState = sec.state || 'not-collected';
   const secTotal = toNum(sec.totalFindings) ?? 0;
   const secSev = sec.severities || {};
   const secSegments = Object.entries(secSev).map(([label,val],i)=>({label,value:toNum(val)??0,color:["#ef4444","#f59e0b","#eab308","#60a5fa","#a78bfa"][i%5]}));
+  const secPrimary = secState === 'not-collected' ? `Not collected ${renderHelpTip(SECURITY_NOT_COLLECTED_HELP)}` : secState === 'ok-empty' ? 'No security findings' : `${secTotal}`;
+  const secSecondary = secState === 'ok-has-findings' ? secSegments.map((x)=>`${x.label}: ${x.value}`).join(' · ') : 'No findings';
 
-  return `<section class="domain-grid" aria-label="Domain overview tiles">
+  const ux = s.uxSummary || {};
+  const uxTopIssues = Array.isArray(ux.topIssues) ? ux.topIssues : [];
+  const uxSecondary = ux.state === 'has-issues'
+    ? uxTopIssues.slice(0,3).map((issue)=>`${issue.title} (${issue.count})`).join(' · ')
+    : ux.state === 'empty' ? 'No UI/UX issues detected' : `Not collected ${renderHelpTip('UI/UX checks were not available for this run.')}`;
+
+  const header = renderDomainHeader({
+    title: 'Domain overview',
+    runTime: selected?.runTime,
+    runId: selected?.runId,
+    topIssues: [
+      `URLs scanned: ${toNum(s.totals?.urls) ?? 0}`,
+      `A11y issues: ${a11yTotal}`,
+      `Broken links: ${toNum(s.brokenLinks?.broken) ?? 0}`,
+      `Security findings: ${secState === 'not-collected' ? 'Not collected' : secTotal}`,
+      `Client-side errors: ${toNum(s.clientErrors?.totalErrors) ?? 0}`
+    ]
+  });
+
+  return `${header}<section class="domain-grid" aria-label="Domain overview tiles">
     <article class="summary-card" data-tile="accessibility-severity"><h3>Accessibility issues severity</h3>${renderDonut(a11ySegments, a11yTotal)}<p class="primary">${a11yTotal} total issues</p><p class="secondary">critical ${a11ySegments[0].value} · serious ${a11ySegments[1].value} · moderate ${a11ySegments[2].value} · minor ${a11ySegments[3].value}</p><p class="coverage">${coverageText(s.accessibility?.coverage)}</p></article>
     <article class="summary-card" data-tile="fcp-counter"><h3>Content load: FCP</h3><p class="primary ${fcpBandClass(s.fcp?.avgSeconds)}">${fmtSeconds(s.fcp?.avgSeconds)}</p><p class="secondary">Min ${fmtSeconds(s.fcp?.minSeconds)} · Max ${fmtSeconds(s.fcp?.maxSeconds)}</p><p class="coverage">${coverageText(s.fcp?.coverage)}</p></article>
-    <article class="summary-card" data-tile="broken-links"><h3>Broken links</h3><p class="primary">${toNum(s.brokenLinks?.broken) ?? 'Not measured'}</p><p class="secondary">${toNum(s.brokenLinks?.broken)??0}/${toNum(s.brokenLinks?.total)??0} broken/total</p><p class="coverage">${coverageText(s.brokenLinks?.coverage)}</p></article>
+    <article class="summary-card" data-tile="broken-links" data-nav-tab="broken-links.json"><h3>Broken links</h3><p class="primary">${toNum(s.brokenLinks?.broken) ?? 'Not measured'}</p><p class="secondary">${toNum(s.brokenLinks?.broken)??0}/${toNum(s.brokenLinks?.total)??0} broken/total</p><p class="coverage">${coverageText(s.brokenLinks?.coverage)}</p></article>
     <article class="summary-card" data-tile="seo-score"><h3>SEO score</h3><p class="primary">${valueOrNotMeasured(s.seoScore?.avg,(n)=>n.toFixed(0))}</p><p class="secondary">Min ${valueOrNotMeasured(s.seoScore?.min,(n)=>n.toFixed(0))} · Max ${valueOrNotMeasured(s.seoScore?.max,(n)=>n.toFixed(0))}</p><p class="coverage">${coverageText(s.seoScore?.coverage)}</p></article>
 
-    <article class="summary-card" data-tile="cwv-pass-rate"><h3>Core Web Vitals pass rate</h3>${renderDonut(cwvSegments, cwvTotal)}<p class="primary">Good ${toNum(cwv.good)??0} · NI ${toNum(cwv.needsImprovement)??0} · Poor ${toNum(cwv.poor)??0}</p><p class="coverage">${coverageText(cwv.coverage)}</p></article>
-    <article class="summary-card" data-tile="client-errors"><h3>Client-side errors</h3><p class="primary">${toNum(s.clientErrors?.totalErrors) ?? 'Not measured'}</p><p class="secondary">${toNum(s.clientErrors?.affectedUrls)??0} URLs with errors</p><p class="coverage">${coverageText(s.clientErrors?.coverage)}</p></article>
-    <article class="summary-card" data-tile="security-findings"><h3>Security findings by severity</h3>${renderDonut(secSegments, secTotal)}<p class="primary">${secTotal || 'Not measured'}</p><p class="secondary">${secSegments.map((x)=>`${x.label}: ${x.value}`).join(' · ') || 'No findings'}</p><p class="coverage">${coverageText(sec.coverage)}</p></article>
-    <article class="summary-card" data-tile="visual-regression"><h3>Visual regression summary</h3><p class="primary">${toNum(s.visualRegression?.changedUrls) ?? 'Not measured'}</p><p class="secondary">Avg diff ratio ${valueOrNotMeasured(s.visualRegression?.avgDiffRatio,(n)=>n.toFixed(3))} · Baseline found ${toNum(s.visualRegression?.baselineFound)??0}/${toNum(s.totals?.urls)??0}</p><p class="coverage">${coverageText(s.visualRegression?.coverage)}</p></article>
+    <article class="summary-card" data-tile="cwv-status-by-metric"><h3>Core Web Vitals status by metric ${renderHelpTip('Based on Google Core Web Vitals thresholds; aggregated across pages.')}</h3>${cwvState==='has-data'?renderDonut(cwvSegments, cwvTotal):`<div class="donut-empty">${cwvState==='empty'?'No data':'Not collected'}</div>`}<p class="secondary" title="Core Web Vitals distribution across scanned pages (Good / Needs improvement / Poor).">Good ${toNum(cwv.good)??0} · ${CWV_NEEDS_IMPROVEMENT_LABEL} ${toNum(cwv.needsImprovement)??0} · Poor ${toNum(cwv.poor)??0}</p><p class="secondary">LCP: ${metricGoodRate(cwv.metrics?.lcp)} · INP: ${metricGoodRate(cwv.metrics?.inp)} · CLS: ${metricGoodRate(cwv.metrics?.cls)}</p><p class="coverage">${coverageText(cwv.coverage)}</p></article>
+    <article class="summary-card" data-tile="client-errors" data-nav-tab="stability.json"><h3>Client-side errors</h3><p class="primary">${toNum(s.clientErrors?.totalErrors) ?? 'Not measured'}</p><p class="secondary">${toNum(s.clientErrors?.affectedUrls)??0} URLs with errors</p><p class="coverage">${coverageText(s.clientErrors?.coverage)}</p></article>
+    <article class="summary-card" data-tile="security-findings" data-nav-tab="security-scan.json"><h3>Security findings by severity</h3>${secState==='ok-has-findings'?renderDonut(secSegments, secTotal):'<div class="donut-empty">No findings</div>'}<p class="primary">${secPrimary}</p><p class="secondary">${secState==='not-collected'?'Not collected':secSecondary}</p><p class="coverage">${coverageText(sec.coverage)}</p></article>
+    <article class="summary-card" data-tile="ux-summary" data-nav-tab="ux-overview.json"><h3>UI/UX checks summary</h3><p class="primary">${ux.state==='not-collected'?'Not collected':`${toNum(ux.passingUrls)??0} pass · ${toNum(ux.failingUrls)??0} fail`}</p><p class="secondary">${uxSecondary}</p><p class="coverage">${coverageText(ux.coverage)}</p></article>
   </section>`;
 }
 
@@ -237,7 +284,7 @@ function render(options = {}){
           ${['critical','serious','moderate','minor'].map(s=>`<button class="pill ${state.facets.a11y.has(s)?'on':''}" data-sev="${s}">${s}</button>`).join('')}
         </div>
       </div>
-      <div class="domain-overview-block"><button id="domain-overview-btn" class="url-row summary-row ${state.selectedView==='domain-overview' ? 'active' : ''}" type="button" aria-pressed="${state.selectedView==='domain-overview' ? 'true' : 'false'}"><div class="title">Domain overview</div><div class="subtitle">All checked URLs</div></button></div><div id="url-list" class="url-list"></div>
+      <div class="domain-overview-block"><button id="domain-overview-btn" class="url-row domain-overview-row ${state.selectedView==='domain-overview' ? 'active domain-overview-active' : ''}" type="button" aria-pressed="${state.selectedView==='domain-overview' ? 'true' : 'false'}"><div class="title">Domain overview</div><div class="subtitle">All checked URLs</div></button></div><div id="url-list" class="url-list"></div>
       <div class="theme-block">
         <span class="theme-label">Theme</span>
         <button
@@ -252,13 +299,21 @@ function render(options = {}){
         </button>
       </div>
     </aside>
-    <main class="main">${state.selectedView==='domain-overview' ? renderDomainOverview() : (selected?renderDetailsShell(selected):'<p>No URLs match filters.</p>')}</main>
+    <main class="main">${state.selectedView==='domain-overview' ? renderDomainOverview(selected) : (selected?renderDetailsShell(selected):'<p>No URLs match filters.</p>')}</main>
   </div>`;
 
   bindFilters();
   renderVirtualList(urls);
   const domainBtn=document.getElementById('domain-overview-btn');
   if(domainBtn){domainBtn.onclick=()=>{state.selectedView='domain-overview'; if(window.location.hash!=='#/domain-overview') window.location.hash='#/domain-overview'; render();};}
+  document.querySelectorAll('[data-nav-tab]').forEach((el)=>el.onclick=()=>{
+    const nextTab = el.getAttribute('data-nav-tab');
+    if(!nextTab || !selected) return;
+    state.selectedView='url';
+    state.selectedId = selected.id;
+    setSelectedTab(nextTab);
+    render();
+  });
   if(selected && state.selectedView!=='domain-overview') bindTabEvents(selected);
 
   const renderDuration = Math.round(performance.now() - renderStart);
