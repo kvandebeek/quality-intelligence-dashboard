@@ -1,149 +1,146 @@
-import { chromium, firefox, webkit, type Browser, type BrowserType, type BrowserContextOptions } from 'playwright';
+import { chromium, firefox, webkit, type Browser, type BrowserContextOptions, type BrowserType } from 'playwright';
 import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 import {
+  CROSS_BROWSER_DEFAULT_BROWSERS,
   CROSS_BROWSER_PERFORMANCE_WAIT_UNTIL,
-  CROSS_BROWSER_RUNS_PER_BROWSER,
   type AppConfig,
   type BrowserName,
-  type CrossBrowserIterationTiming,
+  type CrossBrowserConfig,
   type CrossBrowserPerformanceBrowserResult,
-  type CrossBrowserPerformanceReport
+  type CrossBrowserPerformanceReport,
+  type CrossBrowserUntestedReason,
+  type LoadedCrossBrowserConfig
 } from '../models/types.js';
 
-const BROWSER_ORDER: readonly BrowserName[] = ['chromium', 'firefox', 'webkit'];
 const BROWSER_TYPES: Record<BrowserName, BrowserType> = { chromium, firefox, webkit };
 
 type StepRunner = <T>(stepName: string, operation: () => Promise<T>) => Promise<T>;
 
-interface NavigationTimingShape {
-  duration?: number;
-  domContentLoadedEventEnd?: number;
-  loadEventEnd?: number;
-  responseStart?: number;
-  requestStart?: number;
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const toRoundedMetric = (value: unknown): number | null => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  return Math.round(value);
-};
+function summarizeLoads(browser: BrowserName, values: number[]): CrossBrowserPerformanceBrowserResult {
+  const minLoadMs = Math.min(...values);
+  const maxLoadMs = Math.max(...values);
+  const avgLoadMs = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+  return { browser, avgLoadMs, minLoadMs, maxLoadMs, samples: values.length };
+}
 
-const summarizeDurations = (iterations: CrossBrowserIterationTiming[]): Pick<CrossBrowserPerformanceBrowserResult, 'avgLoadDurationMs' | 'minLoadDurationMs' | 'maxLoadDurationMs'> => {
-  const values = iterations
-    .map((iteration) => iteration.loadDurationMs)
-    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-
-  if (values.length === 0) {
-    return { avgLoadDurationMs: null, minLoadDurationMs: null, maxLoadDurationMs: null };
-  }
-
-  const avgLoadDurationMs = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
-  return {
-    avgLoadDurationMs,
-    minLoadDurationMs: Math.min(...values),
-    maxLoadDurationMs: Math.max(...values)
-  };
-};
-
-const buildComparison = (browsers: Record<BrowserName, CrossBrowserPerformanceBrowserResult>): CrossBrowserPerformanceReport['comparison'] => {
-  const averages = BROWSER_ORDER
-    .map((browserName) => ({ browserName, avg: browsers[browserName].avgLoadDurationMs }))
-    .filter((entry): entry is { browserName: BrowserName; avg: number } => typeof entry.avg === 'number');
-
-  if (averages.length === 0) return { fastest: null, slowest: null, diffMsSlowestVsFastest: null };
-
-  const fastest = averages.reduce((best, current) => (current.avg < best.avg ? current : best));
-  const slowest = averages.reduce((worst, current) => (current.avg > worst.avg ? current : worst));
-  return {
-    fastest: fastest.browserName,
-    slowest: slowest.browserName,
-    diffMsSlowestVsFastest: slowest.avg - fastest.avg
-  };
-};
-
-async function collectIteration(
+async function collectSingleLoad(
   browser: Browser,
-  iteration: number,
   url: string,
   consent: AppConfig['consent'],
-  contextOptions: BrowserContextOptions
-): Promise<CrossBrowserIterationTiming> {
+  contextOptions: BrowserContextOptions,
+  navigationTimeoutMs: number
+): Promise<number> {
   const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
   const startedAt = Date.now();
 
   try {
     await gotoWithConsent(page, url, {
-      gotoOptions: { waitUntil: CROSS_BROWSER_PERFORMANCE_WAIT_UNTIL },
+      gotoOptions: { waitUntil: CROSS_BROWSER_PERFORMANCE_WAIT_UNTIL, timeout: navigationTimeoutMs },
       consent
     });
 
-    const navEntry = await page.evaluate(() => {
+    const measured = await page.evaluate(() => {
       const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-      if (!navigationEntry) return null;
-      return {
-        duration: navigationEntry.duration,
-        domContentLoadedEventEnd: navigationEntry.domContentLoadedEventEnd,
-        loadEventEnd: navigationEntry.loadEventEnd,
-        responseStart: navigationEntry.responseStart,
-        requestStart: navigationEntry.requestStart
-      };
-    }) as NavigationTimingShape | null;
+      if (!navigationEntry || !Number.isFinite(navigationEntry.duration)) return null;
+      return Math.round(navigationEntry.duration);
+    });
 
-    const fallbackDuration = Math.round(Date.now() - startedAt);
-    return {
-      iteration,
-      loadDurationMs: toRoundedMetric(navEntry?.duration) ?? fallbackDuration,
-      domContentLoadedMs: toRoundedMetric(navEntry?.domContentLoadedEventEnd),
-      loadEventEndMs: toRoundedMetric(navEntry?.loadEventEnd),
-      responseStartMs: toRoundedMetric(navEntry?.responseStart),
-      requestStartMs: toRoundedMetric(navEntry?.requestStart)
-    };
+    return typeof measured === 'number' ? measured : Math.round(Date.now() - startedAt);
   } finally {
     await context.close();
   }
 }
 
-export async function collectCrossBrowserPerformance(
-  url: string,
-  consent: AppConfig['consent'],
-  stepRunner: StepRunner,
-  contextOptions: BrowserContextOptions = {}
-): Promise<CrossBrowserPerformanceReport> {
-  const browsers: Record<BrowserName, CrossBrowserPerformanceBrowserResult> = {
-    chromium: { iterations: [], avgLoadDurationMs: null, minLoadDurationMs: null, maxLoadDurationMs: null },
-    firefox: { iterations: [], avgLoadDurationMs: null, minLoadDurationMs: null, maxLoadDurationMs: null },
-    webkit: { iterations: [], avgLoadDurationMs: null, minLoadDurationMs: null, maxLoadDurationMs: null }
+function asUntested(config: CrossBrowserConfig, reason: CrossBrowserUntestedReason): CrossBrowserPerformanceReport {
+  return {
+    category: 'performance',
+    crossBrowserPerformance: {
+      status: 'untested',
+      reason,
+      config: {
+        enabled: config.enabled,
+        browsers: [...config.browsers],
+        runs: config.runs
+      },
+      results: []
+    }
   };
+}
 
-  for (const browserName of BROWSER_ORDER) {
+interface CollectCrossBrowserPerformanceInput {
+  url: string;
+  consent: AppConfig['consent'];
+  headless: boolean;
+  loadedConfig: LoadedCrossBrowserConfig;
+  stepRunner: StepRunner;
+  contextOptions?: BrowserContextOptions;
+  defaultNavigationTimeoutMs?: number;
+}
+
+export async function collectCrossBrowserPerformance(input: CollectCrossBrowserPerformanceInput): Promise<CrossBrowserPerformanceReport> {
+  const {
+    url,
+    consent,
+    headless,
+    loadedConfig,
+    stepRunner,
+    contextOptions = {},
+    defaultNavigationTimeoutMs = 30000
+  } = input;
+  const { config, source } = loadedConfig;
+
+  if (source === 'missing') {
+    process.stdout.write('[cross-browser-performance] skipped: missing config/features.json\n');
+    return asUntested(config, 'missing_config');
+  }
+  if (source === 'invalid') {
+    process.stdout.write('[cross-browser-performance] skipped: invalid config/features.json\n');
+    return asUntested(config, 'invalid_config');
+  }
+  if (!config.enabled) {
+    process.stdout.write('[cross-browser-performance] skipped: disabled via config/features.json\n');
+    return asUntested(config, 'disabled');
+  }
+  if (config.skipIfHeadless && headless) {
+    process.stdout.write('[cross-browser-performance] skipped: skipped_headless\n');
+    return asUntested(config, 'skipped_headless');
+  }
+
+  const browsers = config.browsers.filter((browser): browser is BrowserName => CROSS_BROWSER_DEFAULT_BROWSERS.includes(browser));
+  if (browsers.length === 0) {
+    process.stdout.write('[cross-browser-performance] skipped: no_browsers_configured\n');
+    return asUntested(config, 'no_browsers_configured');
+  }
+
+  process.stdout.write(`[cross-browser-performance] running: browsers=${browsers.join(',')} runs=${config.runs}\n`);
+
+  const results: CrossBrowserPerformanceBrowserResult[] = [];
+  const timeoutMs = config.navigationTimeoutMs ?? defaultNavigationTimeoutMs;
+
+  for (const browserName of browsers) {
     await stepRunner(`Artifact: ${browserName} cross-browser-performance`, async () => {
       let browser: Browser | null = null;
       try {
-        browser = await BROWSER_TYPES[browserName].launch({ headless: true });
-        const iterations: CrossBrowserIterationTiming[] = [];
+        browser = await BROWSER_TYPES[browserName].launch({ headless });
+        const samples: number[] = [];
 
-        for (let iteration = 1; iteration <= CROSS_BROWSER_RUNS_PER_BROWSER; iteration += 1) {
-          const iterationResult = await stepRunner(
+        for (let iteration = 1; iteration <= config.runs; iteration += 1) {
+          const sample = await stepRunner(
             `Artifact: ${browserName} cross-browser-performance iteration ${iteration}`,
-            async () => collectIteration(browser!, iteration, url, consent, contextOptions)
+            async () => collectSingleLoad(browser!, url, consent, contextOptions, timeoutMs)
           );
-          iterations.push(iterationResult);
-          process.stdout.write(`  PERF ${browserName} iteration=${iteration} loadDurationMs=${iterationResult.loadDurationMs ?? 'null'}\n`);
+          samples.push(sample);
+          process.stdout.write(`  PERF ${browserName} iteration=${iteration} loadMs=${sample}\n`);
+          if (config.cooldownMs && iteration < config.runs) await sleep(config.cooldownMs);
         }
 
-        const summary = summarizeDurations(iterations);
-        browsers[browserName] = { iterations, ...summary };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        browsers[browserName] = {
-          iterations: [],
-          avgLoadDurationMs: null,
-          minLoadDurationMs: null,
-          maxLoadDurationMs: null,
-          error: message
-        };
-        process.stderr.write(`Cross-browser performance failed for ${browserName}: ${message}\n`);
+        results.push(summarizeLoads(browserName, samples));
       } finally {
         if (browser) await browser.close();
       }
@@ -151,13 +148,16 @@ export async function collectCrossBrowserPerformance(
   }
 
   return {
-    meta: {
-      url,
-      runsPerBrowser: CROSS_BROWSER_RUNS_PER_BROWSER,
-      waitUntil: CROSS_BROWSER_PERFORMANCE_WAIT_UNTIL,
-      timestamp: new Date().toISOString()
-    },
-    browsers,
-    comparison: buildComparison(browsers)
+    category: 'performance',
+    crossBrowserPerformance: {
+      status: 'tested',
+      reason: null,
+      config: {
+        enabled: config.enabled,
+        browsers: [...config.browsers],
+        runs: config.runs
+      },
+      results
+    }
   };
 }

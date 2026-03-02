@@ -38,6 +38,12 @@ export interface DomainSummary {
     topIssues: Array<{ id: string; title: string; count: number }>;
     coverage: Coverage;
   };
+  crossBrowserPerformance: {
+    state: 'untested' | 'partial' | 'tested';
+    testedUrls: number;
+    untestedUrls: number;
+    coverage: Coverage;
+  };
 }
 
 const asRecord = (value: unknown): Record<string, unknown> => (typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {});
@@ -95,9 +101,11 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
   let uxPassingUrls = 0;
   let uxFailingUrls = 0;
   const uxIssues = new Map<string, { id: string; title: string; count: number }>();
+  let crossBrowserTested = 0;
+  let crossBrowserUntested = 0;
 
   for (const url of index.urls) {
-    const [a11yLoaded, perfLoaded, brokenLoaded, seoLoaded, cwvLoaded, stabilityLoaded, securityLoaded, uxLoaded] = await Promise.all([
+    const [a11yLoaded, perfLoaded, brokenLoaded, seoLoaded, cwvLoaded, stabilityLoaded, securityLoaded, uxLoaded, crossBrowserLoaded] = await Promise.all([
       store.loadSection(url.id, 'accessibility.json'),
       store.loadSection(url.id, 'performance.json'),
       store.loadSection(url.id, 'broken-links.json'),
@@ -105,7 +113,8 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
       store.loadSection(url.id, 'core-web-vitals.json'),
       store.loadSection(url.id, 'stability.json'),
       store.loadSection(url.id, 'security-scan.json'),
-      store.loadSection(url.id, 'ux-overview.json')
+      store.loadSection(url.id, 'ux-overview.json'),
+      store.loadSection(url.id, 'cross-browser-performance.json')
     ]);
 
     if (a11yLoaded.state === 'ok' || a11yLoaded.state === 'issues') {
@@ -217,6 +226,16 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
         uxIssues.set(key, { id, title, count: (uxIssues.get(key)?.count ?? 0) + 1 });
       }
     }
+
+
+    if (crossBrowserLoaded.state === 'ok') {
+      const crossBrowser = unwrap(crossBrowserLoaded.raw);
+      const payload = asRecord(crossBrowser.crossBrowserPerformance);
+      if (String(payload.status) === 'tested') crossBrowserTested += 1;
+      else crossBrowserUntested += 1;
+    } else if (crossBrowserLoaded.state === 'not_available') {
+      crossBrowserUntested += 1;
+    }
   }
 
   const a11yTotalIssues = Object.values(a11yCounts).reduce((sum, value) => sum + value, 0);
@@ -227,6 +246,7 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
       ? 'ok-empty'
       : 'ok-has-findings';
   const cwvState = cwvCoverage === 0 ? (total === 0 ? 'empty' : 'not-collected') : 'has-data';
+
   const uxTopIssues = [...uxIssues.values()].sort((a, b) => b.count - a.count || a.id.localeCompare(b.id)).slice(0, 3);
   const uxState = uxCoverage === 0 ? (total === 0 ? 'empty' : 'not-collected') : uxFailingUrls > 0 ? 'has-issues' : 'empty';
 
@@ -256,6 +276,12 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
     },
     clientErrors: { totalErrors: totalClientErrors, affectedUrls: clientAffectedUrls, coverage: { measured: clientCoverage, total } },
     security: { state: securityState, severities: securitySeverities, totalFindings: securityTotal, coverage: { measured: securityCoverage, total } },
-    uxSummary: { state: uxState, passingUrls: uxPassingUrls, failingUrls: uxFailingUrls, topIssues: uxTopIssues, coverage: { measured: uxCoverage, total } }
+    uxSummary: { state: uxState, passingUrls: uxPassingUrls, failingUrls: uxFailingUrls, topIssues: uxTopIssues, coverage: { measured: uxCoverage, total } },
+    crossBrowserPerformance: {
+      state: crossBrowserTested === 0 ? 'untested' : (crossBrowserUntested > 0 ? 'partial' : 'tested'),
+      testedUrls: crossBrowserTested,
+      untestedUrls: crossBrowserUntested,
+      coverage: { measured: crossBrowserTested + crossBrowserUntested, total }
+    }
   };
 }

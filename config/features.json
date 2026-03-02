@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "browsers": ["chromium", "firefox", "webkit"],
+  "runs": 5,
+  "navigationTimeoutMs": 30000,
+  "cooldownMs": 0,
+  "skipIfHeadless": false
+}
