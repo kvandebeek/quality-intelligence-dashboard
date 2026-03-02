@@ -20,6 +20,7 @@ export const SECTION_FILES = [
   'lighthouse-summary.json',
   'memory-profile.json',
   'performance.json',
+  'cross-browser-performance.json',
   'throttled-run.json',
   'api-monitoring.json',
   'network-recommendations.json',
@@ -305,6 +306,11 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
     if (obj.available === false) return { state: 'not_available', raw, summary: { reason: obj.reason ?? 'Not available' } };
     return { state: 'ok', raw, summary: { performance: toNum(obj.performance), accessibility: toNum(obj.accessibility), seo: toNum(obj.seo) } };
   }
+  if (section === 'cross-browser-performance.json') {
+    const comparison = asRecord(obj.comparison);
+    const diff = toNum(comparison.diffMsSlowestVsFastest);
+    return { state: 'ok', raw, summary: { fastest: comparison.fastest ?? null, slowest: comparison.slowest ?? null, diffMsSlowestVsFastest: diff } };
+  }
 
   if (section === 'client-errors.json') {
     const score = toNum(obj.severityScore) ?? 100;
@@ -399,7 +405,7 @@ export async function buildDashboardIndexWithLogger(runPath: string, logger?: Ap
       hasFailures,
       badges: {
         a11y: aggregateBadge(sections['accessibility.json'].state, sections['a11y-beyond-axe.json'].state),
-        perf: aggregateBadge(sections['performance.json'].state, sections['core-web-vitals.json'].state, sections['lighthouse-summary.json'].state),
+        perf: aggregateBadge(sections['performance.json'].state, sections['cross-browser-performance.json'].state, sections['core-web-vitals.json'].state, sections['lighthouse-summary.json'].state),
         net: aggregateBadge(sections['network-requests.json'].state, sections['network-recommendations.json'].state, sections['api-monitoring.json'].state),
         sec: aggregateBadge(sections['security-scan.json'].state, sections['third-party-risk.json'].state),
         seo: aggregateBadge(sections['seo-checks.json'].state),

@@ -35,6 +35,7 @@ Per target URL folder:
 - `ux-friction.json`
 - `memory-leaks.json`
 - `cache-analysis.json`
+- `cross-browser-performance.json` (desktop Chromium/Firefox/WebKit load-time comparison with 5 iterations each)
 - `third-party-resilience.json`
 - `privacy-audit.json`
 - `runtime-security.json`

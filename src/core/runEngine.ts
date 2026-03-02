@@ -2,11 +2,12 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { chromium, firefox, webkit, type BrowserType, type Page, type BrowserContext } from 'playwright';
-import type { AppConfig, CrawlPageMetadata, RunMetadata, RunSummary, RunTarget, TargetRunArtifacts } from '../models/types.js';
+import { CROSS_BROWSER_PERFORMANCE_FILE, type AppConfig, type CrawlPageMetadata, type RunMetadata, type RunSummary, type RunTarget, type TargetRunArtifacts } from '../models/types.js';
 import { collectCacheAnalysis, collectClientErrors, collectDependencyRisk, collectMemoryLeaks, collectPrivacyAudit, collectRuntimeSecurity, collectThirdPartyResilience, collectUxFriction, installErrorAndUxObservers } from '../collectors/extensionPackCollector.js';
 import { compactTimestamp, stableRunId } from '../utils/time.js';
 import { ensureDir, writeJson } from '../utils/file.js';
 import { collectPerformance } from '../collectors/performanceCollector.js';
+import { collectCrossBrowserPerformance } from '../collectors/crossBrowserPerformanceCollector.js';
 import { collectAccessibility } from '../collectors/accessibilityCollector.js';
 import { parseHar, recommendNetworkOptimizations } from '../collectors/networkCollector.js';
 import { publishToElasticsearch } from '../publishers/elasticsearchPublisher.js';
@@ -17,7 +18,7 @@ import { buildRunIndex, percentileSummary } from './normalization.js';
 import { TestTimingTracker } from './testTiming.js';
 import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 
-const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json'] as const;
+const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json'] as const;
 const ENABLE_HAR_TESTS = false;
 
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
@@ -310,6 +311,11 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   }
 
   const navigationStats = computeStats(loadSamples);
+  const crossBrowserPerformance = await runArtifactStep('Artifact: Cross-browser performance', async () => collectCrossBrowserPerformance(
+    target.url,
+    config.consent,
+    async (stepName, operation) => timing.step(testReference, stepName, operation)
+  ));
   const baselineLoadMs = perfMetrics.navigation.loadEventMs ?? null;
   const throttledContext = await browser.newContext();
   const throttledPage = await throttledContext.newPage();
@@ -356,6 +362,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'a11y-beyond-axe.json'), 'accessibilityBeyondAxe', meta, focusCheck);
   writeValidatedArtifact(path.join(targetFolder, 'stability.json'), 'stability', meta, { iterations, loadEventSamples: loadSamples.map((value) => Math.round(value)), timestamps: loadSampleTimestamps, ...navigationStats });
   writeValidatedArtifact(path.join(targetFolder, 'memory-profile.json'), 'memory', meta, { samples: memorySamples, growth: memorySamples.length > 1 ? Math.round(memorySamples[memorySamples.length - 1]! - memorySamples[0]!) : 0 });
+  writeValidatedArtifact(path.join(targetFolder, CROSS_BROWSER_PERFORMANCE_FILE), 'crossBrowserPerformance', meta, crossBrowserPerformance);
   const clientErrors = config.assuranceModules.enabled.clientErrors ? await timing.step(testReference, 'Extension: Client errors', async () => collectClientErrors(page, config.assuranceModules)) : { totalErrors: 0, severityScore: 100, uncaughtExceptions: 0, unhandledRejections: 0, consoleErrors: 0, consoleWarnings: 0, failedRequests: [], topErrors: [] };
   const uxFriction = config.assuranceModules.enabled.uxFriction ? await timing.step(testReference, 'Extension: UX friction', async () => collectUxFriction(page, config.assuranceModules)) : { rageClicks: 0, deadClicks: 0, longTasks: 0, layoutShifts: 0, topSelectors: [], uxScore: 100 };
   const memoryLeaks = config.assuranceModules.enabled.memoryLeaks ? await timing.step(testReference, 'Extension: Memory leaks', async () => collectMemoryLeaks(page, config.assuranceModules)) : { available: false, mode: 'not_supported', initialHeapMB: null, finalHeapMB: null, growthMB: null, leakRisk: 'unknown', evidence: ['disabled'] };

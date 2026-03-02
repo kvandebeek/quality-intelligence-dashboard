@@ -110,6 +110,43 @@ export interface TargetRunArtifacts {
   accessibility: AccessibilityReport;
 }
 
+export const CROSS_BROWSER_PERFORMANCE_CATEGORY = 'cross-browser-performance' as const;
+export const CROSS_BROWSER_PERFORMANCE_FILE = 'cross-browser-performance.json' as const;
+export const CROSS_BROWSER_PERFORMANCE_WAIT_UNTIL = 'load' as const;
+export const CROSS_BROWSER_RUNS_PER_BROWSER = 5 as const;
+
+export interface CrossBrowserIterationTiming {
+  iteration: number;
+  loadDurationMs: number | null;
+  domContentLoadedMs: number | null;
+  loadEventEndMs: number | null;
+  responseStartMs: number | null;
+  requestStartMs: number | null;
+}
+
+export interface CrossBrowserPerformanceBrowserResult {
+  iterations: CrossBrowserIterationTiming[];
+  avgLoadDurationMs: number | null;
+  minLoadDurationMs: number | null;
+  maxLoadDurationMs: number | null;
+  error?: string;
+}
+
+export interface CrossBrowserPerformanceReport {
+  meta: {
+    url: string;
+    runsPerBrowser: number;
+    waitUntil: 'load';
+    timestamp: string;
+  };
+  browsers: Record<BrowserName, CrossBrowserPerformanceBrowserResult>;
+  comparison: {
+    fastest: BrowserName | null;
+    slowest: BrowserName | null;
+    diffMsSlowestVsFastest: number | null;
+  };
+}
+
 export interface RunSummary {
   metadata: RunMetadata;
   outputs: Array<{
