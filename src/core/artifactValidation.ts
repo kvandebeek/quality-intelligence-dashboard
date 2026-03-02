@@ -37,6 +37,20 @@ export const artifactSchemas = {
   throttled: wrapped(z.object({ available: z.boolean(), baselineLoadMs: z.number().nullable(), throttledLoadMs: z.number().nullable(), degradationFactor: z.number().nullable() })),
   security: wrapped(z.record(z.string(), z.union([z.boolean(), z.string(), z.null()]))),
   seo: wrapped(z.record(z.string(), z.union([z.boolean(), z.string(), z.number(), z.null()]))),
+  seoScore: wrapped(z.object({
+    version: z.literal('seo-score-v1'),
+    url: z.string().url(),
+    generatedAt: z.string(),
+    overallScore: z.number(),
+    weights: z.object({ indexability: z.number(), onPage: z.number(), content: z.number(), performanceProxy: z.number() }),
+    subscores: z.object({
+      indexability: z.object({ score: z.number(), measuredWeight: z.number(), checks: z.array(z.record(z.string(), z.unknown())) }),
+      onPage: z.object({ score: z.number(), measuredWeight: z.number(), checks: z.array(z.record(z.string(), z.unknown())) }),
+      content: z.object({ score: z.number(), measuredWeight: z.number(), checks: z.array(z.record(z.string(), z.unknown())) }),
+      performanceProxy: z.object({ score: z.number(), measuredWeight: z.number(), checks: z.array(z.record(z.string(), z.unknown())) })
+    }),
+    checks: z.array(z.record(z.string(), z.unknown()))
+  })),
   visualRegression: wrapped(z.object({ baselineFound: z.boolean(), diffRatio: z.number().nullable(), passed: z.boolean() })),
   apiMonitoring: wrapped(z.object({ count: z.number(), errorRate: z.number(), p95Ms: z.number(), avgSize: z.number() })),
   brokenLinks: wrapped(z.object({ checked: z.number(), broken: z.number(), redirectChains: z.number(), loops: z.number(), details: z.array(z.object({ url: z.string(), status: z.number(), chainLength: z.number() })) })),

@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "runId": "run-fixture-001",
+    "url": "https://example.com/",
+    "urlSlug": "page-0001-example-com-aaaa1111",
+    "timestamp": "2025-01-01T00:00:00.000Z",
+    "toolVersion": "1.0.0",
+    "schemaVersion": "1.0.0"
+  },
+  "payload": {
+    "version": "seo-score-v1",
+    "url": "https://example.com/",
+    "generatedAt": "2025-01-01T00:00:00.000Z",
+    "overallScore": 82,
+    "weights": {
+      "indexability": 0.3,
+      "onPage": 0.3,
+      "content": 0.2,
+      "performanceProxy": 0.2
+    },
+    "subscores": {
+      "indexability": { "score": 90, "measuredWeight": 1, "checks": [] },
+      "onPage": { "score": 84, "measuredWeight": 1, "checks": [] },
+      "content": { "score": 70, "measuredWeight": 1, "checks": [] },
+      "performanceProxy": { "score": 78, "measuredWeight": 1, "checks": [] }
+    },
+    "checks": []
+  }
+}

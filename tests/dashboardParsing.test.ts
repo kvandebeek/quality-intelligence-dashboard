@@ -26,4 +26,12 @@ describe('dashboard parsing', () => {
     expect(second?.runTime).toBe('0m 59s');
     expect(second?.environment).toBe('staging');
   });
+
+  it('marks seo-score as missing without crashing when artifact is absent', async () => {
+    const fixturePath = path.resolve('tests/fixtures/dashboard-run');
+    const { index } = await buildDashboardIndex(fixturePath);
+    const second = index.urls.find((entry) => entry.id === 'page-0002-example-com-about-bbbb2222');
+
+    expect(second?.sections['seo-score.json'].state).toBe('missing');
+  });
 });

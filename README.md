@@ -41,10 +41,27 @@ Per target URL folder:
 - `runtime-security.json`
 - `dependency-risk.json`
 - `regression-summary.json` (run summary mirrored into each target folder for per-URL dashboard access)
+- `seo-score.json` (deterministic SEO score v1 with category subscores and per-check transparency)
 
 Run-level root:
 - `regression-summary.json`
 - `latest-run.json` in output root (`<outputDir>/latest-run.json`) used as previous baseline pointer.
+
+
+## SEO-score (v1 heuristic)
+
+The dashboard SEO section now includes **SEO-score**, a deterministic 0–100 score computed from measurable technical/on-page signals already collected by this tool (no paid backlink APIs required).
+
+Categories and weights:
+- **Indexability & Crawlability (30%)**
+- **On-page Metadata & Semantics (30%)**
+- **Content & Link Hygiene (20%)**
+- **Performance proxy (20%)**
+
+Notes:
+- Missing checks are marked `not_measured` and are **excluded from weighting** via per-URL re-normalization.
+- Thresholds/weights are centralized in `src/collectors/seoScore/seoScoreConstants.ts`.
+- SEO-score is heuristic and does not include backlink/authority signals unless future optional adapters are added.
 
 ## Regression baseline behavior
 
