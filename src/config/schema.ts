@@ -23,7 +23,8 @@ const assuranceModulesSchema = z.object({
     privacyAudit: z.boolean().default(true),
     runtimeSecurity: z.boolean().default(true),
     dependencyRisk: z.boolean().default(true),
-    regressionDelta: z.boolean().default(true)
+    regressionDelta: z.boolean().default(true),
+    uxSuite: z.boolean().default(true)
   }).default({}),
   clientErrors: z.object({
     topErrorsLimit: z.number().int().positive().default(10),
@@ -63,6 +64,11 @@ const assuranceModulesSchema = z.object({
   regression: z.object({
     elevatedThreshold: z.number().int().min(1).default(35),
     watchThreshold: z.number().int().min(1).default(15)
+  }).default({}),
+  uxSuite: z.object({
+    maxClickCandidates: z.number().int().positive().default(5),
+    maxTabSteps: z.number().int().positive().default(25),
+    observationWindowMs: z.number().int().positive().default(5000)
   }).default({})
 }).default({});
 

@@ -19,8 +19,9 @@ import { TestTimingTracker } from './testTiming.js';
 import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
 import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
+import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 
-const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'seo-score.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json'] as const;
+const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'seo-score.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 const ENABLE_HAR_TESTS = false;
 
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
@@ -424,6 +425,18 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'privacy-audit.json'), 'privacyAudit', meta, privacyAudit);
   writeValidatedArtifact(path.join(targetFolder, 'runtime-security.json'), 'runtimeSecurity', meta, runtimeSecurity);
   writeValidatedArtifact(path.join(targetFolder, 'dependency-risk.json'), 'dependencyRisk', meta, dependencyRisk);
+
+  if (config.assuranceModules.enabled.uxSuite) {
+    await timing.step(testReference, 'Artifact: UX suite', async () => collectUxSuite(page, {
+      runId,
+      url: target.url,
+      timestamp,
+      browserName: config.browser,
+      viewport: { width: page.viewportSize()?.width ?? 1366, height: page.viewportSize()?.height ?? 768 },
+      outputDir: targetFolder,
+      config
+    }));
+  }
   await timing.step(testReference, 'Write target summary', async () => Promise.resolve(writeJson(path.join(targetFolder, 'target-summary.json'), artifact)));
 
     timing.endTest(testReference, 'passed');

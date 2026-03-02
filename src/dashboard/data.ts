@@ -31,6 +31,16 @@ export const SECTION_FILES = [
   'seo-score.json',
   'visual-current.png',
   'visual-regression.json',
+  'ux-overview.json',
+  'ux-sanity.json',
+  'ux-layout-stability.json',
+  'ux-interaction.json',
+  'ux-click-friction.json',
+  'ux-keyboard.json',
+  'ux-overlays.json',
+  'ux-readability.json',
+  'ux-forms.json',
+  'ux-visual-regression.json',
   'client-errors.json',
   'ux-friction.json',
   'memory-leaks.json',
@@ -85,7 +95,7 @@ export interface UrlIndexEntry {
   runTime: string | null;
   environment: string | null;
   hasFailures: boolean;
-  badges: Record<'a11y' | 'perf' | 'net' | 'sec' | 'seo' | 'visual' | 'stability', 'missing' | 'ok' | 'issues'>;
+  badges: Record<'a11y' | 'perf' | 'net' | 'sec' | 'seo' | 'visual' | 'ux' | 'stability', 'missing' | 'ok' | 'issues'>;
   sections: Record<SectionFile, SectionIndexStatus>;
 }
 
@@ -312,6 +322,15 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
     if (overall === null) return { state: 'not_available', raw, summary: { reason: 'SEO score not measured' } };
     return { state: overall < 75 ? 'issues' : 'ok', raw, summary: { overallScore: overall } };
   }
+  if (section.startsWith('ux-') && section.endsWith('.json')) {
+    const status = String(asRecord(obj.meta).status ?? obj.status ?? 'ok').toLowerCase();
+    const score = toNum(obj.score);
+    const issues = Array.isArray(obj.topIssues) ? obj.topIssues.length : 0;
+    if (status === 'skipped') return { state: 'not_available', raw, summary: { status, score, issueCount: issues } };
+    if (status === 'fail' || status === 'warn' || status === 'partial' || issues > 0) return { state: 'issues', raw, summary: { status, score, issueCount: issues } };
+    return { state: 'ok', raw, summary: { status, score, issueCount: issues } };
+  }
+
   if (section === 'cross-browser-performance.json') {
     const comparison = asRecord(obj.comparison);
     const diff = toNum(comparison.diffMsSlowestVsFastest);
@@ -416,6 +435,7 @@ export async function buildDashboardIndexWithLogger(runPath: string, logger?: Ap
         sec: aggregateBadge(sections['security-scan.json'].state, sections['third-party-risk.json'].state),
         seo: aggregateBadge(sections['seo-checks.json'].state, sections['seo-score.json'].state),
         visual: aggregateBadge(sections['visual-regression.json'].state, sections['visual-current.png'].state),
+        ux: aggregateBadge(sections['ux-overview.json'].state, sections['ux-sanity.json'].state, sections['ux-layout-stability.json'].state, sections['ux-interaction.json'].state, sections['ux-click-friction.json'].state, sections['ux-keyboard.json'].state, sections['ux-overlays.json'].state, sections['ux-readability.json'].state, sections['ux-forms.json'].state, sections['ux-visual-regression.json'].state),
         stability: aggregateBadge(sections['stability.json'].state, sections['broken-links.json'].state)
       },
       sections

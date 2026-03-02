@@ -10,6 +10,7 @@ npm run dashboard -- --run <outputDir>/<runId> --port 4173
 ## High-ROI + Governance extension pack
 
 New categories added to dashboard (layout/style unchanged):
+- **UX**: generic site-agnostic UX checks (sanity, layout stability, interaction, dead-click friction, keyboard, overlays, readability, forms, visual snapshots).
 - **Reliability & Client Health**: client-side errors, UX friction, memory leaks.
 - **Performance Efficiency**: cache analysis.
 - **Resilience**: third-party resilience simulation.
@@ -20,7 +21,8 @@ New categories added to dashboard (layout/style unchanged):
 
 Use `assuranceModules` in config to enable/disable modules and tune thresholds:
 - `assuranceModules.enabled.*` toggles each module.
-- `assuranceModules.ux` for rage/dead click thresholds.
+- `assuranceModules.ux` for legacy UX friction thresholds.
+- `assuranceModules.uxSuite` for generic UX suite bounds (`maxClickCandidates`, `maxTabSteps`, `observationWindowMs`).
 - `assuranceModules.memory` for loop count and growth threshold.
 - `assuranceModules.thirdPartyResilience` for block mode and blocklist.
 - `assuranceModules.privacy` for consent selector hints and tracker domains.
@@ -33,6 +35,16 @@ Defaults are defined in `src/config/schema.ts`.
 Per target URL folder:
 - `client-errors.json`
 - `ux-friction.json`
+- `ux-overview.json`
+- `ux-sanity.json`
+- `ux-layout-stability.json`
+- `ux-interaction.json`
+- `ux-click-friction.json`
+- `ux-keyboard.json`
+- `ux-overlays.json`
+- `ux-readability.json`
+- `ux-forms.json`
+- `ux-visual-regression.json` (plus `ux-visual-above-the-fold.png` and `ux-visual-fullpage.png`)
 - `memory-leaks.json`
 - `cache-analysis.json`
 - `cross-browser-performance.json` (desktop Chromium/Firefox/WebKit load-time comparison with 5 iterations each)
