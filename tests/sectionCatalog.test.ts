@@ -10,7 +10,7 @@ describe('section catalog', () => {
       { label: 'Network', sections: ['api-monitoring.json', 'network-recommendations.json', 'network-requests.json'] },
       { label: 'Quality & Reliability', sections: ['target-summary.json', 'broken-links.json', 'stability.json'] },
       { label: 'Security & Risk', sections: ['security-scan.json', 'third-party-risk.json'] },
-      { label: 'SEO', sections: ['seo-checks.json'] },
+      { label: 'SEO', sections: ['seo-checks.json', 'seo-score.json'] },
       { label: 'Visual', sections: ['visual-current.png', 'visual-regression.json'] },
       { label: 'Reliability & Client Health', sections: ['client-errors.json', 'ux-friction.json', 'memory-leaks.json'] },
       { label: 'Performance Efficiency', sections: ['cache-analysis.json'] },

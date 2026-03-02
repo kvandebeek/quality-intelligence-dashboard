@@ -411,6 +411,7 @@ async function loadTab(id, tab){
     case 'cross-browser-performance.json': body = renderCrossBrowserPerformance(unwrapped.payload); break;
     case 'security-scan.json': body = renderSecurity(unwrapped.payload); break;
     case 'seo-checks.json': body = renderSeo(unwrapped.payload); break;
+    case 'seo-score.json': body = renderSeoScore(unwrapped.payload); break;
     case 'stability.json': body = renderStability(unwrapped.payload); break;
     case 'target-summary.json': body = renderTarget(unwrapped.payload, unwrapped.meta, selected); break;
     case 'third-party-risk.json': body = renderThirdParty(unwrapped.payload); break;
@@ -460,6 +461,25 @@ const renderCrossBrowserPerformance = (r={})=>{
   return `<div class="kpis">${textMetric('Fastest',comparison.fastest ?? MISSING)}${textMetric('Slowest',comparison.slowest ?? MISSING)}${metric('Slowest vs fastest',comparison.diffMsSlowestVsFastest,'ms')}</div><table><tr><th>Browser</th><th>Avg</th><th>Min</th><th>Max</th><th>Error</th></tr>${summary}</table><table><tr><th>Browser</th><th>Iteration load durations (5)</th></tr>${iterations}</table>`;
 };
 const renderSecurity = (r={})=>`<div class="kpis">${textMetric('TLS',r.tlsVersion)}${textMetric('Missing headers',Array.isArray(r.missingHeaders)?((r.missingHeaders||[]).join(', ')||'None'):'None')}</div>`;
+
+const seoBand = (score)=>{
+  const n = toNum(score);
+  if(n===null) return 'Not measured';
+  if(n>=90) return 'Excellent';
+  if(n>=75) return 'Good';
+  if(n>=55) return 'Needs work';
+  return 'Poor';
+};
+const checkBadge = (status)=>`<span class="chip chip-${safe(status)}">${safe(status)}</span>`;
+const renderSeoScore = (r={})=>{
+  const overall = toNum(r.overallScore);
+  if(overall===null) return '<div class="state na">SEO score not measured</div>';
+  const subs = r.subscores || {};
+  const categories = ['indexability','onPage','content','performanceProxy'];
+  const categoryCards = categories.map((key)=>`<div class="kpi"><span>${safe(key)}</span><strong>${fmt(subs[key]?.score)}</strong></div>`).join('');
+  const checks = Array.isArray(r.checks) ? r.checks : [];
+  return `<div class="kpis">${metric('Overall SEO score', overall)}${textMetric('Band', seoBand(overall))}</div><div class="kpis">${categoryCards}</div><details open><summary>Checks</summary><table><tr><th>Check</th><th>Status</th><th>Points</th><th>Recommendation</th></tr>${checks.map((c)=>`<tr><td>${safe(c.label)}</td><td>${checkBadge(c.status)}</td><td>${safe(c.points)}/${safe(c.maxPoints)}</td><td>${safe(c.recommendation)}</td></tr>`).join('')}</table></details>`;
+};
 const renderSeo = (r={})=>`<div class="kpis">${textMetric('Title',r.title)}${textMetric('Description',r.description)}${textMetric('Canonical',r.canonical)}${textMetric('Robots',r.robots ?? r.robotsMeta)}${metric('Structured data count',r.structuredDataCount)}</div><blockquote><strong>${safe(r.title,'(title missing)')}</strong><p>${safe(r.description,'(description missing)')}</p></blockquote>`;
 const renderStability = (r={})=>{const samples=(r.loadEventSamples||[]).map((v,i)=>({index:i+1,sample:Math.round(v),timestamp:r.timestamps?.[i]??'n/a'})); const avg=samples.length?samples.reduce((sum,row)=>sum+row.sample,0)/samples.length:0; const sorted=sortRows(samples,state.sorts.stability); return `<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs,'ms')}${metric('CV',r.coefficientOfVariation)}${textMetric('Unstable',r.unstable?'Yes':'No')}</div><table><tr>${sortableHeader('#','stability','index')}${sortableHeader('Load event','stability','sample')}${sortableHeader('Timestamp','stability','timestamp')}</tr>${sorted.slice(0,300).map(x=>`<tr class="${x.sample<=avg?'fast':'slow'}"><td>${x.index}</td><td>${fmt(x.sample,'ms')}</td><td>${x.timestamp}</td></tr>`).join('')}</table>`;};
 const resolveOverallScore = (r={}) => {

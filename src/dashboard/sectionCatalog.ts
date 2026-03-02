@@ -17,7 +17,9 @@ export type GlossaryTermId =
   | 'contrastSimulationScore'
   | 'baselineFound'
   | 'diffRatio'
-  | 'passed';
+  | 'passed'
+  | 'seoOverallScore'
+  | 'seoCategoryScore';
 
 export interface GlossaryTermDefinition {
   id: GlossaryTermId;
@@ -169,6 +171,18 @@ export const GLOSSARY_TERMS = {
     label: 'Passed',
     meaning: 'Whether the visual comparison stayed within the allowed difference threshold.',
     whyItMatters: '“Yes” means no unexpected visual change was detected.'
+  },
+  seoOverallScore: {
+    id: 'seoOverallScore',
+    label: 'SEO overall score',
+    meaning: 'Weighted SEO score normalized to 0–100 using measured checks only.',
+    whyItMatters: 'Gives a comparable summary of technical and on-page SEO health.'
+  },
+  seoCategoryScore: {
+    id: 'seoCategoryScore',
+    label: 'SEO category score',
+    meaning: 'Per-category score for indexability, on-page, content, and performance proxy.',
+    whyItMatters: 'Highlights which SEO category needs the most improvement.'
   }
 } as const satisfies Record<GlossaryTermId, GlossaryTermDefinition>;
 
@@ -342,6 +356,17 @@ export const SECTION_DEFINITIONS = {
       whyItMatters: 'Missing or weak metadata can lower discoverability in search.',
       howToRead: ['Verify title and description presence.', 'Check canonical and robots values.', 'Review structured data count.', 'Fix missing metadata on priority pages first.'],
       keyTerms: baseTerms
+    }
+  },
+  'seo-score.json': {
+    route: 'seo-score.json',
+    label: 'seo-score',
+    category: 'seo',
+    info: {
+      whatItIs: 'Deterministic weighted SEO score based on collected on-page and technical signals.',
+      whyItMatters: 'Provides a transparent SEO benchmark that can be compared across runs.',
+      howToRead: ['Start with overall score and quality band.', 'Check category subscores for weak areas.', 'Review each check status and recommendation.', 'Checks marked not measured are excluded from weighting.'],
+      keyTerms: ['seoOverallScore', 'seoCategoryScore']
     }
   },
   'stability.json': {
