@@ -11,6 +11,8 @@ const state = {
   regex: false,
   theme: getInitialTheme(),
   selectedDomain: null,
+  selectedView: 'domain-overview',
+  domainSummary: null,
   facets: { failures:false, broken:false, visualFailed:false, throttled:false, lighthouse:false, a11y:new Set() },
   sorts: { netRec: { key: 'severity', dir: 'asc' }, netReq: { key: 'url', dir: 'asc' }, stability: { key: 'index', dir: 'asc' } }
 };
@@ -47,6 +49,7 @@ function parseTabFromHash(){
   const raw = window.location.hash.replace(/^#\/?/, '').trim();
   if(!raw || !state.sections) return null;
   const target = decodeURIComponent(raw).toLowerCase();
+  if(target === 'domain-overview') return 'domain-overview';
   return state.sections.order.find((section)=>{
     const definition = state.sections.definitions[section];
     if(!definition) return false;
@@ -65,7 +68,9 @@ function selectedCategory(){
 
 function syncTabFromLocation(){
   const fromHash = parseTabFromHash();
+  if(fromHash === 'domain-overview'){ state.selectedView='domain-overview'; return true; }
   if(fromHash && fromHash !== state.selectedTab){
+    state.selectedView='url';
     state.selectedTab = fromHash;
     return true;
   }
@@ -87,14 +92,15 @@ async function loadSectionConfig(){
   state.sections = await res.json();
   const validTabs = new Set(state.sections.order);
   const hashTab = parseTabFromHash();
-  state.selectedTab = hashTab && validTabs.has(hashTab) ? hashTab : state.sections.order[0];
+  if(hashTab === 'domain-overview'){ state.selectedView='domain-overview'; state.selectedTab = state.sections.order[0]; }
+  else { state.selectedTab = hashTab && validTabs.has(hashTab) ? hashTab : state.sections.order[0]; }
 }
 
 async function loadIndex(){
   const opId = createOperationId();
   const started = performance.now();
   await logEvent('INFO', 'UI index load started', { operationId: opId, view: 'index' });
-  const [indexRes] = await Promise.all([fetch('/api/index'), loadSectionConfig()]);
+  const [indexRes] = await Promise.all([fetch('/api/index'), loadSectionConfig(), loadDomainSummary()]);
   if(!indexRes.ok) throw new Error(`Failed to load index: ${indexRes.status}`);
   state.index = await indexRes.json();
   state.selectedId = state.index.urls[0]?.id ?? null;
@@ -123,6 +129,89 @@ function filterUrls(){
   });
 }
 
+
+async function loadDomainSummary(){
+  const res = await fetch('/api/domain-overview');
+  if(!res.ok) throw new Error(`Failed to load domain overview: ${res.status}`);
+  state.domainSummary = await res.json();
+}
+
+function coverageText(coverage){
+  if(!coverage) return 'Based on 0/0 URLs';
+  return `Based on ${coverage.measured}/${coverage.total} URLs`;
+}
+
+function fmtSeconds(v){
+  const n = toNum(v);
+  return n===null ? 'Not measured' : `${n.toFixed(1)} s`;
+}
+
+function valueOrNotMeasured(v, formatter=(x)=>String(x)){
+  const n = toNum(v);
+  return n===null ? 'Not measured' : formatter(n);
+}
+
+function fcpBandClass(seconds){
+  const n = toNum(seconds);
+  if(n===null) return 'band-na';
+  if(n<=1.8) return 'band-good';
+  if(n<=2.5) return 'band-warn';
+  if(n<=3.0) return 'band-mid';
+  return 'band-bad';
+}
+
+function renderDonut(segments, total){
+  if(!total) return '<div class="donut-empty">Not measured</div>';
+  const cs = [];
+  let acc = 0;
+  for(const seg of segments){
+    const pct = (seg.value/total)*100;
+    const start = acc;
+    const end = acc + pct;
+    cs.push(`${seg.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`);
+    acc = end;
+  }
+  return `<div class="donut" style="background:conic-gradient(${cs.join(',')})"></div>`;
+}
+
+function renderDomainOverview(){
+  const s = state.domainSummary;
+  if(!s) return '<section class="domain-grid"><article class="summary-card">Loading domain overview…</article></section>';
+  const a11yTotal = toNum(s.accessibility?.totalIssues) ?? 0;
+  const a11yCounts = s.accessibility?.counts || {};
+  const a11ySegments = [
+    {label:'critical', value:toNum(a11yCounts.critical)??0, color:'var(--sev-critical)'},
+    {label:'serious', value:toNum(a11yCounts.serious)??0, color:'var(--sev-serious)'},
+    {label:'moderate', value:toNum(a11yCounts.moderate)??0, color:'var(--sev-moderate)'},
+    {label:'minor', value:toNum(a11yCounts.minor)??0, color:'var(--sev-minor)'}
+  ];
+
+  const cwv = s.coreWebVitals || {};
+  const cwvTotal = (toNum(cwv.good)??0)+(toNum(cwv.needsImprovement)??0)+(toNum(cwv.poor)??0);
+  const cwvSegments = [
+    {label:'Good', value:toNum(cwv.good)??0, color:'var(--success)'},
+    {label:'Needs improvement', value:toNum(cwv.needsImprovement)??0, color:'var(--warning)'},
+    {label:'Poor', value:toNum(cwv.poor)??0, color:'var(--danger)'}
+  ];
+
+  const sec = s.security || {};
+  const secTotal = toNum(sec.totalFindings) ?? 0;
+  const secSev = sec.severities || {};
+  const secSegments = Object.entries(secSev).map(([label,val],i)=>({label,value:toNum(val)??0,color:["#ef4444","#f59e0b","#eab308","#60a5fa","#a78bfa"][i%5]}));
+
+  return `<section class="domain-grid" aria-label="Domain overview tiles">
+    <article class="summary-card" data-tile="accessibility-severity"><h3>Accessibility issues severity</h3>${renderDonut(a11ySegments, a11yTotal)}<p class="primary">${a11yTotal} total issues</p><p class="secondary">critical ${a11ySegments[0].value} · serious ${a11ySegments[1].value} · moderate ${a11ySegments[2].value} · minor ${a11ySegments[3].value}</p><p class="coverage">${coverageText(s.accessibility?.coverage)}</p></article>
+    <article class="summary-card" data-tile="fcp-counter"><h3>Content load: FCP</h3><p class="primary ${fcpBandClass(s.fcp?.avgSeconds)}">${fmtSeconds(s.fcp?.avgSeconds)}</p><p class="secondary">Min ${fmtSeconds(s.fcp?.minSeconds)} · Max ${fmtSeconds(s.fcp?.maxSeconds)}</p><p class="coverage">${coverageText(s.fcp?.coverage)}</p></article>
+    <article class="summary-card" data-tile="broken-links"><h3>Broken links</h3><p class="primary">${toNum(s.brokenLinks?.broken) ?? 'Not measured'}</p><p class="secondary">${toNum(s.brokenLinks?.broken)??0}/${toNum(s.brokenLinks?.total)??0} broken/total</p><p class="coverage">${coverageText(s.brokenLinks?.coverage)}</p></article>
+    <article class="summary-card" data-tile="seo-score"><h3>SEO score</h3><p class="primary">${valueOrNotMeasured(s.seoScore?.avg,(n)=>n.toFixed(0))}</p><p class="secondary">Min ${valueOrNotMeasured(s.seoScore?.min,(n)=>n.toFixed(0))} · Max ${valueOrNotMeasured(s.seoScore?.max,(n)=>n.toFixed(0))}</p><p class="coverage">${coverageText(s.seoScore?.coverage)}</p></article>
+
+    <article class="summary-card" data-tile="cwv-pass-rate"><h3>Core Web Vitals pass rate</h3>${renderDonut(cwvSegments, cwvTotal)}<p class="primary">Good ${toNum(cwv.good)??0} · NI ${toNum(cwv.needsImprovement)??0} · Poor ${toNum(cwv.poor)??0}</p><p class="coverage">${coverageText(cwv.coverage)}</p></article>
+    <article class="summary-card" data-tile="client-errors"><h3>Client-side errors</h3><p class="primary">${toNum(s.clientErrors?.totalErrors) ?? 'Not measured'}</p><p class="secondary">${toNum(s.clientErrors?.affectedUrls)??0} URLs with errors</p><p class="coverage">${coverageText(s.clientErrors?.coverage)}</p></article>
+    <article class="summary-card" data-tile="security-findings"><h3>Security findings by severity</h3>${renderDonut(secSegments, secTotal)}<p class="primary">${secTotal || 'Not measured'}</p><p class="secondary">${secSegments.map((x)=>`${x.label}: ${x.value}`).join(' · ') || 'No findings'}</p><p class="coverage">${coverageText(sec.coverage)}</p></article>
+    <article class="summary-card" data-tile="visual-regression"><h3>Visual regression summary</h3><p class="primary">${toNum(s.visualRegression?.changedUrls) ?? 'Not measured'}</p><p class="secondary">Avg diff ratio ${valueOrNotMeasured(s.visualRegression?.avgDiffRatio,(n)=>n.toFixed(3))} · Baseline found ${toNum(s.visualRegression?.baselineFound)??0}/${toNum(s.totals?.urls)??0}</p><p class="coverage">${coverageText(s.visualRegression?.coverage)}</p></article>
+  </section>`;
+}
+
 function render(options = {}){
   const renderStart = performance.now();
   if(!state.index || !state.sections){ app.innerHTML = '<p>Loading…</p>'; return; }
@@ -148,7 +237,7 @@ function render(options = {}){
           ${['critical','serious','moderate','minor'].map(s=>`<button class="pill ${state.facets.a11y.has(s)?'on':''}" data-sev="${s}">${s}</button>`).join('')}
         </div>
       </div>
-      <div id="url-list" class="url-list"></div>
+      <div class="domain-overview-block"><button id="domain-overview-btn" class="url-row summary-row ${state.selectedView==='domain-overview' ? 'active' : ''}" type="button" aria-pressed="${state.selectedView==='domain-overview' ? 'true' : 'false'}"><div class="title">Domain overview</div><div class="subtitle">All checked URLs</div></button></div><div id="url-list" class="url-list"></div>
       <div class="theme-block">
         <span class="theme-label">Theme</span>
         <button
@@ -163,12 +252,14 @@ function render(options = {}){
         </button>
       </div>
     </aside>
-    <main class="main">${selected?renderDetailsShell(selected):'<p>No URLs match filters.</p>'}</main>
+    <main class="main">${state.selectedView==='domain-overview' ? renderDomainOverview() : (selected?renderDetailsShell(selected):'<p>No URLs match filters.</p>')}</main>
   </div>`;
 
   bindFilters();
   renderVirtualList(urls);
-  if(selected) bindTabEvents(selected);
+  const domainBtn=document.getElementById('domain-overview-btn');
+  if(domainBtn){domainBtn.onclick=()=>{state.selectedView='domain-overview'; if(window.location.hash!=='#/domain-overview') window.location.hash='#/domain-overview'; render();};}
+  if(selected && state.selectedView!=='domain-overview') bindTabEvents(selected);
 
   const renderDuration = Math.round(performance.now() - renderStart);
   logEvent(renderDuration > 500 ? 'WARN' : 'DEBUG', 'UI render completed', { view: state.selectedTab, durationMs: renderDuration, selectedId: state.selectedId });
@@ -200,7 +291,7 @@ function renderVirtualList(urls){
         <div class="row-badges">${badge(u.badges.a11y)}${badge(u.badges.perf)}${badge(u.badges.net)}${badge(u.badges.sec)}${badge(u.badges.seo)}${badge(u.badges.visual)}${badge(u.badges.ux)}${badge(u.badges.stability)}</div>
       </button>`;
     }).join('')}</div>`;
-    container.querySelectorAll('.url-row').forEach((el)=>el.onclick=()=>{const operationId=createOperationId(); state.selectedId=el.dataset.id; state.selectedDomain=null; logEvent('INFO','UI URL selection changed',{operationId,urlId:state.selectedId,view:state.selectedTab}); render();});
+    container.querySelectorAll('.url-row').forEach((el)=>el.onclick=()=>{const operationId=createOperationId(); state.selectedId=el.dataset.id; state.selectedDomain=null; state.selectedView='url'; if(window.location.hash==='#/domain-overview'){ window.location.hash=tabToHash(state.selectedTab); } logEvent('INFO','UI URL selection changed',{operationId,urlId:state.selectedId,view:state.selectedTab}); render();});
   };
   container.onscroll = renderRows;
   renderRows();
@@ -289,6 +380,7 @@ function bindTabEvents(u){
     const nextTab = group.sections.includes(state.selectedTab) ? state.selectedTab : group.sections[0];
     const operationId=createOperationId();
     state.selectedDomain=null;
+    state.selectedView='url';
     setSelectedTab(nextTab);
     logEvent('INFO','UI group changed',{operationId,urlId:u.id,group:group.id,section:nextTab,view:nextTab});
     render();
@@ -296,6 +388,7 @@ function bindTabEvents(u){
   document.querySelectorAll('[data-tab]').forEach((button)=>button.onclick=()=>{
     const operationId=createOperationId();
     state.selectedDomain=null;
+    state.selectedView='url';
     setSelectedTab(button.dataset.tab);
     logEvent('INFO','UI tab changed',{operationId,urlId:u.id,section:state.selectedTab,view:state.selectedTab});
     render();

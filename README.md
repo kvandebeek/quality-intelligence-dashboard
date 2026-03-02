@@ -95,6 +95,23 @@ Notes:
 
 See `TRACEABILITY.md` for artifact -> producer -> dashboard mapping.
 
+
+## Domain overview landing dashboard
+
+The dashboard now opens on **Domain overview** by default, with a dedicated navbar item above URL rows.
+
+This view aggregates results across all checked URLs and renders 8 tiles:
+- Accessibility issues by severity (critical/serious/moderate/minor)
+- Content load FCP (domain average, min, max)
+- Broken links (broken + total + coverage)
+- SEO score (domain average, min, max)
+- Core Web Vitals pass-rate split (Good / Needs improvement / Poor)
+- Client-side errors (total errors + affected URLs)
+- Security findings by severity
+- Visual regression summary (changed URLs, avg diff ratio, baseline coverage)
+
+All tiles include per-metric coverage (e.g., measured URLs / total URLs) and gracefully show “Not measured” when artifacts are missing or null.
+
 ## Dashboard theming
 
 - The dashboard now supports `dark` and `light` themes through CSS variable tokens in `src/dashboard/app/app.css`.

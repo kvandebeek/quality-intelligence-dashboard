@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { buildDashboardIndexWithLogger, resolveRunPath, SECTION_FILES, type ArtifactStore, type DashboardIndex } from './data.js';
 import { GLOSSARY_TERMS, SECTION_DEFINITIONS, SECTION_GROUPS } from './sectionCatalog.js';
 import { createLogger, newOperationId, sanitizeForDiagnostics, type LogContext, type LogLevel } from './logging.js';
+import { buildDomainSummary, type DomainSummary } from './domainSummary.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -102,13 +103,27 @@ export function startDashboardServer(options: ServerOptions): http.Server {
 
   let indexState: DashboardIndex | null = null;
   let store: ArtifactStore | null = null;
+  let summaryCache: DomainSummary | null = null;
+  let summaryRunId: string | null = null;
 
   const ensureIndex = async (): Promise<void> => {
     if (indexState && store) return;
     const built = await buildDashboardIndexWithLogger(options.runPath, logger);
     indexState = built.index;
     store = built.store;
+    summaryCache = null;
+    summaryRunId = null;
     logger.info('Index ready', { datasetPath: options.runPath, count: indexState.urls.length, parseErrors: indexState.parseErrors.length });
+  };
+
+  const ensureDomainSummary = async (): Promise<DomainSummary> => {
+    await ensureIndex();
+    if (!indexState || !store) throw new Error('Index unavailable');
+    const runId = indexState.generatedAt;
+    if (summaryCache && summaryRunId === runId) return summaryCache;
+    summaryCache = await buildDomainSummary(indexState, store, runId);
+    summaryRunId = runId;
+    return summaryCache;
   };
 
   const server = http.createServer(async (request, response) => {
@@ -127,6 +142,13 @@ export function startDashboardServer(options: ServerOptions): http.Server {
       if (requestUrl.pathname === '/api/sections') {
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         response.end(JSON.stringify({ order: SECTION_FILES, categories: SECTION_GROUPS, definitions: SECTION_DEFINITIONS, glossary: GLOSSARY_TERMS }));
+        return;
+      }
+
+      if (requestUrl.pathname === '/api/domain-overview') {
+        const summary = await ensureDomainSummary();
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify(summary));
         return;
       }
 
