@@ -1,5 +1,6 @@
 export const THEME_STORAGE_KEY = 'theme';
 const THEMES = new Set(['dark', 'light']);
+const DEFAULT_THEME = 'light';
 
 export function getStoredTheme() {
   if (typeof window === 'undefined') return null;
@@ -7,17 +8,12 @@ export function getStoredTheme() {
   return THEMES.has(stored) ? stored : null;
 }
 
-export function getSystemTheme() {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'dark';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
 export function getInitialTheme() {
-  return getStoredTheme() ?? getSystemTheme();
+  return getStoredTheme() ?? DEFAULT_THEME;
 }
 
 export function applyTheme(theme) {
-  const resolved = THEMES.has(theme) ? theme : 'dark';
+  const resolved = THEMES.has(theme) ? theme : DEFAULT_THEME;
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = resolved;
   }
