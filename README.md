@@ -26,11 +26,13 @@ Batch config format:
 - Each item in `batch[]` must define `name`, `startUrl`, and `crawl`.
 - Per-item values override `defaults` for `name`, `startUrl`, and `crawl`.
 
-Artifacts are isolated per batch target under:
+Artifacts are isolated per batch target under the batch item's `name` folder:
 
 ```text
-<outputDir>/batch/<index>_<sanitizedName>_<sanitizedHost>/<runId>/...
+<outputDir>/<batchItem.name>/<runId>/...
 ```
+
+`batchItem.name` is sanitized for cross-platform filesystem safety (`<>:"/\|?*` and control chars are replaced with `_`, underscores are collapsed, whitespace is trimmed). If the sanitized name becomes empty, the folder falls back to `unknown-<hostname>` derived from `startUrl`.
 
 Example (`batch-test.json`):
 

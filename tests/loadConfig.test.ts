@@ -15,7 +15,7 @@ describe('loadRunPlan', () => {
     expect(plan.kind).toBe('batch');
     if (plan.kind === 'batch') {
       expect(plan.runs).toHaveLength(3);
-      expect(plan.runs[0]?.config.outputDir).toContain('artifacts/batch/001_RESILLION_www_resillion_com');
+      expect(plan.runs[0]?.config.outputDir).toContain('artifacts/RESILLION');
     }
   });
 
@@ -48,11 +48,16 @@ describe('loadRunPlan', () => {
     expect(runs[0]?.config.environment).toBe('staging');
     expect(runs[0]?.config.name).toBe('Site One');
     expect(runs[0]?.config.startUrl).toBe('https://example.com');
-    expect(runs[0]?.config.outputDir).toContain('tmp-artifacts/batch/001_Site_One_example_com');
+    expect(runs[0]?.config.outputDir).toContain('tmp-artifacts/Site One');
   });
 
   it('sanitizes batch output folder names', () => {
-    const folder = createBatchOutputFolder(12, 'My Fancy Target!', 'https://www.example-domain.com/path?q=1');
-    expect(folder).toBe('012_My_Fancy_Target_www_example_domain_com');
+    const folder = createBatchOutputFolder(' My<>Fancy::Target? ', 'https://www.example-domain.com/path?q=1');
+    expect(folder).toBe('My_Fancy_Target');
+  });
+
+  it('falls back to hostname when sanitized batch name is empty', () => {
+    const folder = createBatchOutputFolder('   <>:*?"/\\|   ', 'https://www.Example-Domain.com/path?q=1');
+    expect(folder).toBe('unknown-www_example_domain_com');
   });
 });

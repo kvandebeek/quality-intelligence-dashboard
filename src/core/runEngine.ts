@@ -6,6 +6,7 @@ import { CROSS_BROWSER_PERFORMANCE_FILE, type AppConfig, type CrawlPageMetadata,
 import { collectCacheAnalysis, collectClientErrors, collectDependencyRisk, collectMemoryLeaks, collectPrivacyAudit, collectRuntimeSecurity, collectThirdPartyResilience, collectUxFriction, installErrorAndUxObservers } from '../collectors/extensionPackCollector.js';
 import { compactTimestamp, stableRunId } from '../utils/time.js';
 import { ensureDir, writeJson } from '../utils/file.js';
+import { ensureUniqueRunRoot } from '../utils/artifactPaths.js';
 import { collectPerformance } from '../collectors/performanceCollector.js';
 import { collectCrossBrowserPerformance } from '../collectors/crossBrowserPerformanceCollector.js';
 import { collectAccessibility } from '../collectors/accessibilityCollector.js';
@@ -455,7 +456,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   const timestamp = compactTimestamp();
   const runId = stableRunId(timestamp, config.browser, config.iteration, config.name);
   const metadata: RunMetadata = { runId, timestamp, browser: config.browser, environment: config.environment, iteration: config.iteration, name: config.name, startUrl: config.startUrl, targets: config.targets };
-  const runRoot = path.join(config.outputDir, runId);
+  const runRoot = ensureUniqueRunRoot(config.outputDir, runId);
   ensureDir(runRoot);
   writeJson(path.join(runRoot, 'run-metadata.json'), metadata);
   const timing = new TestTimingTracker(runId);

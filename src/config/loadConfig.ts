@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { ZodError } from 'zod';
 import { appConfigSchema, batchRunConfigSchema, type BatchRunConfigSchema } from './schema.js';
 import type { AppConfig } from '../models/types.js';
+import { buildBatchOutputDir, resolveBatchItemFolderName } from '../utils/artifactPaths.js';
 
 dotenv.config();
 
@@ -45,18 +46,8 @@ function ensureAppConfig(raw: Record<string, unknown>): AppConfig {
   return appConfigSchema.parse(applyElasticEnv(raw));
 }
 
-function safePathSegment(input: string): string {
-  const normalized = input.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-  return normalized || 'target';
-}
-
-function hostFromUrl(value: string): string {
-  return new URL(value).hostname;
-}
-
-export function createBatchOutputFolder(index: number, name: string, startUrl: string): string {
-  const padded = String(index).padStart(3, '0');
-  return `${padded}_${safePathSegment(name)}_${safePathSegment(hostFromUrl(startUrl))}`;
+export function createBatchOutputFolder(name: string, startUrl: string): string {
+  return resolveBatchItemFolderName(name, startUrl);
 }
 
 function toIssueMessage(error: ZodError, entryIndex?: number): string {
@@ -82,7 +73,7 @@ export function expandBatchRunConfig(raw: BatchRunConfigSchema): BatchExpandedRu
 
     try {
       const config = ensureAppConfig(effectiveRaw);
-      const outputFolder = createBatchOutputFolder(index + 1, entry.name, entry.startUrl);
+      const outputFolder = createBatchOutputFolder(entry.name, entry.startUrl);
       return {
         index: index + 1,
         total: raw.batch.length,
@@ -91,7 +82,7 @@ export function expandBatchRunConfig(raw: BatchRunConfigSchema): BatchExpandedRu
         outputFolder,
         config: {
           ...config,
-          outputDir: path.join(config.outputDir, 'batch', outputFolder)
+          outputDir: buildBatchOutputDir(config.outputDir, entry.name, entry.startUrl)
         }
       };
     } catch (error) {
