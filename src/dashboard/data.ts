@@ -24,7 +24,6 @@ export const SECTION_FILES = [
   'throttled-run.json',
   'security-scan.json',
   'third-party-risk.json',
-  'seo-checks.json',
   'seo-score.json',
   'visual-current.png',
   'visual-regression.json',
@@ -431,7 +430,7 @@ export async function buildDashboardIndexWithLogger(runPath: string, logger?: Ap
         a11y: aggregateBadge(sections['accessibility.json'].state, sections['a11y-beyond-axe.json'].state),
         perf: aggregateBadge(sections['performance.json'].state, sections['cross-browser-performance.json'].state, sections['core-web-vitals.json'].state, sections['lighthouse-summary.json'].state),
         sec: aggregateBadge(sections['security-scan.json'].state, sections['third-party-risk.json'].state),
-        seo: aggregateBadge(sections['seo-checks.json'].state, sections['seo-score.json'].state),
+        seo: aggregateBadge(sections['seo-score.json'].state),
         visual: aggregateBadge(sections['visual-regression.json'].state, sections['visual-current.png'].state),
         ux: aggregateBadge(sections['ux-overview.json'].state, sections['ux-sanity.json'].state, sections['ux-layout-stability.json'].state, sections['ux-interaction.json'].state, sections['ux-click-friction.json'].state, sections['ux-keyboard.json'].state, sections['ux-overlays.json'].state, sections['ux-readability.json'].state, sections['ux-forms.json'].state, sections['ux-visual-regression.json'].state),
         stability: aggregateBadge(sections['stability.json'].state, sections['broken-links.json'].state)

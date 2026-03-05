@@ -22,7 +22,7 @@ import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
 import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
 import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 
-const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
+const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
 
 function sanitizeSlug(url: string): string {
@@ -244,15 +244,6 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const seoContext = await browser.newContext();
   const seoPage = await seoContext.newPage();
   const seoResponse = await gotoWithConsent(seoPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
-  const seoChecks = await seoPage.evaluate(() => ({
-    title: document.querySelector('title')?.textContent?.trim() ?? null,
-    description: document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? null,
-    canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? null,
-    robots: document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? null,
-    structuredDataCount: document.querySelectorAll('script[type="application/ld+json"]').length
-  }));
-
-
 
   const host = new URL(target.url).hostname;
   const thirdPartyRiskMap = new Map<string, { domain: string; requests: number; transferSize: number; totalDuration: number; trackerHeuristic: boolean }>();
@@ -300,7 +291,6 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     requestCount: perfMetrics.resourceSummary.count
   });
   const seoScore = computeSeoScore(seoSignals);
-  const seoChecksWithScore = { ...seoChecks, overallScore: seoScore.overallScore, subscores: seoScore.subscores };
   await seoContext.close();
 
   const focusCheck = await browser.newPage().then(async (checkPage) => {
@@ -377,7 +367,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
       performance: perfScore,
       accessibility: Math.max(0, 100 - (accessibility.issues?.length ?? 0) * 5),
       bestPractices: Math.max(0, 100 - (securityScan.mixedContent ? 20 : 0)),
-      seo: Math.max(0, [seoChecks.title, seoChecks.description, seoChecks.canonical, seoChecks.robots].filter(Boolean).length * 25)
+      seo: seoScore.overallScore
     }
   };
 
@@ -389,7 +379,6 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'lighthouse-summary.json'), 'lighthouse', meta, lighthouseSummary);
   writeValidatedArtifact(path.join(targetFolder, 'throttled-run.json'), 'throttled', meta, { available: throttledLoadMs !== null, baselineLoadMs, throttledLoadMs, degradationFactor: baselineLoadMs && throttledLoadMs ? Number((throttledLoadMs / baselineLoadMs).toFixed(2)) : null });
   writeValidatedArtifact(path.join(targetFolder, 'security-scan.json'), 'security', meta, securityScan);
-  writeValidatedArtifact(path.join(targetFolder, 'seo-checks.json'), 'seo', meta, seoChecksWithScore);
   writeValidatedArtifact(path.join(targetFolder, 'seo-score.json'), 'seoScore', meta, seoScore);
   writeValidatedArtifact(path.join(targetFolder, 'visual-regression.json'), 'visualRegression', meta, { baselineFound, diffRatio, passed: diffRatio === null ? true : diffRatio < 0.05 });
   writeValidatedArtifact(path.join(targetFolder, 'broken-links.json'), 'brokenLinks', meta, brokenLinks);

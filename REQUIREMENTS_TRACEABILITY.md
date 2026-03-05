@@ -16,7 +16,7 @@
 - T2 Lighthouse summary artifact → `src/core/runEngine.ts` (`lighthouse-summary.json`).
 - T3 Throttled run artifact/degradation → `src/core/runEngine.ts` (`throttled-run.json`).
 - T4 Security scanning → `src/core/runEngine.ts` (`security-scan.json`).
-- T5 SEO checks → `src/core/runEngine.ts` (`seo-checks.json`).
+- T5 SEO score → `src/core/runEngine.ts` (`seo-score.json`).
 - T6 Visual regression baseline/diff → `src/core/runEngine.ts` (`visual-regression.json`, `visual-current.png`).
 - T8 Broken-link detection → `src/core/runEngine.ts` (`broken-links.json`).
 - T9 Third-party risk ranking → `src/core/runEngine.ts` (`third-party-risk.json`).

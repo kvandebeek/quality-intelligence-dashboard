@@ -22,7 +22,7 @@ export interface UnifiedUrlModel {
   lighthouse: { available: boolean; categories: Record<string, number | null> };
   throttled: { available: boolean; degradationFactor: number | null };
   security: Record<string, boolean | string | null>;
-  seo: Record<string, boolean | string | number | null>;
+  seoScore: { overallScore: number };
   visualRegression: { baselineFound: boolean; diffRatio: number | null; passed: boolean };
   brokenLinks: { checked: number; broken: number; redirectChains: number; loops: number };
   thirdPartyRisk: Array<{ domain: string; requests: number; transferSize: number; avgDurationMs: number; trackerHeuristic: boolean }>;

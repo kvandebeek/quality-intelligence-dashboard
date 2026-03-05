@@ -9,7 +9,7 @@ describe('section catalog', () => {
       { label: 'Performance', sections: ['core-web-vitals.json', 'lighthouse-summary.json', 'memory-profile.json', 'performance.json', 'cross-browser-performance.json', 'throttled-run.json'] },
       { label: 'Stability', sections: ['target-summary.json', 'broken-links.json', 'stability.json'] },
       { label: 'Security & Risk', sections: ['security-scan.json', 'third-party-risk.json'] },
-      { label: 'SEO', sections: ['seo-checks.json', 'seo-score.json'] },
+      { label: 'SEO', sections: ['seo-score.json'] },
       { label: 'Visual', sections: ['visual-current.png', 'visual-regression.json'] },
       { label: 'UX', sections: ['ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] },
       { label: 'Reliability & Client Health', sections: ['client-errors.json', 'ux-friction.json', 'memory-leaks.json'] },
