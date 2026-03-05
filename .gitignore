@@ -4,3 +4,4 @@ artifacts/
 .env
 .playwright/
 config/
+logs/
