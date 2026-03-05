@@ -29,28 +29,24 @@ export const artifactSchemas = {
   visualRegression: wrapped(z.object({ baselineFound: z.boolean(), diffRatio: z.number().nullable(), passed: z.boolean() })),
   brokenLinks: wrapped(z.object({
     summary: z.object({ checked: z.number(), broken: z.number(), redirectChains: z.number(), loops: z.number() }),
-    items: z.array(z.object({
-      url: z.string(),
-      statusCode: z.number().nullable(),
-      chainLength: z.number(),
-      isBroken: z.boolean(),
-      isRedirectChain: z.boolean(),
-      hasLoop: z.boolean()
-    }))
-  brokenLinks: wrapped(z.object({ checked: z.number(), broken: z.number(), redirectChains: z.number(), loops: z.number(), details: z.array(z.object({ sourcePageUrl: z.string().url(), brokenUrl: z.string().url(), status: z.number(), chainLength: z.number() })) })),
-  brokenLinks: wrapped(z.object({
-    checked: z.number(),
-    broken: z.number(),
-    redirectChains: z.number(),
-    loops: z.number(),
-    details: z.array(z.object({ url: z.string(), status: z.number(), chainLength: z.number() })),
-    items: z.array(z.object({
-      brokenUrl: z.string(),
-      sourcePageUrl: z.string(),
-      linkText: z.string(),
-      statusCode: z.number().nullable(),
-      failureReason: z.enum(['4xx', '5xx', 'timeout', 'dns', 'invalid_url', 'request_failed', 'blocked_by_cors'])
-    })).optional()
+    details: z.array(z.object({ sourcePageUrl: z.string().url(), brokenUrl: z.string().url(), status: z.number(), chainLength: z.number() })).optional(),
+    items: z.array(z.union([
+      z.object({
+        url: z.string(),
+        statusCode: z.number().nullable(),
+        chainLength: z.number(),
+        isBroken: z.boolean(),
+        isRedirectChain: z.boolean(),
+        hasLoop: z.boolean()
+      }),
+      z.object({
+        brokenUrl: z.string(),
+        sourcePageUrl: z.string(),
+        linkText: z.string(),
+        statusCode: z.number().nullable(),
+        failureReason: z.enum(['4xx', '5xx', 'timeout', 'dns', 'invalid_url', 'request_failed', 'blocked_by_cors'])
+      })
+    ])).optional()
   })),
   thirdPartyRisk: wrapped(z.array(z.object({ domain: z.string(), requests: z.number(), transferSize: z.number(), avgDurationMs: z.number(), trackerHeuristic: z.boolean() }))),
   accessibilityBeyondAxe: wrapped(z.object({
@@ -94,13 +90,11 @@ export const artifactSchemas = {
       }))
     })
   })),
-
   clientErrors: wrapped(z.object({ totalErrors: z.number(), severityScore: z.number(), uncaughtExceptions: z.number(), unhandledRejections: z.number(), consoleErrors: z.number(), consoleWarnings: z.number(), failedRequests: z.array(z.object({ url: z.string(), type: z.string(), reason: z.string() })), topErrors: z.array(z.object({ message: z.string(), count: z.number(), example: z.string().optional() })) })),
   memoryLeaks: wrapped(z.object({ available: z.boolean(), mode: z.enum(['cdp', 'performance.memory', 'not_supported']), initialHeapMB: z.number().nullable(), finalHeapMB: z.number().nullable(), growthMB: z.number().nullable(), leakRisk: z.enum(['low', 'medium', 'high', 'unknown']), evidence: z.array(z.string()) })),
   privacyAudit: wrapped(z.object({ consentBannerDetected: z.boolean(), cookiesBeforeConsent: z.array(z.object({ name: z.string(), value: z.string() })), insecureCookies: z.array(z.object({ name: z.string(), issue: z.string() })), thirdPartyTrackers: z.array(z.string()), gdprRisk: z.enum(['low', 'medium', 'high']) })),
   runtimeSecurity: wrapped(z.object({ missingHeaders: z.array(z.string()), cspStrength: z.enum(['none', 'weak', 'ok', 'strong']), mixedContent: z.array(z.string()), inlineScripts: z.number(), evalSignals: z.number(), securityScore: z.number() })),
   dependencyRisk: wrapped(z.object({ domainInventory: z.array(z.object({ domain: z.string(), category: z.string(), scripts: z.number(), iframes: z.number(), images: z.number(), fonts: z.number() })), dependencyRiskScore: z.number(), topRiskyDependencies: z.array(z.object({ domain: z.string(), category: z.string(), score: z.number() })) }))
-
 };
 
 export function writeValidatedArtifact<K extends keyof typeof artifactSchemas>(
