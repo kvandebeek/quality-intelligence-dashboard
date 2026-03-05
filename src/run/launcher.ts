@@ -150,10 +150,14 @@ async function validateJsonConfig(configPath: string): Promise<void> {
 }
 
 async function launchRun(repoRoot: string, configPath: string): Promise<number> {
-  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const npmExecPath = process.env.npm_execpath;
+  const command = npmExecPath ? process.execPath : process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const args = npmExecPath
+    ? [npmExecPath, 'run', 'run', '--', '--config', configPath]
+    : ['run', 'run', '--', '--config', configPath];
 
   return new Promise<number>((resolve, reject) => {
-    const child = spawn(npmCommand, ['run', 'run', '--', '--config', configPath], {
+    const child = spawn(command, args, {
       cwd: repoRoot,
       stdio: 'inherit'
     });
