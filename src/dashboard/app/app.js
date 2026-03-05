@@ -67,7 +67,6 @@ function renderDomainHeader(data){
     : escapeHtml(data.title);
   return `<header class="detail-header domain-header">
     <h2>${heading}</h2>
-    <div class="meta">${safe(data.runTime)} · ${safe(data.runId)}</div>
     <div class="meta">Data path: ${escapeHtml(formatDataPath(data.dataPath))}</div>
     <div class="top-issues">${data.topIssues.map((item)=>`<span>${item}</span>`).join('')}</div>
   </header>`;
