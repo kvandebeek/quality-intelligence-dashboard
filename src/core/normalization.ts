@@ -52,7 +52,6 @@ export function buildRunIndex(runRoot: string, runId: string, timestamp: string,
     const perf = readJson(path.join(urlRoot, 'performance.json')) as { meta: UnifiedUrlModel['meta']; payload: { navigation: Record<string, number> } };
     const a11y = readJson(path.join(urlRoot, 'accessibility.json')) as { payload: UnifiedUrlModel['accessibility'] };
     const coreWebVitals = readJson(path.join(urlRoot, 'core-web-vitals.json')) as { payload: UnifiedUrlModel['coreWebVitals'] };
-    const lighthouse = readJson(path.join(urlRoot, 'lighthouse-summary.json')) as { payload: UnifiedUrlModel['lighthouse'] };
     const throttled = readJson(path.join(urlRoot, 'throttled-run.json')) as { payload: UnifiedUrlModel['throttled'] };
     const security = readJson(path.join(urlRoot, 'security-scan.json')) as { payload: UnifiedUrlModel['security'] };
     const seoScore = readJson(path.join(urlRoot, 'seo-score.json')) as { payload: UnifiedUrlModel['seoScore'] };
@@ -69,7 +68,6 @@ export function buildRunIndex(runRoot: string, runId: string, timestamp: string,
       performance: perf.payload.navigation,
       accessibility: a11y.payload,
       coreWebVitals: coreWebVitals.payload,
-      lighthouse: lighthouse.payload,
       throttled: throttled.payload,
       security: security.payload,
       seoScore: seoScore.payload,

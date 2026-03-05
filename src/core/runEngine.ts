@@ -22,7 +22,7 @@ import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
 import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
 import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 
-const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
+const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
 
 function sanitizeSlug(url: string): string {
@@ -53,12 +53,6 @@ async function collectCoreWebVitals(page: Page): Promise<{ lcp: number | null; c
       fcp: Number.isFinite(fcp) ? Math.round(fcp as number) : (navigation ? Math.round(navigation.responseStart - navigation.startTime) : null)
     };
   });
-}
-
-function toScore(value: number, good: number, poor: number): number {
-  if (value <= good) return 100;
-  if (value >= poor) return 0;
-  return Math.round((1 - ((value - good) / (poor - good))) * 100);
 }
 
 function computeStats(values: number[]): { stdDevLoadMs: number; coefficientOfVariation: number; unstable: boolean } {
@@ -357,26 +351,11 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   });
   await throttledContext.close();
 
-  const lcp = coreWebVitals.lcp ?? baselineLoadMs ?? 0;
-  const inp = coreWebVitals.inp ?? 0;
-  const cls = coreWebVitals.cls ?? 0;
-  const perfScore = Math.round((toScore(lcp, 2500, 4000) + toScore(inp, 200, 500) + toScore(cls, 0.1, 0.25)) / 3);
-  const lighthouseSummary = {
-    available: true,
-    categories: {
-      performance: perfScore,
-      accessibility: Math.max(0, 100 - (accessibility.issues?.length ?? 0) * 5),
-      bestPractices: Math.max(0, 100 - (securityScan.mixedContent ? 20 : 0)),
-      seo: seoScore.overallScore
-    }
-  };
-
   const artifact: TargetRunArtifacts = { target, performance: perfMetrics, accessibility };
 
   writeValidatedArtifact(path.join(targetFolder, 'performance.json'), 'performance', meta, perfMetrics);
   writeValidatedArtifact(path.join(targetFolder, 'accessibility.json'), 'accessibility', meta, accessibility);
   writeValidatedArtifact(path.join(targetFolder, 'core-web-vitals.json'), 'coreWebVitals', meta, coreWebVitals);
-  writeValidatedArtifact(path.join(targetFolder, 'lighthouse-summary.json'), 'lighthouse', meta, lighthouseSummary);
   writeValidatedArtifact(path.join(targetFolder, 'throttled-run.json'), 'throttled', meta, { available: throttledLoadMs !== null, baselineLoadMs, throttledLoadMs, degradationFactor: baselineLoadMs && throttledLoadMs ? Number((throttledLoadMs / baselineLoadMs).toFixed(2)) : null });
   writeValidatedArtifact(path.join(targetFolder, 'security-scan.json'), 'security', meta, securityScan);
   writeValidatedArtifact(path.join(targetFolder, 'seo-score.json'), 'seoScore', meta, seoScore);
