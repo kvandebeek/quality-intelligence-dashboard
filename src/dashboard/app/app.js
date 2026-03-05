@@ -222,6 +222,45 @@ function fcpBandClass(seconds){
   return 'band-bad';
 }
 
+
+function fcpAttemptBreakdown(attempts = [], reportedMs){
+  if(!Array.isArray(attempts) || attempts.length===0) return '';
+  const attemptText = attempts
+    .map((entry)=>`Attempt ${entry.attempt}: ${entry.fcpMs===null || entry.fcpMs===undefined ? 'n/a' : `${(entry.fcpMs/1000).toFixed(1)}s`}`)
+    .join(', ');
+  const reported = reportedMs===null || reportedMs===undefined ? 'n/a' : `${(reportedMs/1000).toFixed(1)}s`;
+  return `${attemptText} → Reported: ${reported} (median)`;
+}
+
+function cwvStoplight(metric, rawValue){
+  const value = toNum(rawValue);
+  if(metric==='LCP'){
+    if(value===null) return {state:'missing',label:'Not measured'};
+    if(value<=2500) return {state:'good',label:'Good'};
+    if(value<=4000) return {state:'needs',label:'Needs improvement'};
+    return {state:'poor',label:'Poor'};
+  }
+  if(metric==='INP'){
+    if(value===null) return {state:'missing',label:'Not measured'};
+    if(value<=200) return {state:'good',label:'Good'};
+    if(value<=500) return {state:'needs',label:'Needs improvement'};
+    return {state:'poor',label:'Poor'};
+  }
+  if(value===null) return {state:'missing',label:'Not measured'};
+  if(value<=0.1) return {state:'good',label:'Good'};
+  if(value<=0.25) return {state:'needs',label:'Needs improvement'};
+  return {state:'poor',label:'Poor'};
+}
+
+function renderCwvStoplights(cwv={}){
+  const cards = [
+    {metric:'LCP', value: toNum(cwv.metrics?.lcp?.medianMs), display: valueOrNotMeasured(toNum(cwv.metrics?.lcp?.medianMs), (n)=>`${(n/1000).toFixed(2)}s`)},
+    {metric:'INP', value: toNum(cwv.metrics?.inp?.medianMs), display: valueOrNotMeasured(toNum(cwv.metrics?.inp?.medianMs), (n)=>`${Math.round(n)}ms`)},
+    {metric:'CLS', value: toNum(cwv.metrics?.cls?.median), display: valueOrNotMeasured(toNum(cwv.metrics?.cls?.median), (n)=>n.toFixed(3))}
+  ];
+  return `<div class="cwv-stoplights">${cards.map((card)=>{ const stop = cwvStoplight(card.metric, card.value); return `<div class="cwv-stoplight"><span class="metric">${card.metric}</span><span class="value">${card.display}</span><span class="light ${stop.state}" aria-hidden="true"></span><span class="label">${stop.label}</span></div>`; }).join('')}</div>`;
+}
+
 function renderDonut(segments, total){
   if(!total) return '<div class="donut-empty">Not measured</div>';
   const cs = [];
@@ -297,12 +336,12 @@ function renderDomainOverview(selected){
   });
 
   return `${header}<section class="domain-grid" aria-label="Domain overview tiles">
-    <button type="button" class="summary-card summary-card-link" data-tile="accessibility-severity" data-testid="domain-overview-accessibility-severity" data-nav-hash="#/accessibility" aria-label="Go to accessibility"><h3>Accessibility issues severity</h3>${renderDonut(a11ySegments, a11yTotal)}<p class="primary">${a11yTotal} total issues</p><p class="secondary">critical ${a11ySegments[0].value} · serious ${a11ySegments[1].value} · moderate ${a11ySegments[2].value} · minor ${a11ySegments[3].value}</p><p class="coverage">${coverageText(s.accessibility?.coverage)}</p></button>
-    <button type="button" class="summary-card summary-card-link" data-tile="fcp-counter" data-testid="domain-overview-fcp" data-nav-hash="#/performance" aria-label="Go to performance"><h3>Content load: FCP</h3><p class="primary ${fcpBandClass(s.fcp?.avgSeconds)}">${fmtSeconds(s.fcp?.avgSeconds)}</p><p class="secondary">Min ${fmtSeconds(s.fcp?.minSeconds)} · Max ${fmtSeconds(s.fcp?.maxSeconds)}</p><p class="coverage">${coverageText(s.fcp?.coverage)}</p></button>
+    <button type="button" class="summary-card summary-card-link" data-tile="accessibility-severity" data-testid="domain-overview-accessibility-severity" data-nav-hash="#/accessibility" aria-label="Go to accessibility"><h3>Accessibility issues severity</h3>${renderDonut(a11ySegments, a11yTotal)}<p class="primary">${a11yTotal} total issues</p><p class="secondary"><span class="severity-label severity-critical">critical</span> ${a11ySegments[0].value} · <span class="severity-label severity-serious">serious</span> ${a11ySegments[1].value} · <span class="severity-label severity-moderate">moderate</span> ${a11ySegments[2].value} · <span class="severity-label severity-minor">minor</span> ${a11ySegments[3].value}</p><p class="coverage">${coverageText(s.accessibility?.coverage)}</p></button>
+    <button type="button" class="summary-card summary-card-link" data-tile="fcp-counter" data-testid="domain-overview-fcp" data-nav-hash="#/performance" aria-label="Go to performance"><h3>Content load: FCP</h3><p class="primary ${fcpBandClass(s.fcp?.avgSeconds)}">${fmtSeconds(s.fcp?.avgSeconds)}</p><p class="secondary">Min ${fmtSeconds(s.fcp?.minSeconds)} · Max ${fmtSeconds(s.fcp?.maxSeconds)}</p><p class="secondary">Issues ${toNum(s.fcp?.issues)??0} · Intermittent ${toNum(s.fcp?.intermittent)??0}</p><p class="coverage">${coverageText(s.fcp?.coverage)}</p></button>
     <article class="summary-card" data-tile="broken-links" data-nav-tab="broken-links.json"><h3>Broken links</h3><p class="primary">${toNum(s.brokenLinks?.broken) ?? 'Not measured'}</p><p class="secondary">${toNum(s.brokenLinks?.broken)??0}/${toNum(s.brokenLinks?.total)??0} broken/total</p><p class="coverage">${coverageText(s.brokenLinks?.coverage)}</p></article>
     <button type="button" class="summary-card summary-card-link" data-tile="seo-score" data-testid="domain-overview-seo-score" data-nav-hash="#/seo-score" aria-label="Go to SEO score"><h3>SEO score</h3><p class="primary">${valueOrNotMeasured(s.seoScore?.avg,(n)=>n.toFixed(0))}</p><p class="secondary">Min ${valueOrNotMeasured(s.seoScore?.min,(n)=>n.toFixed(0))} · Max ${valueOrNotMeasured(s.seoScore?.max,(n)=>n.toFixed(0))}</p><p class="coverage">${coverageText(s.seoScore?.coverage)}</p></button>
 
-    <button type="button" class="summary-card summary-card-link" data-tile="cwv-status-by-metric" data-testid="domain-overview-cwv-status-by-metric" data-nav-hash="#/core-web-vitals" aria-label="Go to Core Web Vitals"><h3>Core Web Vitals status by metric</h3>${cwvState==='has-data'?renderDonut(cwvSegments, cwvTotal):`<div class="donut-empty">${cwvState==='empty'?'No data':'Not collected'}</div>`}<p class="secondary" title="Core Web Vitals distribution across scanned pages (Good / Needs improvement / Poor).">Good ${toNum(cwv.good)??0} · ${CWV_NEEDS_IMPROVEMENT_LABEL} ${toNum(cwv.needsImprovement)??0} · Poor ${toNum(cwv.poor)??0}</p><p class="secondary">LCP: ${metricGoodRate(cwv.metrics?.lcp)} · INP: ${metricGoodRate(cwv.metrics?.inp)} · CLS: ${metricGoodRate(cwv.metrics?.cls)}</p><p class="coverage">${coverageText(cwv.coverage)}</p></button>
+    <button type="button" class="summary-card summary-card-link" data-tile="cwv-status-by-metric" data-testid="domain-overview-cwv-status-by-metric" data-nav-hash="#/core-web-vitals" aria-label="Go to Core Web Vitals"><h3>Core Web Vitals status by metric</h3>${cwvState==='has-data'?renderCwvStoplights(cwv):`<div class="donut-empty">${cwvState==='empty'?'No data':'Not collected'}</div>`}<p class="secondary" title="Core Web Vitals distribution across scanned pages (Good / Needs improvement / Poor).">Good ${toNum(cwv.good)??0} · ${CWV_NEEDS_IMPROVEMENT_LABEL} ${toNum(cwv.needsImprovement)??0} · Poor ${toNum(cwv.poor)??0}</p><p class="secondary">LCP: ${metricGoodRate(cwv.metrics?.lcp)} · INP: ${metricGoodRate(cwv.metrics?.inp)} · CLS: ${metricGoodRate(cwv.metrics?.cls)}</p><p class="coverage">${coverageText(cwv.coverage)}</p></button>
     <article class="summary-card" data-tile="client-errors" data-nav-tab="stability.json"><h3>Client-side errors</h3><p class="primary">${toNum(s.clientErrors?.totalErrors) ?? 'Not measured'}</p><p class="secondary">${toNum(s.clientErrors?.affectedUrls)??0} URLs with errors</p><p class="coverage">${coverageText(s.clientErrors?.coverage)}</p></article>
     <article class="summary-card" data-tile="security-findings" data-nav-tab="security-scan.json"><h3>Security findings by severity</h3>${secState==='ok-has-findings'?renderDonut(secSegments, secTotal):'<div class="donut-empty">No findings</div>'}<p class="primary">${secPrimary}</p><p class="secondary">${secState==='not-collected'?'Not collected':secSecondary}</p><p class="coverage">${coverageText(sec.coverage)}</p></article>
     <article class="summary-card" data-tile="ux-summary" data-nav-tab="ux-overview.json"><h3>UI/UX checks summary</h3><p class="primary">${ux.state==='not-collected'?'Not collected':`${toNum(ux.passingUrls)??0} pass · ${toNum(ux.failingUrls)??0} fail`}</p><p class="secondary">${uxSecondary}</p><p class="coverage">${coverageText(ux.coverage)}</p></article>
@@ -687,7 +726,7 @@ function bindA11yHeuristics(scope){
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
 const renderCwv = (r={})=>{const vals=[toNum(r.lcpMs ?? r.lcp),toNum(r.cls),toNum(r.inpMs ?? r.inp),toNum(r.fcpMs ?? r.fcp)]; const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs ?? r.lcp,'ms','Largest Contentful Paint')}${metric('CLS',r.cls)}${metric('INP',r.inpMs ?? r.inp,'ms','Interaction to Next Paint')}${metric('FCP',r.fcpMs ?? r.fcp,'ms','First Contentful Paint')}${metric('Readiness',ready,'%')}</div>`};
 const renderMemory = (r={})=>`<div>${metric('Growth',r.growth ?? r.growthVerdict,'bytes')}<pre>${(r.samples||[]).slice(0,20).map((x)=>Math.round(x)).join(', ')}</pre></div>`;
-const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class="kpis">${metric('DNS',n.dnsMs,'ms')}${metric('TCP',n.tcpMs,'ms')}${metric('TTFB',n.ttfbMs,'ms')}${metric('DCL',n.domContentLoadedMs,'ms')}${metric('Load',n.loadEventMs,'ms')}${metric('FP',r.paint?.fpMs ?? r.paint?.['first-paint'],'ms')}${metric('FCP',r.paint?.fcpMs ?? r.paint?.['first-contentful-paint'],'ms')}</div>`;};
+const renderPerformance = (r={})=>{const n=r.navigation||{}; const breakdown=fcpAttemptBreakdown(r.fcpAttempts, r.fcpReportedMs ?? r.paint?.fcpMs ?? r.paint?.['first-contentful-paint']); return `<div class="kpis">${metric('DNS',n.dnsMs,'ms')}${metric('TCP',n.tcpMs,'ms')}${metric('TTFB',n.ttfbMs,'ms')}${metric('DCL',n.domContentLoadedMs,'ms')}${metric('Load',n.loadEventMs,'ms')}${metric('FP',r.paint?.fpMs ?? r.paint?.['first-paint'],'ms')}${metric('FCP',r.fcpReportedMs ?? r.paint?.fcpMs ?? r.paint?.['first-contentful-paint'],'ms')}</div>${breakdown?`<p class="secondary">${breakdown}</p><p class="secondary">${safe(r.fcpDecisionReason ?? '')}</p>`:''}`;};
 const renderCrossBrowserPerformance = (r={})=>{
   const data = r.crossBrowserPerformance || {};
   const reasonLabels = {

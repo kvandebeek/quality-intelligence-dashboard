@@ -26,7 +26,7 @@ describe('domain summary aggregation', () => {
       },
       u2: {
         'accessibility.json': section('issues', { counters: { critical: 0, serious: 1, moderate: 0, minor: 2 } }),
-        'performance.json': section('ok', { paint: { fcpMs: 3200 } }),
+        'performance.json': section('ok', { paint: { fcpMs: 3200 }, fcpAttempts: [{ attempt: 1, fcpMs: 5000, cleanStateRetry: false }, { attempt: 2, fcpMs: 2200, cleanStateRetry: true }, { attempt: 3, fcpMs: 2400, cleanStateRetry: true }], fcpReportedMs: 2400, fcpIssue: false }),
         'broken-links.json': section('ok', { brokenCount: 0, checkedCount: 10 }),
         'seo-score.json': section('ok', { overallScore: 70 }),
         'core-web-vitals.json': section('ok', { lcpMs: 5000, cls: 0.05, inpMs: 100 }),
@@ -60,9 +60,11 @@ describe('domain summary aggregation', () => {
     expect(summary.accessibility.totalIssues).toBe(13);
     expect(summary.accessibility.coverage).toEqual({ measured: 2, total: 3 });
 
-    expect(summary.fcp.avgSeconds).toBeCloseTo(2.4, 5);
+    expect(summary.fcp.avgSeconds).toBeCloseTo(2.0, 5);
     expect(summary.fcp.minSeconds).toBeCloseTo(1.6, 5);
-    expect(summary.fcp.maxSeconds).toBeCloseTo(3.2, 5);
+    expect(summary.fcp.maxSeconds).toBeCloseTo(2.4, 5);
+    expect(summary.fcp.issues).toBe(0);
+    expect(summary.fcp.intermittent).toBe(1);
 
     expect(summary.brokenLinks.broken).toBe(2);
     expect(summary.brokenLinks.total).toBe(30);
@@ -72,6 +74,9 @@ describe('domain summary aggregation', () => {
     expect(summary.coreWebVitals.poor).toBe(1);
     expect(summary.coreWebVitals.state).toBe('has-data');
     expect(summary.coreWebVitals.coverage).toEqual({ measured: 2, total: 3 });
+    expect(summary.coreWebVitals.metrics.lcp.medianMs).toBe(3700);
+    expect(summary.coreWebVitals.metrics.inp.medianMs).toBe(145);
+    expect(summary.coreWebVitals.metrics.cls.median).toBeCloseTo(0.065, 3);
 
     expect(summary.clientErrors.totalErrors).toBe(3);
     expect(summary.clientErrors.affectedUrls).toBe(1);

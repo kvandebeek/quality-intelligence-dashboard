@@ -13,7 +13,7 @@ export interface DomainSummary {
   domain: string | null;
   totals: { urls: number };
   accessibility: { counts: Record<string, number>; totalIssues: number; coverage: Coverage };
-  fcp: { avgSeconds: number | null; minSeconds: number | null; maxSeconds: number | null; coverage: Coverage };
+  fcp: { avgSeconds: number | null; minSeconds: number | null; maxSeconds: number | null; coverage: Coverage; issues: number; intermittent: number };
   brokenLinks: { broken: number; total: number; rate: number | null; coverage: Coverage };
   seoScore: { avg: number | null; min: number | null; max: number | null; coverage: Coverage };
   coreWebVitals: {
@@ -23,9 +23,9 @@ export interface DomainSummary {
     poor: number;
     coverage: Coverage;
     metrics: {
-      lcp: { good: number; measured: number };
-      inp: { good: number; measured: number };
-      cls: { good: number; measured: number };
+      lcp: { good: number; measured: number; medianMs: number | null };
+      inp: { good: number; measured: number; medianMs: number | null };
+      cls: { good: number; measured: number; median: number | null };
     };
   };
   clientErrors: { totalErrors: number; affectedUrls: number; coverage: Coverage };
@@ -60,6 +60,7 @@ function unwrap(raw: unknown): Record<string, unknown> {
 }
 
 function avg(values: number[]): number | null { return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null; }
+function median(values: number[]): number | null { if (!values.length) return null; const sorted = [...values].sort((a,b)=>a-b); const mid = Math.floor(sorted.length/2); return sorted.length % 2 ? sorted[mid] ?? null : (((sorted[mid-1] ?? 0) + (sorted[mid] ?? 0)) / 2); }
 
 function classifyCwv(value: number | null, goodMax: number, niMax: number): 'good' | 'needsImprovement' | 'poor' | 'missing' {
   if (value === null) return 'missing';
@@ -122,6 +123,8 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
 
   const fcpValues: number[] = [];
   let fcpCoverage = 0;
+  let fcpIssues = 0;
+  let fcpIntermittent = 0;
 
   let broken = 0;
   let totalLinks = 0;
@@ -136,10 +139,13 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
   let cwvPoor = 0;
   let lcpGood = 0;
   let lcpMeasured = 0;
+  const lcpValuesMs: number[] = [];
   let inpGood = 0;
   let inpMeasured = 0;
+  const inpValuesMs: number[] = [];
   let clsGood = 0;
   let clsMeasured = 0;
+  const clsValues: number[] = [];
 
   let clientCoverage = 0;
   let totalClientErrors = 0;
@@ -181,11 +187,17 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
     if (perfLoaded.state === 'ok' || perfLoaded.state === 'issues') {
       const perf = unwrap(perfLoaded.raw);
       const paint = asRecord(perf.paint);
-      const fcpMs = toNum(paint.fcpMs ?? paint['first-contentful-paint']);
+      const fcpMs = toNum(perf.fcpReportedMs ?? paint.fcpMs ?? paint['first-contentful-paint']);
       if (fcpMs !== null) {
         fcpValues.push(fcpMs / 1000);
         fcpCoverage += 1;
       }
+      const attempts = Array.isArray(perf.fcpAttempts) ? perf.fcpAttempts : [];
+      const measuredAttempts = attempts.map((entry) => toNum(asRecord(entry).fcpMs)).filter((value): value is number => value !== null);
+      const slowAttempts = measuredAttempts.filter((value) => value > 3000).length;
+      const medianIssue = toNum(perf.fcpReportedMs) !== null && (toNum(perf.fcpReportedMs) as number) > 3000;
+      if (Boolean(perf.fcpIssue) || medianIssue || slowAttempts >= 2) fcpIssues += 1;
+      if (measuredAttempts.length >= 2 && slowAttempts > 0 && slowAttempts < measuredAttempts.length) fcpIntermittent += 1;
     }
 
     if (brokenLoaded.state === 'ok' || brokenLoaded.state === 'issues') {
@@ -219,14 +231,17 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
       const inpClass = classifyCwv(inp, 200, 500);
       if (lcpClass !== 'missing') {
         lcpMeasured += 1;
+        lcpValuesMs.push(Math.round((lcp ?? 0) * 1000));
         if (lcpClass === 'good') lcpGood += 1;
       }
       if (clsClass !== 'missing') {
         clsMeasured += 1;
+        clsValues.push(cls ?? 0);
         if (clsClass === 'good') clsGood += 1;
       }
       if (inpClass !== 'missing') {
         inpMeasured += 1;
+        inpValuesMs.push(inp ?? 0);
         if (inpClass === 'good') inpGood += 1;
       }
       if (lcpClass !== 'missing' && clsClass !== 'missing' && inpClass !== 'missing') {
@@ -312,7 +327,9 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
       avgSeconds: avg(fcpValues),
       minSeconds: fcpValues.length ? Math.min(...fcpValues) : null,
       maxSeconds: fcpValues.length ? Math.max(...fcpValues) : null,
-      coverage: { measured: fcpCoverage, total }
+      coverage: { measured: fcpCoverage, total },
+      issues: fcpIssues,
+      intermittent: fcpIntermittent
     },
     brokenLinks: { broken, total: totalLinks, rate: totalLinks > 0 ? (broken / totalLinks) * 100 : null, coverage: { measured: brokenCoverage, total } },
     seoScore: { avg: avg(seoValues), min: seoValues.length ? Math.min(...seoValues) : null, max: seoValues.length ? Math.max(...seoValues) : null, coverage: { measured: seoCoverage, total } },
@@ -323,9 +340,9 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
       poor: cwvPoor,
       coverage: { measured: cwvCoverage, total },
       metrics: {
-        lcp: { good: lcpGood, measured: lcpMeasured },
-        inp: { good: inpGood, measured: inpMeasured },
-        cls: { good: clsGood, measured: clsMeasured }
+        lcp: { good: lcpGood, measured: lcpMeasured, medianMs: median(lcpValuesMs) },
+        inp: { good: inpGood, measured: inpMeasured, medianMs: median(inpValuesMs) },
+        cls: { good: clsGood, measured: clsMeasured, median: median(clsValues) }
       }
     },
     clientErrors: { totalErrors: totalClientErrors, affectedUrls: clientAffectedUrls, coverage: { measured: clientCoverage, total } },
