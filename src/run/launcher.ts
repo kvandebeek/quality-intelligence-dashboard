@@ -3,7 +3,6 @@ import path from 'node:path';
 import process from 'node:process';
 import readline from 'node:readline/promises';
 import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
 
 interface LauncherOptions {
   config?: string;
@@ -22,8 +21,6 @@ interface DiscoveredConfig {
   absolutePath: string;
   relativePath: string;
 }
-
-const require = createRequire(import.meta.url);
 
 async function findRepoRoot(startDir: string): Promise<string> {
   let current = path.resolve(startDir);
@@ -153,11 +150,10 @@ async function validateJsonConfig(configPath: string): Promise<void> {
 }
 
 async function launchRun(repoRoot: string, configPath: string): Promise<number> {
-  const tsxCliPath = require.resolve('tsx/dist/cli.mjs');
-  const cliPath = path.join(repoRoot, 'src', 'cli.ts');
+  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
   return new Promise<number>((resolve, reject) => {
-    const child = spawn(process.execPath, [tsxCliPath, cliPath, 'run', '--config', configPath], {
+    const child = spawn(npmCommand, ['run', 'run', '--', '--config', configPath], {
       cwd: repoRoot,
       stdio: 'inherit'
     });

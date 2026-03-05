@@ -11,7 +11,7 @@ npm run run -- --config config/example.config.json
 # Start dashboard for a specific run folder
 npm run dashboard -- --run artifacts/<runId> --port 4173
 
-# Interactive config picker
+# Interactive config picker (lists config/, then runs `npm run run -- --config ...`)
 npm run runs
 
 # Interactive run picker

@@ -16,7 +16,7 @@
     "dashboard:serve": "node dist/dashboard/server.js --static",
     "test:playwright": "playwright test",
     "dashboards": "tsx src/dashboard/dashboards.ts",
-    "runs": "tsx src/run/launcher.ts"
+    "runs": "node --import tsx src/run/launcher.ts"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.2",

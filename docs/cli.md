@@ -12,10 +12,10 @@ This document is the authoritative command-line reference for running test execu
 - **Example (batch):** `npm run run -- --config .\batch-test.json`
 
 ### 2) Run tests (interactive config picker)
-- **Purpose:** Discover config files in `config/`, optionally pick one interactively, then launch `run`.
+- **Purpose:** Discover config files in `config/`, optionally pick one interactively, then delegate to `npm run run -- --config ...`.
 - **Canonical invocation:** `npm run runs`
 - **Optional non-interactive form:** `npm run runs -- --config <path-to-json>`
-- **Direct entrypoint:** `tsx src/run/launcher.ts [options]`
+- **Direct entrypoint:** `node --import tsx src/run/launcher.ts [options]`
 - **Example:** `npm run runs -- --list`
 
 ### 3) Start dashboard server (non-interactive)
@@ -46,7 +46,7 @@ This document is the authoritative command-line reference for running test execu
 
 | Option | Type | Default | Required | Valid values / constraints | Description | Notes |
 |---|---|---|---|---|---|---|
-| `--config <path>` | string | none | no | Any existing JSON file path, relative or absolute | Skip interactive picker and launch `run` with this config | Path is normalized against repo root when relative. |
+| `--config <path>` | string | none | no | Any existing JSON file path, relative or absolute | Skip interactive picker and launch `npm run run -- --config <path>` | Path is normalized against repo root when relative. |
 | `--list` | boolean | false | no | n/a | List discoverable config files and exit | Discovery prefers `*.config.json`; falls back to `*.json` when none match. |
 | `-h, --help` | boolean | false | no | n/a | Show usage text | Exits with status `0`. |
 
