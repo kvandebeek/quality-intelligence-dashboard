@@ -39,7 +39,6 @@ export const SECTION_FILES = [
   'ux-visual-regression.json',
   'client-errors.json',
   'memory-leaks.json',
-  'third-party-resilience.json',
   'privacy-audit.json',
   'runtime-security.json',
   'dependency-risk.json',
@@ -340,10 +339,6 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
   if (section === 'memory-leaks.json') {
     const risk = String(obj.leakRisk ?? 'unknown');
     return { state: risk === 'high' || risk === 'medium' ? 'issues' : 'ok', raw, summary: { leakRisk: risk, growthMB: toNum(obj.growthMB) } };
-  }
-  if (section === 'third-party-resilience.json') {
-    const broken = obj.functionalBreakage === true;
-    return { state: broken ? 'issues' : 'ok', raw, summary: { resilienceScore: toNum(obj.resilienceScore) ?? 0, functionalBreakage: broken } };
   }
   if (section === 'privacy-audit.json') {
     const risk = String(obj.gdprRisk ?? 'low');

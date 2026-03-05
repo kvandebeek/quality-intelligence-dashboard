@@ -28,13 +28,6 @@ export interface MemoryLeaksArtifact {
   evidence: string[];
 }
 
-export interface ThirdPartyResilienceArtifact {
-  blockedDomains: string[];
-  functionalBreakage: boolean;
-  layoutImpact: 'none' | 'low' | 'moderate' | 'high';
-  resilienceScore: number;
-}
-
 export interface PrivacyAuditArtifact {
   consentBannerDetected: boolean;
   cookiesBeforeConsent: Array<{ name: string; value: string }>;
@@ -205,48 +198,6 @@ export async function collectMemoryLeaks(page: Page, config: AssuranceModulesCon
     leakRisk,
     evidence
   };
-}
-
-async function runResiliencePass(browser: Browser, url: string, blockedDomains: string[]): Promise<{ errors: number; hasMainContent: boolean; cls: number | null }> {
-  const context = await browser.newContext();
-  if (blockedDomains.length > 0) {
-    await context.route('**/*', (route) => {
-      const requestDomain = parseDomain(route.request().url());
-      if (blockedDomains.some((domain) => requestDomain.endsWith(domain))) {
-        return route.abort('blockedbyclient');
-      }
-      return route.continue();
-    });
-  }
-
-  const page = await context.newPage();
-  let errors = 0;
-  page.on('pageerror', () => {
-    errors += 1;
-  });
-  await page.goto(url, { waitUntil: 'load' });
-  const hasMainContent = await page.locator('main, [role="main"], body').first().isVisible();
-  const cls = await page.evaluate(() => {
-    const total = (performance.getEntriesByType('layout-shift') as Array<PerformanceEntry & { value?: number }>).reduce((sum, entry) => sum + (entry.value ?? 0), 0);
-    return Number.isFinite(total) ? Number(total.toFixed(3)) : null;
-  });
-  await context.close();
-  return { errors, hasMainContent, cls };
-}
-
-export async function collectThirdPartyResilience(browser: Browser, url: string, thirdPartyDomains: string[], config: AssuranceModulesConfig): Promise<ThirdPartyResilienceArtifact> {
-  const blockedDomains = config.thirdPartyResilience.mode === 'all-third-party'
-    ? thirdPartyDomains
-    : thirdPartyDomains.filter((domain) => config.thirdPartyResilience.defaultBlocklist.some((match) => domain.includes(match)));
-
-  const baseline = await runResiliencePass(browser, url, []);
-  const blocked = await runResiliencePass(browser, url, blockedDomains);
-  const functionalBreakage = (!blocked.hasMainContent && baseline.hasMainContent) || blocked.errors > baseline.errors;
-  const clsDelta = (blocked.cls ?? 0) - (baseline.cls ?? 0);
-  const layoutImpact: ThirdPartyResilienceArtifact['layoutImpact'] = clsDelta > 0.25 ? 'high' : clsDelta > 0.1 ? 'moderate' : clsDelta > 0.03 ? 'low' : 'none';
-  const resilienceScore = Math.max(0, 100 - (functionalBreakage ? 40 : 0) - (layoutImpact === 'high' ? 35 : layoutImpact === 'moderate' ? 20 : layoutImpact === 'low' ? 10 : 0));
-
-  return { blockedDomains, functionalBreakage, layoutImpact, resilienceScore };
 }
 
 export async function collectPrivacyAudit(page: Page, config: AssuranceModulesConfig): Promise<PrivacyAuditArtifact> {

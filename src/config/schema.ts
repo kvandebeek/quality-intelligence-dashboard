@@ -17,7 +17,6 @@ const assuranceModulesSchema = z.object({
   enabled: z.object({
     clientErrors: z.boolean().default(true),
     memoryLeaks: z.boolean().default(true),
-    thirdPartyResilience: z.boolean().default(true),
     privacyAudit: z.boolean().default(true),
     runtimeSecurity: z.boolean().default(true),
     dependencyRisk: z.boolean().default(true),
@@ -31,10 +30,6 @@ const assuranceModulesSchema = z.object({
   memory: z.object({
     interactionLoops: z.number().int().positive().default(5),
     growthThresholdMB: z.number().positive().default(8)
-  }).default({}),
-  thirdPartyResilience: z.object({
-    mode: z.enum(['trackers-only', 'all-third-party']).default('trackers-only'),
-    defaultBlocklist: z.array(z.string()).default(['google-analytics.com', 'googletagmanager.com', 'doubleclick.net'])
   }).default({}),
   privacy: z.object({
     consentSelectors: z.array(z.string()).default(['[id*="consent"]', '[class*="cookie"]', '[aria-label*="consent"]']),
