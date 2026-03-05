@@ -1,5 +1,23 @@
 # Quality Signal Hub 2.0
 
+## CLI quickstart
+
+For full command and option documentation, see [docs/cli.md](docs/cli.md).
+
+```bash
+# Run tests with a config
+npm run run -- --config config/example.config.json
+
+# Start dashboard for a specific run folder
+npm run dashboard -- --run artifacts/<runId> --port 4173
+
+# Interactive config picker
+npm run runs
+
+# Interactive run picker
+npm run dashboards
+```
+
 ## Run
 
 ```bash
