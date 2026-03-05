@@ -566,7 +566,6 @@ async function loadTab(id, tab){
     case 'performance.json': body = renderPerformance(unwrapped.payload); break;
     case 'cross-browser-performance.json': body = renderCrossBrowserPerformance(unwrapped.payload); break;
     case 'security-scan.json': body = renderSecurity(unwrapped.payload); break;
-    case 'seo-checks.json': body = renderSeo(unwrapped.payload); break;
     case 'seo-score.json': body = renderSeoScore(unwrapped.payload); break;
     case 'stability.json': body = renderStability(unwrapped.payload); break;
     case 'target-summary.json': body = renderTarget(unwrapped.payload, unwrapped.meta, selected); break;
@@ -656,7 +655,6 @@ const renderSeoScore = (r={})=>{
   const checks = Array.isArray(r.checks) ? r.checks : [];
   return `<div class="kpis">${metric('Overall SEO score', overall)}${textMetric('Band', seoBand(overall))}</div><div class="kpis">${categoryCards}</div><details open><summary>Checks</summary><table><tr><th>Check</th><th>Status</th><th>Points</th><th>Recommendation</th></tr>${checks.map((c)=>`<tr><td>${safe(c.label)}</td><td>${checkBadge(c.status)}</td><td>${safe(c.points)}/${safe(c.maxPoints)}</td><td>${safe(c.recommendation)}</td></tr>`).join('')}</table></details>`;
 };
-const renderSeo = (r={})=>`<div class="kpis">${textMetric('Title',r.title)}${textMetric('Description',r.description)}${textMetric('Canonical',r.canonical)}${textMetric('Robots',r.robots ?? r.robotsMeta)}${metric('Structured data count',r.structuredDataCount)}</div><blockquote><strong>${safe(r.title,'(title missing)')}</strong><p>${safe(r.description,'(description missing)')}</p></blockquote>`;
 const renderStability = (r={})=>{const samples=buildStabilityRows(r.loadEventSamples||[],r.timestamps,STABILITY_SLOW_ABSOLUTE_MS,STABILITY_SLOW_RELATIVE_MULTIPLIER); const sorted=sortRows(samples,state.sorts.stability); return `<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs,'ms')}${metric('CV',r.coefficientOfVariation)}${textMetric('Unstable',r.unstable?'Yes':'No')}</div><table><tr>${sortableHeader('#','stability','index')}${sortableHeader('Load event','stability','sample')}${sortableHeader('Timestamp','stability','timestamp')}</tr>${sorted.slice(0,300).map(x=>`<tr class="${x.rowClass}"><td>${x.index}</td><td>${fmt(x.sample,'ms')}</td><td>${x.timestamp}</td></tr>`).join('')}</table>`;};
 const resolveOverallScore = (r={}) => {
   const explicit = toNum(r.overallScore ?? r.score);

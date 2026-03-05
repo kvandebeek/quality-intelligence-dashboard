@@ -33,14 +33,11 @@ function computeDerived(model: Omit<UnifiedUrlModel, 'derived' | 'enterpriseScor
 function computeEnterpriseScores(derived: UnifiedUrlModel['derived'], model: Omit<UnifiedUrlModel, 'derived' | 'enterpriseScore'>): Record<string, number> {
   const securityPasses = Object.values(model.security).filter((value) => value === true).length;
   const securityTotal = Math.max(1, Object.keys(model.security).length);
-  const seoPasses = Object.values(model.seo).filter((value) => value === true).length;
-  const seoTotal = Math.max(1, Object.keys(model.seo).length);
-
   return {
     performance: Math.round(derived.performanceCompositeScore),
     accessibility: Math.round(derived.accessibilityWeightedScore),
     security: Math.round((securityPasses / securityTotal) * 100),
-    seo: Math.round((seoPasses / seoTotal) * 100),
+    seo: Math.round(model.seoScore.overallScore),
     visualStability: model.visualRegression.passed ? 100 : Math.max(0, 100 - Math.round((model.visualRegression.diffRatio ?? 1) * 100)),
     stability: model.stability.unstable ? 40 : 90
   };
@@ -58,7 +55,7 @@ export function buildRunIndex(runRoot: string, runId: string, timestamp: string,
     const lighthouse = readJson(path.join(urlRoot, 'lighthouse-summary.json')) as { payload: UnifiedUrlModel['lighthouse'] };
     const throttled = readJson(path.join(urlRoot, 'throttled-run.json')) as { payload: UnifiedUrlModel['throttled'] };
     const security = readJson(path.join(urlRoot, 'security-scan.json')) as { payload: UnifiedUrlModel['security'] };
-    const seo = readJson(path.join(urlRoot, 'seo-checks.json')) as { payload: UnifiedUrlModel['seo'] };
+    const seoScore = readJson(path.join(urlRoot, 'seo-score.json')) as { payload: UnifiedUrlModel['seoScore'] };
     const visualRegression = readJson(path.join(urlRoot, 'visual-regression.json')) as { payload: UnifiedUrlModel['visualRegression'] };
     const brokenLinks = readJson(path.join(urlRoot, 'broken-links.json')) as { payload: UnifiedUrlModel['brokenLinks'] };
     const thirdPartyRisk = readJson(path.join(urlRoot, 'third-party-risk.json')) as { payload: UnifiedUrlModel['thirdPartyRisk'] };
@@ -75,7 +72,7 @@ export function buildRunIndex(runRoot: string, runId: string, timestamp: string,
       lighthouse: lighthouse.payload,
       throttled: throttled.payload,
       security: security.payload,
-      seo: seo.payload,
+      seoScore: seoScore.payload,
       visualRegression: visualRegression.payload,
       brokenLinks: brokenLinks.payload,
       thirdPartyRisk: thirdPartyRisk.payload,

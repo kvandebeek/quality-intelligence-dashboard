@@ -314,17 +314,6 @@ export const SECTION_DEFINITIONS = {
       keyTerms: baseTerms
     }
   },
-  'seo-checks.json': {
-    route: 'seo-checks.json',
-    label: 'seo-checks',
-    category: 'seo',
-    info: {
-      whatItIs: 'Checks for key metadata that supports search visibility.',
-      whyItMatters: 'Missing or weak metadata can lower discoverability in search.',
-      howToRead: ['Verify title and description presence.', 'Check canonical and robots values.', 'Review structured data count.', 'Fix missing metadata on priority pages first.'],
-      keyTerms: baseTerms
-    }
-  },
   'seo-score.json': {
     route: 'seo-score.json',
     label: 'seo-score',

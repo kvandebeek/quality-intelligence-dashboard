@@ -11,7 +11,7 @@ const baseInput: SeoScoreInput = {
   metaRobots: 'index,follow',
   robotsTxtAllows: true,
   canonicalUrl: 'https://example.com/',
-  title: 'Example title for SEO checks',
+  title: 'Example title for SEO score',
   description: 'This is an example description with enough length for deterministic scoring checks.',
   h1Count: 1,
   ogTitle: 'Example OG Title',

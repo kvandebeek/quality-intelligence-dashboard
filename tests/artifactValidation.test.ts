@@ -15,18 +15,22 @@ const meta: ArtifactMeta = {
 };
 
 describe('artifact validation', () => {
-  it('accepts nested objects in seo payload subscores', () => {
-    const output = path.join(os.tmpdir(), `seo-checks-${Date.now()}.json`);
+  it('accepts seo-score payloads with structured subscore checks', () => {
+    const output = path.join(os.tmpdir(), `seo-score-${Date.now()}.json`);
 
-    expect(() => writeValidatedArtifact(output, 'seo', meta, {
+    expect(() => writeValidatedArtifact(output, 'seoScore', meta, {
+      version: 'seo-score-v1',
+      url: 'https://example.com/',
+      generatedAt: '2026-01-01T00:00:00.000Z',
       overallScore: 88.5,
+      weights: { indexability: 0.35, onPage: 0.3, content: 0.2, performanceProxy: 0.15 },
       subscores: {
-        indexability: {
-          score: 92,
-          checks: [{ id: 'robots.txt', status: 'pass' }]
-        }
+        indexability: { score: 92, measuredWeight: 1, checks: [{ id: 'robots.txt', status: 'pass' }] },
+        onPage: { score: 90, measuredWeight: 1, checks: [] },
+        content: { score: 85, measuredWeight: 1, checks: [] },
+        performanceProxy: { score: 80, measuredWeight: 1, checks: [] }
       },
-      robotsTxtAllows: true
+      checks: [{ id: 'robots.txt', status: 'pass' }]
     })).not.toThrow();
 
     const written = JSON.parse(fs.readFileSync(output, 'utf8')) as { payload: { subscores: { indexability: { score: number } } } };

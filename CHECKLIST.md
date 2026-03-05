@@ -20,7 +20,7 @@ Self-check: PASS (data pipeline deterministic and traceable).
 - [x] T2 Lighthouse summary artifact (fallback in constrained env).
 - [x] T3 Throttled-run artifact (fallback in constrained env).
 - [x] T4 Security scan artifact.
-- [x] T5 SEO checks artifact.
+- [x] T5 SEO score artifact.
 - [x] T6 Visual regression artifact + baseline handling.
 - [x] T7 API monitoring artifact.
 - [x] T8 Broken-link artifact.
