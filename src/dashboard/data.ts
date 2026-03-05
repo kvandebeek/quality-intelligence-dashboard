@@ -390,8 +390,18 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
     return { state: !baselineFound || !passed ? 'issues' : 'ok', raw, summary: { passed, baselineFound, diffRatio: toNum(obj.diffRatio ?? obj.diffScore) } };
   }
   if (section === 'security-scan.json') {
-    const missingHeaders = Array.isArray(obj.missingHeaders) ? obj.missingHeaders.length : 0;
-    return { state: missingHeaders > 0 ? 'issues' : 'ok', raw, summary: { missingHeaders } };
+    const severityCounts = asRecord(asRecord(obj.summary).severityCounts);
+    const high = toNum(severityCounts.high) ?? 0;
+    const medium = toNum(severityCounts.medium) ?? 0;
+    const low = toNum(severityCounts.low) ?? 0;
+    const missingHeadersV1 = Array.isArray(obj.missingHeaders) ? obj.missingHeaders.length : 0;
+    const missingOrWeakHeadersV2 = Object.values(asRecord(obj.headers)).filter((entry) => {
+      const row = asRecord(entry);
+      return row.status === 'missing' || row.status === 'weak';
+    }).length;
+    const missingHeaders = missingOrWeakHeadersV2 || missingHeadersV1;
+    const issueCount = high + medium + low;
+    return { state: issueCount > 0 || missingHeaders > 0 ? 'issues' : 'ok', raw, summary: { missingHeaders, high, medium, low } };
   }
   if (section === 'stability.json') {
     const unstable = obj.unstable === true;

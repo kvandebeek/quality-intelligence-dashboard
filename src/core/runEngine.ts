@@ -22,6 +22,7 @@ import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
 import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
 import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 import { buildBrokenLinkFindingId, captureBrokenLinkPreview, shouldSkipBrokenLinkPreview, type BrokenLinkScreenshot } from './brokenLinkPreview.js';
+import { SECURITY_HEADERS, SECURITY_SCAN_SCHEMA_VERSION, classifyMixedContent, normalizeHeaders, parseCspDirectives, parseHstsDirectives, parseSetCookieRedacted, probeRedirectChain, probeTls, summarizeOverall, type HeaderAssessment, type SecurityFinding, type SecurityScanPayloadV2 } from '../collectors/securityScan.js';
 
 const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 const FOCUS_TAB_SAMPLE_LIMIT = 14;
@@ -214,6 +215,20 @@ function classifyBrokenLinkFailure(statusCode: number | null, error: unknown): B
   return 'request_failed';
 }
 
+
+function buildHeaderAssessment(name: string, rawValue: string | null): HeaderAssessment {
+  const present = Boolean(rawValue);
+  if (!present) {
+    return { present, rawValue: null, status: 'missing', severity: 'medium', message: `${name} header is missing.`, findings: [{ id: `header-${name}-missing`, title: `${name} missing`, status: 'missing', severity: 'medium', message: `${name} header is missing.`, remediation: `Configure ${name} for this route.` }] };
+  }
+  return { present, rawValue, status: 'pass', severity: 'info', message: `${name} header is present.`, findings: [{ id: `header-${name}-present`, title: `${name} present`, status: 'pass', severity: 'info', message: `${name} header is present.` }] };
+}
+
+function toDomPath(tag: string, id: string | null, index: number): string {
+  if (id) return `${tag}#${id}`;
+  return `${tag}:nth-of-type(${index + 1})`;
+}
+
 async function collectCoreWebVitals(page: Page): Promise<{ lcp: number | null; cls: number | null; inp: number | null; fcp: number | null }> {
   return page.evaluate(() => {
     const entries = performance.getEntries();
@@ -360,6 +375,31 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   const context = await timing.step(testReference, 'Create browser context', async () => browser.newContext());
   const page = await timing.step(testReference, 'Create page', async () => context.newPage());
+  const requests: Array<{ url: string; resourceType: string; transferSize: number; durationMs: number; initiator: string }> = [];
+  const setCookieHeaders: string[] = [];
+  page.on('requestfinished', async (request) => {
+    const response = await request.response();
+    const timingInfo = request.timing();
+    const durationMs = Math.max(0, Math.round((timingInfo.responseEnd ?? 0) - (timingInfo.startTime ?? 0)));
+    let transferSize = 0;
+    try {
+      const sizes = await request.sizes();
+      transferSize = sizes.responseBodySize;
+    } catch {
+      transferSize = 0;
+    }
+    const referer = request.headers()['referer'] ?? 'unknown';
+    if (response) {
+      try {
+        for (const header of await response.headersArray()) {
+          if (header.name.toLowerCase() === 'set-cookie') setCookieHeaders.push(header.value);
+        }
+      } catch {
+        // ignore header-array parsing issues
+      }
+    }
+    requests.push({ url: request.url(), resourceType: request.resourceType(), transferSize, durationMs, initiator: referer });
+  });
 
   await timing.step(testReference, 'Init extension observers', async () => installErrorAndUxObservers(page, config.assuranceModules));
 
@@ -459,16 +499,117 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     }
 
 
-    const requests: Array<{ url: string; resourceType: string; transferSize: number; durationMs: number }> = [];
+  const securityHeaders = normalizeHeaders(response?.headers() ?? {});
+  const headerAssessments = Object.fromEntries(Object.entries(SECURITY_HEADERS).map(([key, header]) => [key, buildHeaderAssessment(header, securityHeaders[header] ?? null)])) as SecurityScanPayloadV2['headers'];
 
-  const securityHeaders = response?.headers() ?? {};
-  const securityScan: Record<string, boolean | string | null> = {
-    csp: Boolean(securityHeaders['content-security-policy']),
-    hsts: Boolean(securityHeaders['strict-transport-security']),
-    xFrameOptions: Boolean(securityHeaders['x-frame-options']),
-    referrerPolicy: Boolean(securityHeaders['referrer-policy']),
-    tlsVersion: target.url.startsWith('https://') ? 'TLS (HTTPS)' : 'No TLS (HTTP)',
-    mixedContent: requests.some((request) => request.url.startsWith('http://') && target.url.startsWith('https://'))
+  const hstsDirectives = headerAssessments.hsts.present && headerAssessments.hsts.rawValue ? parseHstsDirectives(headerAssessments.hsts.rawValue) : {};
+  const cspDirectives = headerAssessments.csp.present && headerAssessments.csp.rawValue ? parseCspDirectives(headerAssessments.csp.rawValue) : {};
+  const hstsFindings: SecurityFinding[] = [];
+  const cspFindings: SecurityFinding[] = [];
+
+  if (headerAssessments.hsts.present) {
+    const maxAgeRaw = String(hstsDirectives['max-age'] ?? '');
+    const maxAge = Number(maxAgeRaw);
+    if (!maxAgeRaw) hstsFindings.push({ id: 'hsts-missing-max-age', title: 'HSTS max-age missing', status: 'missing', severity: 'high', message: 'HSTS is present but max-age is missing.', remediation: 'Set max-age to at least 15552000 seconds.' });
+    else if (!Number.isFinite(maxAge) || maxAge < 15552000) hstsFindings.push({ id: 'hsts-low-max-age', title: 'HSTS max-age is low', status: 'weak', severity: 'medium', message: `HSTS max-age (${maxAgeRaw}) is below the conservative threshold of 15552000 seconds.`, remediation: 'Increase max-age to at least 15552000.' });
+    if (!hstsDirectives.includesubdomains) hstsFindings.push({ id: 'hsts-no-include-subdomains', title: 'HSTS includeSubDomains missing', status: 'weak', severity: 'low', message: 'HSTS includeSubDomains is recommended but missing.', remediation: 'Add includeSubDomains if subdomains are HTTPS-capable.' });
+    if (hstsDirectives.preload) hstsFindings.push({ id: 'hsts-preload-info', title: 'HSTS preload declared', status: 'info', severity: 'low', message: 'Preload is enabled. Ensure all subdomains are HTTPS before preloading.', remediation: 'Review preload eligibility and rollback constraints.' });
+  }
+
+  if (headerAssessments.csp.present && headerAssessments.csp.rawValue) {
+    const scriptSrc = cspDirectives['script-src'] ?? [];
+    const defaultSrc = cspDirectives['default-src'] ?? [];
+    if (scriptSrc.includes("'unsafe-inline'")) cspFindings.push({ id: 'csp-unsafe-inline', title: 'CSP allows unsafe-inline', status: 'weak', severity: 'high', message: 'script-src includes unsafe-inline.', evidence: { token: "'unsafe-inline'" }, remediation: 'Use nonces or hashes for inline scripts.' });
+    if (scriptSrc.includes("'unsafe-eval'")) cspFindings.push({ id: 'csp-unsafe-eval', title: 'CSP allows unsafe-eval', status: 'weak', severity: 'high', message: 'script-src includes unsafe-eval.', evidence: { token: "'unsafe-eval'" }, remediation: 'Remove unsafe-eval and migrate dynamic code execution.' });
+    if (!cspDirectives['default-src']) cspFindings.push({ id: 'csp-missing-default-src', title: 'CSP default-src missing', status: 'missing', severity: 'medium', message: 'default-src is missing from CSP.', remediation: "Add default-src 'self' as baseline." });
+    if (defaultSrc.includes('*')) cspFindings.push({ id: 'csp-default-src-wildcard', title: 'CSP default-src is broad', status: 'weak', severity: 'medium', message: 'default-src contains wildcard *.', evidence: { token: '*' }, remediation: 'Restrict default-src to explicit origins.' });
+    if (!cspDirectives['object-src']) cspFindings.push({ id: 'csp-missing-object-src', title: 'CSP object-src missing', status: 'weak', severity: 'low', message: "object-src is missing; recommend object-src 'none'.", remediation: "Set object-src 'none'." });
+    if (!cspDirectives['base-uri']) cspFindings.push({ id: 'csp-missing-base-uri', title: 'CSP base-uri missing', status: 'weak', severity: 'low', message: 'base-uri is missing.', remediation: "Set base-uri 'self'." });
+    if (!cspDirectives['frame-ancestors'] && !headerAssessments.xFrameOptions.present) cspFindings.push({ id: 'csp-missing-frame-ancestors', title: 'Missing frame embedding control', status: 'weak', severity: 'medium', message: 'frame-ancestors is missing and X-Frame-Options is absent.', remediation: "Set frame-ancestors 'none' or appropriate allowlist." });
+    if (scriptSrc.includes('*') || scriptSrc.includes('data:')) cspFindings.push({ id: 'csp-broad-script-src', title: 'CSP script-src is broad', status: 'weak', severity: 'medium', message: 'script-src includes broad source token.', evidence: { tokens: scriptSrc.filter((x) => x === '*' || x === 'data:') }, remediation: 'Replace broad tokens with explicit origins.' });
+  }
+
+  const referrerFindings: SecurityFinding[] = [];
+  if (!headerAssessments.referrerPolicy.present) referrerFindings.push({ id: 'referrer-policy-missing', title: 'Referrer-Policy missing', status: 'missing', severity: 'medium', message: 'Referrer-Policy header is missing.' });
+  else if ((headerAssessments.referrerPolicy.rawValue ?? '').toLowerCase().includes('unsafe-url')) referrerFindings.push({ id: 'referrer-policy-unsafe-url', title: 'Referrer-Policy is permissive', status: 'weak', severity: 'medium', message: 'Referrer-Policy uses unsafe-url, which can leak full URLs.' });
+
+  const domScan = await page.evaluate(() => {
+    const httpLinks = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="http://"]')].map((a, index) => ({ href: a.href, linkText: (a.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 120), domPath: a.id ? `a#${a.id}` : `a[href^="http://"]:nth-of-type(${index + 1})` }));
+    const insecureForms = [...document.querySelectorAll<HTMLFormElement>('form[action^="http://"]')].map((form, index) => ({ action: form.action, method: (form.method || 'get').toLowerCase(), domPath: form.id ? `form#${form.id}` : `form[action^="http://"]:nth-of-type(${index + 1})` }));
+    const scripts = [...document.querySelectorAll<HTMLScriptElement>('script[src]')].map((script, index) => ({ src: script.src, integrity: script.integrity || null, selector: script.id ? `script#${script.id}` : `script[src]:nth-of-type(${index + 1})` }));
+    return { httpLinks, insecureForms, scripts };
+  });
+
+  const mixedContentItems = requests
+    .filter((request) => target.url.startsWith('https://') && request.url.startsWith('http://'))
+    .map((request) => ({ url: request.url, resourceType: request.resourceType, initiator: request.initiator || 'unknown', classification: classifyMixedContent(request.resourceType) }));
+  const mixedCounts = {
+    active: mixedContentItems.filter((item) => item.classification === 'active').length,
+    passive: mixedContentItems.filter((item) => item.classification === 'passive').length
+  };
+
+  const cookieItems = [...new Set(setCookieHeaders)].map((raw) => parseSetCookieRedacted(raw)).sort((a, b) => a.name.localeCompare(b.name));
+  const cookieFindings: SecurityFinding[] = [];
+  for (const cookie of cookieItems) {
+    const lowered = cookie.name.toLowerCase();
+    const sessionLike = /session|token|auth|sid/.test(lowered);
+    if (target.url.startsWith('https://') && !cookie.secure) {
+      cookieFindings.push({ id: `cookie-${cookie.name}-secure`, title: `Cookie ${cookie.name} missing Secure`, status: 'weak', severity: cookie.sameSite === 'None' ? 'high' : 'medium', message: 'Secure attribute is missing on HTTPS.', evidence: { cookie: cookie.name } });
+    }
+    if (cookie.sameSite === 'None' && !cookie.secure) cookieFindings.push({ id: `cookie-${cookie.name}-samesite-none`, title: `Cookie ${cookie.name} SameSite=None without Secure`, status: 'weak', severity: 'high', message: 'SameSite=None requires Secure.', evidence: { cookie: cookie.name } });
+    if (sessionLike && !cookie.httpOnly) cookieFindings.push({ id: `cookie-${cookie.name}-httponly`, title: `Session-like cookie ${cookie.name} missing HttpOnly`, status: 'weak', severity: 'high', message: 'Session-like cookie lacks HttpOnly.', evidence: { cookie: cookie.name } });
+  }
+
+  const redirectProbe = await probeRedirectChain(target.url);
+  const tlsProbe = await probeTls(target.url);
+
+  const pageOrigin = new URL(target.url).origin;
+  const scriptOrigins = domScan.scripts.map((script) => ({ scriptUrl: script.src, origin: new URL(script.src, target.url).origin, loaded: requests.some((request) => request.url === script.src) }));
+  const thirdPartyScripts = scriptOrigins.filter((script) => script.origin !== pageOrigin);
+  const missingSRI = domScan.scripts
+    .filter((script) => new URL(script.src, target.url).origin !== pageOrigin && !script.integrity)
+    .map((script) => ({ scriptUrl: script.src, selector: script.selector }));
+
+  const securityFindings: SecurityFinding[] = [
+    ...Object.values(headerAssessments).flatMap((header) => header.findings),
+    ...hstsFindings,
+    ...cspFindings,
+    ...referrerFindings,
+    ...cookieFindings
+  ];
+  if (mixedCounts.active > 0) securityFindings.push({ id: 'mixed-content-active', title: 'Active mixed content detected', status: 'weak', severity: 'high', message: `${mixedCounts.active} active HTTP requests loaded on HTTPS page.` });
+  if (mixedCounts.passive > 0) securityFindings.push({ id: 'mixed-content-passive', title: 'Passive mixed content detected', status: 'weak', severity: 'medium', message: `${mixedCounts.passive} passive HTTP resources loaded on HTTPS page.` });
+  if (target.url.startsWith('https://') && domScan.httpLinks.length > 0) securityFindings.push({ id: 'http-links-on-https', title: 'HTTPS page links to HTTP resources', status: 'info', severity: domScan.httpLinks.length > 5 ? 'medium' : 'low', message: `${domScan.httpLinks.length} HTTP links found in anchor tags.` });
+  if (target.url.startsWith('https://') && domScan.insecureForms.length > 0) {
+    const hasPost = domScan.insecureForms.some((form) => form.method === 'post');
+    securityFindings.push({ id: 'insecure-form-actions', title: 'Forms submit to HTTP endpoints', status: 'weak', severity: hasPost ? 'high' : 'medium', message: `${domScan.insecureForms.length} form actions use HTTP.` });
+  }
+  if (!redirectProbe.finalUrl.startsWith('https://')) securityFindings.push({ id: 'http-to-https-redirect-missing', title: 'HTTP does not enforce HTTPS redirect', status: 'weak', severity: 'high', message: 'HTTP probe did not end on HTTPS URL.' });
+  if (missingSRI.length > 0) securityFindings.push({ id: 'third-party-missing-sri', title: 'Third-party scripts missing SRI', status: 'info', severity: 'low', message: `${missingSRI.length} cross-origin script tags missing integrity attribute.` });
+
+  const securityScan: SecurityScanPayloadV2 = {
+    summary: summarizeOverall(securityFindings),
+    headers: headerAssessments,
+    hstsAnalysis: { directives: hstsDirectives, findings: hstsFindings },
+    cspAnalysis: { directives: cspDirectives, findings: cspFindings },
+    httpsEnforcement: {
+      httpToHttps: { passed: redirectProbe.finalUrl.startsWith('https://'), chain: redirectProbe.chain, finalUrl: redirectProbe.finalUrl, status: redirectProbe.status },
+      tls: tlsProbe
+    },
+    mixedContent: { hasMixedContent: mixedContentItems.length > 0, items: mixedContentItems, counts: mixedCounts },
+    httpLinksOnHttpsPage: { items: domScan.httpLinks, count: domScan.httpLinks.length },
+    insecureFormActions: { items: domScan.insecureForms, count: domScan.insecureForms.length },
+    cookies: {
+      items: cookieItems,
+      findings: cookieFindings,
+      counts: {
+        total: cookieItems.length,
+        missingSecure: cookieItems.filter((cookie) => !cookie.secure).length,
+        missingHttpOnly: cookieItems.filter((cookie) => !cookie.httpOnly).length,
+        sameSiteNoneWithoutSecure: cookieItems.filter((cookie) => cookie.sameSite === 'None' && !cookie.secure).length
+      }
+    },
+    thirdParty: { scriptOrigins: thirdPartyScripts, missingSRI, counts: { origins: new Set(thirdPartyScripts.map((script) => script.origin)).size, scripts: thirdPartyScripts.length, missingSri: missingSRI.length } }
   };
 
   const seoContext = await browser.newContext();
@@ -933,7 +1074,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'accessibility.json'), 'accessibility', meta, accessibility);
   writeValidatedArtifact(path.join(targetFolder, 'core-web-vitals.json'), 'coreWebVitals', meta, coreWebVitals);
   writeValidatedArtifact(path.join(targetFolder, 'throttled-run.json'), 'throttled', meta, { available: throttledLoadMs !== null, baselineLoadMs, throttledLoadMs, degradationFactor: baselineLoadMs && throttledLoadMs ? Number((throttledLoadMs / baselineLoadMs).toFixed(2)) : null });
-  writeValidatedArtifact(path.join(targetFolder, 'security-scan.json'), 'security', meta, securityScan);
+  writeValidatedArtifact(path.join(targetFolder, 'security-scan.json'), 'security', { ...meta, schemaVersion: SECURITY_SCAN_SCHEMA_VERSION }, securityScan);
   writeValidatedArtifact(path.join(targetFolder, 'seo-score.json'), 'seoScore', meta, seoScore);
   writeValidatedArtifact(path.join(targetFolder, 'visual-regression.json'), 'visualRegression', meta, { baselineFound, diffRatio, passed: diffRatio === null ? true : diffRatio < 0.05 });
   writeValidatedArtifact(path.join(targetFolder, 'broken-links.json'), 'brokenLinks', meta, brokenLinks);

@@ -224,3 +224,19 @@ All tiles include per-metric coverage (e.g., measured URLs / total URLs).
 - `contrastSimulationDetails.findings[]`: per-sample screenshot references, measured regions with bounding boxes/region scores/reasons, and targeted recommendations.
 
 Artifacts are written under `<target-folder>/a11y-beyond-axe/` so evidence is run-scoped and deterministic.
+
+## Security scan v2 evidence model
+
+`security-scan.json` now supports schema `2.0.0` with evidence-based checks for:
+- security header coverage (CSP, HSTS, XFO, Referrer-Policy, XCTO, Permissions-Policy, COOP/COEP/CORP)
+- HSTS and CSP directive quality analysis
+- HTTP→HTTPS redirect chain and TLS protocol/cipher probe (best effort; can be unavailable in some environments)
+- mixed content classification (active/passive), HTTP links/forms on HTTPS pages
+- Set-Cookie flag analysis with cookie value redaction
+- referrer leakage signals and third-party script/SRI evidence
+
+Severity mapping is transparent and deterministic:
+- any `high` → overall `fail`
+- else any `medium` → overall `warning`
+- else any `low` → overall `info`
+- else `pass`

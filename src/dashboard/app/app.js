@@ -716,6 +716,7 @@ async function loadTab(id, tab){
   bindCollapsiblePanels(el);
   if(tab === 'a11y-beyond-axe.json') bindA11yHeuristics(el);
   if(tab === 'broken-links.json') bindBrokenLinks(el);
+  if(tab === 'security-scan.json') bindSecurity(el);
   if(tab.startsWith('ux-')) bindUxIssueVisualizations(el);
   logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
@@ -834,7 +835,65 @@ const renderCrossBrowserPerformance = (r={})=>{
   const summary = results.map((row)=>`<tr class="${fastest?.browser===row.browser?'row-fastest':''} ${slowest?.browser===row.browser?'row-slowest':''}"><td>${safe(row.browser)}</td><td>${fmt(row.avgLoadMs,'ms')}</td><td>${fmt(row.minLoadMs,'ms')}</td><td>${fmt(row.maxLoadMs,'ms')}</td><td>${fmt(row.samples)}</td></tr>`).join('');
   return `<div class="kpis">${textMetric('Status',data.status ?? MISSING)}${textMetric('Fastest',fastest?.browser ?? MISSING)}${textMetric('Slowest',slowest?.browser ?? MISSING)}${metric('Slowest vs fastest',diff,'ms')}</div><table><tr><th>Browser</th><th>Avg</th><th>Min</th><th>Max</th><th>Samples</th></tr>${summary}</table>`;
 };
-const renderSecurity = (r={})=>`<div class="kpis">${textMetric('TLS',r.tlsVersion)}${textMetric('Missing headers',Array.isArray(r.missingHeaders)?((r.missingHeaders||[]).join(', ')||'None'):'None')}</div>`;
+function toSecurityV2(r={}){
+  if(r && r.summary && r.headers) return r;
+  const missingHeaders = Array.isArray(r.missingHeaders) ? r.missingHeaders : [];
+  const headerMap = {
+    csp: 'content-security-policy', hsts: 'strict-transport-security', xFrameOptions: 'x-frame-options', referrerPolicy: 'referrer-policy', xContentTypeOptions: 'x-content-type-options', permissionsPolicy: 'permissions-policy', coop: 'cross-origin-opener-policy', coep: 'cross-origin-embedder-policy', corp: 'cross-origin-resource-policy', cspReportOnly: 'content-security-policy-report-only'
+  };
+  const headers = Object.fromEntries(Object.entries(headerMap).map(([k,v])=>[k,{present: !missingHeaders.includes(v), rawValue: null, status: missingHeaders.includes(v)?'missing':'pass', severity: missingHeaders.includes(v)?'medium':'info', message: missingHeaders.includes(v)?`${v} missing`:`${v} present`, findings: []}]));
+  return {
+    summary: { overallStatus: missingHeaders.length ? 'warning' : 'pass', severityCounts: { high:0, medium:missingHeaders.length, low:0, info:0 }, topFindings: [] },
+    headers,
+    hstsAnalysis: { directives:{}, findings:[] },
+    cspAnalysis: { directives:{}, findings:[] },
+    httpsEnforcement: { httpToHttps: { passed: String(r.tlsVersion||'').includes('TLS'), chain: [], finalUrl: '', status: 0 }, tls: { scheme: String(r.tlsVersion||'').includes('TLS') ? 'https':'http', protocol: null, cipher: null } },
+    mixedContent: { hasMixedContent: Boolean(r.mixedContent), items: [], counts: { active:0, passive:0 } },
+    httpLinksOnHttpsPage: { items: [], count: 0 },
+    insecureFormActions: { items: [], count: 0 },
+    cookies: { items: [], findings: [], counts: { total:0, missingSecure:0, missingHttpOnly:0, sameSiteNoneWithoutSecure:0 } },
+    thirdParty: { scriptOrigins: [], missingSRI: [], counts: { origins:0, scripts:0, missingSri:0 } }
+  };
+}
+
+const renderSecurity = (input={})=>{
+  const r = toSecurityV2(input);
+  const findings = (r.summary?.topFindings || []).map((f)=>({ ...f, detail: (r.cookies?.findings||[]).concat(r.cspAnalysis?.findings||[], r.hstsAnalysis?.findings||[]).find((x)=>x.id===f.id) || null }));
+  const headerRows = Object.entries(r.headers || {}).map(([name, info])=>`<tr><td>${safe(name)}</td><td>${safe(info.status)}</td><td>${safe(info.severity)}</td><td>${safe((info.rawValue||'').slice(0,80) || '—')}</td><td><details><summary>Details</summary><pre>${escapeHtml(JSON.stringify(info, null, 2))}</pre></details></td></tr>`).join('');
+  const findingRows = findings.map((item)=>`<details class="sec-finding" data-severity="${safe(item.severity)}"><summary><strong>${safe(item.title)}</strong> · ${safe(item.severity)}</summary><p>${safe(item.message)}</p>${item.detail?`<pre>${escapeHtml(JSON.stringify(item.detail.evidence || {}, null, 2))}</pre>`:''}</details>`).join('') || '<p>No findings.</p>';
+  const mixedRows = (r.mixedContent?.items||[]).map((item)=>`<tr><td>${safe(item.classification)}</td><td>${safe(item.resourceType)}</td><td>${safe(item.url)}</td><td>${safe(item.initiator)}</td></tr>`).join('');
+  const httpLinkRows = (r.httpLinksOnHttpsPage?.items||[]).map((item)=>`<tr><td>${safe(item.linkText)}</td><td>${safe(item.href)}</td><td>${safe(item.domPath)}</td></tr>`).join('');
+  const formRows = (r.insecureFormActions?.items||[]).map((item)=>`<tr><td>${safe(item.method)}</td><td>${safe(item.action)}</td><td>${safe(item.domPath)}</td></tr>`).join('');
+  const cookieRows = (r.cookies?.items||[]).map((item)=>`<tr><td>${safe(item.name)}</td><td>${item.secure?'Yes':'No'}</td><td>${item.httpOnly?'Yes':'No'}</td><td>${safe(item.sameSite||'')}</td><td>${safe(item.raw)}</td></tr>`).join('');
+  const sriRows = (r.thirdParty?.missingSRI||[]).map((item)=>`<tr><td>${safe(item.scriptUrl)}</td><td>${safe(item.selector)}</td></tr>`).join('');
+  return `<div class="kpis">${textMetric('Overall status', r.summary?.overallStatus)}${metric('High', r.summary?.severityCounts?.high)}${metric('Medium', r.summary?.severityCounts?.medium)}${metric('Low', r.summary?.severityCounts?.low)}${metric('Info', r.summary?.severityCounts?.info)}</div>
+  <div class="kpis">${textMetric('HTTPS enforced', r.httpsEnforcement?.httpToHttps?.passed ? 'Yes':'No')}${textMetric('TLS protocol', r.httpsEnforcement?.tls?.protocol || 'not available')}${textMetric('Mixed content', `${safe(r.mixedContent?.counts?.active,0)}/${safe(r.mixedContent?.counts?.passive,0)}`)}${metric('Missing/weak headers', Object.values(r.headers||{}).filter((h)=>h.status==='missing'||h.status==='weak').length)}</div>
+  <div class="panel"><h4>Top findings</h4><label>Severity <select data-security-filter-severity><option value="all">all</option><option value="high">high</option><option value="medium">medium</option><option value="low">low</option><option value="info">info</option></select></label> <label>Search evidence <input data-security-search placeholder="url contains"></label><div data-security-findings>${findingRows}</div></div>
+  <details><summary>Headers</summary><table><tr><th>Header</th><th>Status</th><th>Severity</th><th>Value</th><th>Details</th></tr>${headerRows}</table></details>
+  <details><summary>HTTPS enforcement</summary><pre>${escapeHtml(JSON.stringify(r.httpsEnforcement, null, 2))}</pre></details>
+  <details><summary>Mixed content (${safe(r.mixedContent?.items?.length,0)})</summary><table><tr><th>Class</th><th>Type</th><th>URL</th><th>Initiator</th></tr>${mixedRows}</table></details>
+  <details><summary>Links to HTTP (${safe(r.httpLinksOnHttpsPage?.count,0)})</summary><table><tr><th>Text</th><th>Href</th><th>Selector</th></tr>${httpLinkRows}</table></details>
+  <details><summary>Forms posting to HTTP (${safe(r.insecureFormActions?.count,0)})</summary><table><tr><th>Method</th><th>Action</th><th>Selector</th></tr>${formRows}</table></details>
+  <details><summary>Cookies (${safe(r.cookies?.counts?.total,0)})</summary><table><tr><th>Name</th><th>Secure</th><th>HttpOnly</th><th>SameSite</th><th>Raw</th></tr>${cookieRows}</table></details>
+  <details><summary>Third-party scripts & SRI</summary><p><a href="#" data-nav-tab="third-party-risk.json">Open third-party-risk</a></p><table><tr><th>Script URL</th><th>Selector</th></tr>${sriRows}</table></details>`;
+};
+
+function bindSecurity(scope){
+  const severity = scope.querySelector('[data-security-filter-severity]');
+  const search = scope.querySelector('[data-security-search]');
+  const apply = ()=>{
+    const sev = severity?.value || 'all';
+    const q = (search?.value || '').toLowerCase();
+    scope.querySelectorAll('.sec-finding').forEach((item)=>{
+      const text = item.textContent.toLowerCase();
+      const matchesSev = sev === 'all' || item.dataset.severity === sev;
+      const matchesQ = !q || text.includes(q);
+      item.style.display = matchesSev && matchesQ ? '' : 'none';
+    });
+  };
+  severity?.addEventListener('change', apply);
+  search?.addEventListener('input', apply);
+}
 
 const seoBand = (score)=>{
   const n = toNum(score);

@@ -11,7 +11,7 @@ export const artifactSchemas = {
   accessibility: wrapped(z.object({ url: z.string().url(), issues: z.array(z.object({ id: z.string(), impact: z.string(), description: z.string(), help: z.string(), nodes: z.number(), tags: z.array(z.string()), recommendation: z.string() })), counters: z.record(z.string(), z.number()) })),
   coreWebVitals: wrapped(z.object({ lcp: z.number().nullable(), cls: z.number().nullable(), inp: z.number().nullable(), fcp: z.number().nullable() })),
   throttled: wrapped(z.object({ available: z.boolean(), baselineLoadMs: z.number().nullable(), throttledLoadMs: z.number().nullable(), degradationFactor: z.number().nullable() })),
-  security: wrapped(z.record(z.string(), z.union([z.boolean(), z.string(), z.null()]))),
+  security: wrapped(z.union([z.record(z.string(), z.union([z.boolean(), z.string(), z.null()])), z.object({ summary: z.object({ overallStatus: z.enum(['pass','info','warning','fail']), severityCounts: z.object({ high: z.number(), medium: z.number(), low: z.number(), info: z.number() }), topFindings: z.array(z.object({ id: z.string(), severity: z.enum(['info','low','medium','high']), title: z.string(), message: z.string() })) }) }).passthrough()])),
   seoScore: wrapped(z.object({
     version: z.literal('seo-score-v1'),
     url: z.string().url(),
