@@ -25,26 +25,24 @@ export interface UnifiedUrlModel {
   visualRegression: { baselineFound: boolean; diffRatio: number | null; passed: boolean };
   brokenLinks: {
     summary: { checked: number; broken: number; redirectChains: number; loops: number };
-    items?: Array<{
-      url: string;
-      statusCode: number | null;
-      chainLength: number;
-      isBroken: boolean;
-      isRedirectChain: boolean;
-      hasLoop: boolean;
-  brokenLinks: { checked: number; broken: number; redirectChains: number; loops: number; details?: Array<{ sourcePageUrl: string; brokenUrl: string; status: number; chainLength: number }> };
-  brokenLinks: {
-    checked: number;
-    broken: number;
-    redirectChains: number;
-    loops: number;
-    items?: Array<{
-      brokenUrl: string;
-      sourcePageUrl: string;
-      linkText: string;
-      statusCode: number | null;
-      failureReason: '4xx' | '5xx' | 'timeout' | 'dns' | 'invalid_url' | 'request_failed' | 'blocked_by_cors';
-    }>;
+    details?: Array<{ sourcePageUrl: string; brokenUrl: string; status: number; chainLength: number }>;
+    items?: Array<
+      | {
+        url: string;
+        statusCode: number | null;
+        chainLength: number;
+        isBroken: boolean;
+        isRedirectChain: boolean;
+        hasLoop: boolean;
+      }
+      | {
+        brokenUrl: string;
+        sourcePageUrl: string;
+        linkText: string;
+        statusCode: number | null;
+        failureReason: '4xx' | '5xx' | 'timeout' | 'dns' | 'invalid_url' | 'request_failed' | 'blocked_by_cors';
+      }
+    >;
   };
   thirdPartyRisk: Array<{ domain: string; requests: number; transferSize: number; avgDurationMs: number; trackerHeuristic: boolean }>;
   accessibilityBeyondAxe: { keyboardReachable: boolean; possibleFocusTrap: boolean; possibleFocusTrapDetails?: { candidates: Array<Record<string, unknown>> }; contrastSimulationScore: number | null; contrastSimulationScoreReason?: string | null; contrastSimulationResult?: { status: 'ok' | 'not_available'; score: number | null; reasonCode?: 'missing_screenshots' | 'screenshot_capture_failed' | 'page_not_loaded' | 'no_text_nodes_detected' | 'insufficient_color_pairs' | 'algorithm_error' | 'timeout'; reasonMessage?: string; evidence: Record<string, unknown>; samples?: Array<Record<string, unknown>>; screenshotRefs?: string[] }; contrastSimulationDetails?: { method: Record<string, unknown>; findings: Array<Record<string, unknown>> } };

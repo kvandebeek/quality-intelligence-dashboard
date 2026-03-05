@@ -14,7 +14,7 @@ describe('broken link aggregation', () => {
     const rows = aggregateBrokenLinkDetails(fixture);
 
     expect(rows).toHaveLength(3);
-    expect(rows.map((row) => `${row.sourcePageUrl} -> ${row.brokenUrl}`)).toEqual([
+    expect(rows.map((row: any) => `${row.sourcePageUrl} -> ${row.brokenUrl}`)).toEqual([
       'https://example.com/a -> https://example.com/404-a',
       'https://example.com/a -> https://example.com/404-b',
       'https://example.com/b -> https://example.com/404-z'
