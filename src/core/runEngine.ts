@@ -379,12 +379,22 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
       // best effort
     }
   }
+  const brokenLinksItems = brokenLinksDetails.map((item) => ({
+    url: item.url,
+    statusCode: item.status,
+    chainLength: item.chainLength,
+    isBroken: item.status >= 400,
+    isRedirectChain: item.chainLength > 1,
+    hasLoop: false
+  }));
   const brokenLinks = {
-    checked: brokenLinksDetails.length,
-    broken: brokenLinksDetails.filter((item) => item.status >= 400).length,
-    redirectChains: brokenLinksDetails.filter((item) => item.chainLength > 1).length,
-    loops: 0,
-    details: brokenLinksDetails
+    summary: {
+      checked: brokenLinksItems.length,
+      broken: brokenLinksItems.filter((item) => item.isBroken).length,
+      redirectChains: brokenLinksItems.filter((item) => item.isRedirectChain).length,
+      loops: brokenLinksItems.filter((item) => item.hasLoop).length
+    },
+    items: brokenLinksItems
   };
 
   const robotsTxtAllows = await isPathAllowedByRobots(browser, target.url);
@@ -394,7 +404,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     response: seoResponse.response,
     responseHeaders: seoResponse.response?.headers() ?? {},
     robotsTxtAllows,
-    brokenInternalLinksCount: brokenLinks.broken,
+    brokenInternalLinksCount: brokenLinks.summary.broken,
     duplicateMetadataSignal: null,
     webVitals: { lcp: coreWebVitals.lcp, cls: coreWebVitals.cls, inp: coreWebVitals.inp },
     pageWeightBytes: perfMetrics.resourceSummary.transferSize,

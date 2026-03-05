@@ -53,7 +53,30 @@ export const accessibilitySchema = z.object({
 });
 
 
+
+export const brokenLinksItemSchema = z.object({
+  url: z.string(),
+  statusCode: z.number().nullable(),
+  chainLength: z.number().nonnegative(),
+  isBroken: z.boolean(),
+  isRedirectChain: z.boolean(),
+  hasLoop: z.boolean()
+});
+
+export const brokenLinksSchema = z.object({
+  summary: z.object({
+    checked: z.number().nonnegative(),
+    broken: z.number().nonnegative(),
+    redirectChains: z.number().nonnegative(),
+    loops: z.number().nonnegative()
+  }),
+  items: z.array(brokenLinksItemSchema).optional()
+});
+
 export type TargetSummary = z.infer<typeof targetSummarySchema>;
 export type PerformanceReport = z.infer<typeof performanceSchema>;
 export type AccessibilityReport = z.infer<typeof accessibilitySchema>;
 export type AccessibilityIssue = z.infer<typeof accessibilityIssueSchema>;
+
+export type BrokenLinksReport = z.infer<typeof brokenLinksSchema>;
+export type BrokenLinksItem = z.infer<typeof brokenLinksItemSchema>;

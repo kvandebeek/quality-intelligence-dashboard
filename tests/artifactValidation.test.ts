@@ -38,4 +38,21 @@ describe('artifact validation', () => {
 
     fs.rmSync(output, { force: true });
   });
+
+  it('accepts broken-links payloads with structured summary and nullable statusCode items', () => {
+    const output = path.join(os.tmpdir(), `broken-links-${Date.now()}.json`);
+
+    expect(() => writeValidatedArtifact(output, 'brokenLinks', meta, {
+      summary: { checked: 2, broken: 1, redirectChains: 0, loops: 0 },
+      items: [
+        { url: 'https://example.com/a', statusCode: 200, chainLength: 1, isBroken: false, isRedirectChain: false, hasLoop: false },
+        { url: 'https://example.com/missing', statusCode: null, chainLength: 1, isBroken: true, isRedirectChain: false, hasLoop: false }
+      ]
+    })).not.toThrow();
+
+    const written = JSON.parse(fs.readFileSync(output, 'utf8')) as { payload: { items: Array<{ statusCode: number | null }> } };
+    expect(written.payload.items[1]?.statusCode).toBeNull();
+
+    fs.rmSync(output, { force: true });
+  });
 });

@@ -13,8 +13,43 @@
         "timestamp": {"type": "string"},
         "toolVersion": {"type": "string"},
         "schemaVersion": {"type": "string"}
-      }
+      },
+      "additionalProperties": true
     },
-    "payload": {}
-  }
+    "payload": {
+      "type": "object",
+      "required": ["summary"],
+      "properties": {
+        "summary": {
+          "type": "object",
+          "required": ["checked", "broken", "redirectChains", "loops"],
+          "properties": {
+            "checked": {"type": "number"},
+            "broken": {"type": "number"},
+            "redirectChains": {"type": "number"},
+            "loops": {"type": "number"}
+          },
+          "additionalProperties": false
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["url", "statusCode", "chainLength", "isBroken", "isRedirectChain", "hasLoop"],
+            "properties": {
+              "url": {"type": "string"},
+              "statusCode": {"type": ["number", "null"]},
+              "chainLength": {"type": "number"},
+              "isBroken": {"type": "boolean"},
+              "isRedirectChain": {"type": "boolean"},
+              "hasLoop": {"type": "boolean"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
 }

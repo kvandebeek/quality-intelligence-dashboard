@@ -30,6 +30,25 @@ function computeDerived(model: Omit<UnifiedUrlModel, 'derived' | 'enterpriseScor
   };
 }
 
+
+
+function normalizeBrokenLinksPayload(payload: UnifiedUrlModel['brokenLinks'] | Record<string, unknown>): UnifiedUrlModel['brokenLinks'] {
+  const source = payload as Record<string, unknown>;
+  const maybeSummary = source.summary as Record<string, unknown> | undefined;
+  const summary = {
+    checked: Number(maybeSummary?.checked ?? source.checked ?? 0),
+    broken: Number(maybeSummary?.broken ?? source.broken ?? 0),
+    redirectChains: Number(maybeSummary?.redirectChains ?? source.redirectChains ?? 0),
+    loops: Number(maybeSummary?.loops ?? source.loops ?? 0)
+  };
+
+  if (Array.isArray(source.items)) {
+    return { summary, items: source.items as UnifiedUrlModel['brokenLinks']['items'] };
+  }
+
+  return { summary };
+}
+
 function computeEnterpriseScores(derived: UnifiedUrlModel['derived'], model: Omit<UnifiedUrlModel, 'derived' | 'enterpriseScore'>): Record<string, number> {
   const securityPasses = Object.values(model.security).filter((value) => value === true).length;
   const securityTotal = Math.max(1, Object.keys(model.security).length);
@@ -72,7 +91,7 @@ export function buildRunIndex(runRoot: string, runId: string, timestamp: string,
       security: security.payload,
       seoScore: seoScore.payload,
       visualRegression: visualRegression.payload,
-      brokenLinks: brokenLinks.payload,
+      brokenLinks: normalizeBrokenLinksPayload(brokenLinks.payload as Record<string, unknown>),
       thirdPartyRisk: thirdPartyRisk.payload,
       accessibilityBeyondAxe: accessibilityBeyondAxe.payload,
       stability: stability.payload,
