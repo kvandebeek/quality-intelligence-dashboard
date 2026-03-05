@@ -15,6 +15,12 @@ const execFileAsync = promisify(execFile);
 
 interface ServerOptions { runPath: string; port: number; staticDir?: string }
 
+export interface StartedDashboardServer {
+  url: string;
+  server: http.Server;
+  close: () => Promise<void>;
+}
+
 const logger = createLogger();
 
 function readBody(request: http.IncomingMessage): Promise<string> {
@@ -97,7 +103,7 @@ async function exportDiagnostics(options: ServerOptions, indexState: DashboardIn
   return zipPath;
 }
 
-export function startDashboardServer(options: ServerOptions): http.Server {
+export async function startDashboardServer(options: ServerOptions): Promise<StartedDashboardServer> {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const staticRoot = options.staticDir ?? path.join(here, 'app');
 
@@ -244,8 +250,33 @@ export function startDashboardServer(options: ServerOptions): http.Server {
       logger[level === 'WARN' ? 'warn' : 'info']('HTTP request completed', { operationId: requestOpId, path: requestUrl.pathname, durationMs });
     }
   });
-  server.listen(options.port);
-  return server;
+
+  const url = await new Promise<string>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(options.port, '127.0.0.1', () => {
+      server.off('error', reject);
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        reject(new Error('Dashboard server bound to an unsupported address'));
+        return;
+      }
+      resolve(`http://127.0.0.1:${address.port}`);
+    });
+  });
+
+  const close = async (): Promise<void> => {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+  };
+
+  return { url, server, close };
 }
 
 export function parseServerOptions(argv: readonly string[]): ServerOptions {
@@ -273,16 +304,24 @@ async function main(): Promise<void> {
   });
 
   const options = parseServerOptions(process.argv.slice(2));
-  const server = startDashboardServer(options);
+  const startedServer = await startDashboardServer(options);
   logger.info('Application ready', { datasetPath: options.runPath, port: options.port });
-  process.stdout.write(`Dashboard listening on http://localhost:${options.port} for run ${options.runPath}\n`);
+  process.stdout.write(`Dashboard listening on ${startedServer.url} for run ${options.runPath}\n`);
 
-  const shutdown = (signal: NodeJS.Signals) => {
+  let isShuttingDown = false;
+  const shutdown = (signal: NodeJS.Signals): void => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
     logger.info('Application shutdown requested', { signal });
-    server.close(() => {
-      logger.info('Application shutdown complete', { signal });
-      process.exit(0);
-    });
+    startedServer.close()
+      .then(() => {
+        logger.info('Application shutdown complete', { signal });
+        process.exit(0);
+      })
+      .catch((error: unknown) => {
+        logger.error('Application shutdown failed', { signal }, error);
+        process.exit(1);
+      });
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
