@@ -681,7 +681,7 @@ async function loadTab(id, tab){
   switch(tab){
     case 'a11y-beyond-axe.json': body = renderA11yHeuristics(unwrapped.payload); break;
     case 'accessibility.json': body = renderAxe(unwrapped.payload); break;
-    case 'broken-links.json': body = renderBroken(unwrapped.payload, { artifactMissing: payload.state === 'missing' }); break;
+    case 'broken-links.json': body = renderBroken(unwrapped.payload, { artifactMissing: payload.state === 'missing', runId: state.selectedId }); break;
     case 'core-web-vitals.json': body = renderCwv(unwrapped.payload); break;
     case 'memory-profile.json': body = renderMemory(unwrapped.payload); break;
     case 'performance.json': body = renderPerformance(unwrapped.payload); break;

@@ -1,50 +1,237 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["meta", "payload"],
+  "required": [
+    "meta",
+    "payload"
+  ],
   "properties": {
     "meta": {
       "type": "object",
-      "required": ["runId", "url", "urlSlug", "timestamp", "toolVersion", "schemaVersion"],
+      "required": [
+        "runId",
+        "url",
+        "urlSlug",
+        "timestamp",
+        "toolVersion",
+        "schemaVersion"
+      ],
       "properties": {
-        "runId": {"type": "string"},
-        "url": {"type": "string"},
-        "urlSlug": {"type": "string"},
-        "timestamp": {"type": "string"},
-        "toolVersion": {"type": "string"},
-        "schemaVersion": {"type": "string"}
+        "runId": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "urlSlug": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "toolVersion": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        }
       },
       "additionalProperties": true
     },
     "payload": {
       "type": "object",
-      "required": ["summary"],
+      "required": [
+        "summary"
+      ],
       "properties": {
         "summary": {
           "type": "object",
-          "required": ["checked", "broken", "redirectChains", "loops"],
+          "required": [
+            "checked",
+            "broken",
+            "redirectChains",
+            "loops"
+          ],
           "properties": {
-            "checked": {"type": "number"},
-            "broken": {"type": "number"},
-            "redirectChains": {"type": "number"},
-            "loops": {"type": "number"}
+            "checked": {
+              "type": "number"
+            },
+            "broken": {
+              "type": "number"
+            },
+            "redirectChains": {
+              "type": "number"
+            },
+            "loops": {
+              "type": "number"
+            }
           },
           "additionalProperties": false
         },
         "items": {
           "type": "array",
           "items": {
-            "type": "object",
-            "required": ["url", "statusCode", "chainLength", "isBroken", "isRedirectChain", "hasLoop"],
-            "properties": {
-              "url": {"type": "string"},
-              "statusCode": {"type": ["number", "null"]},
-              "chainLength": {"type": "number"},
-              "isBroken": {"type": "boolean"},
-              "isRedirectChain": {"type": "boolean"},
-              "hasLoop": {"type": "boolean"}
-            },
-            "additionalProperties": false
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "url",
+                  "statusCode",
+                  "chainLength",
+                  "isBroken",
+                  "isRedirectChain",
+                  "hasLoop"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "statusCode": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "chainLength": {
+                    "type": "number"
+                  },
+                  "isBroken": {
+                    "type": "boolean"
+                  },
+                  "isRedirectChain": {
+                    "type": "boolean"
+                  },
+                  "hasLoop": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "brokenUrl",
+                  "sourcePageUrl",
+                  "statusCode",
+                  "failureReason",
+                  "screenshot"
+                ],
+                "properties": {
+                  "brokenUrl": {
+                    "type": "string"
+                  },
+                  "sourcePageUrl": {
+                    "type": "string"
+                  },
+                  "linkText": {
+                    "type": "string"
+                  },
+                  "selector": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "findingId": {
+                    "type": "string"
+                  },
+                  "statusCode": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "screenshot": {
+                    "type": "object",
+                    "required": [
+                      "type",
+                      "path",
+                      "thumbnailPath"
+                    ],
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "snippet",
+                          "fullpage",
+                          "none"
+                        ]
+                      },
+                      "path": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "thumbnailPath": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "elementSelector": {
+                        "type": "string"
+                      },
+                      "bbox": {
+                        "type": "object",
+                        "required": [
+                          "x",
+                          "y",
+                          "width",
+                          "height"
+                        ],
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "crop": {
+                        "type": "object",
+                        "required": [
+                          "x",
+                          "y",
+                          "width",
+                          "height"
+                        ],
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "error": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
           }
         }
       },

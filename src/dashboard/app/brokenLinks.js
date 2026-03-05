@@ -59,9 +59,20 @@ function classifyFailureReason(status, errors){
 }
 
 function isBrokenLinkRow(row){
-  // Broken links view intentionally only renders links that failed requests (HTTP >= 400)
-  // or links that carry an explicit non-empty/non-"none" failure reason.
   return (typeof row.status === 'number' && row.status >= 400) || row.errors.length > 0;
+}
+
+function normalizeScreenshot(screenshot){
+  if (!screenshot || typeof screenshot !== 'object') return null;
+  const type = typeof screenshot.type === 'string' ? screenshot.type : 'none';
+  const path = asUrl(screenshot.path);
+  const thumbnailPath = asUrl(screenshot.thumbnailPath);
+  return {
+    type,
+    path,
+    thumbnailPath,
+    error: asText(screenshot.error)
+  };
 }
 
 export function normalizeBrokenLinkRow(raw){
@@ -92,7 +103,8 @@ export function normalizeBrokenLinkRow(raw){
     linkText,
     selector,
     errors: normalizedErrors,
-    reason: normalizedErrors.length ? normalizedErrors.join('; ') : null
+    reason: normalizedErrors.length ? normalizedErrors.join('; ') : null,
+    screenshot: normalizeScreenshot(raw.screenshot)
   };
 }
 
@@ -110,6 +122,7 @@ export function aggregateBrokenLinkDetails(details = []) {
     current.errors = [...new Set([...(current.errors ?? []), ...(row.errors ?? [])])].sort((a, b) => a.localeCompare(b));
     current.reason = current.errors.length ? current.errors.join('; ') : null;
     current.occurrences += 1;
+    if (!current.screenshot?.thumbnailPath && row.screenshot?.thumbnailPath) current.screenshot = row.screenshot;
     grouped.set(key, current);
   }
 
@@ -163,26 +176,61 @@ function renderLink(url){
   return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(url)}</a>`;
 }
 
+function previewCell(row, runId){
+  if (!row.screenshot) return '<span class="badge">No preview</span>';
+  if (row.screenshot.thumbnailPath && row.screenshot.path) {
+    const thumb = `/artifacts/${encodeURIComponent(runId)}/${row.screenshot.thumbnailPath}`;
+    const full = `/artifacts/${encodeURIComponent(runId)}/${row.screenshot.path}`;
+    const fallbackBadge = row.screenshot.type === 'fullpage' ? '<div class="inline-hint">Fallback</div>' : '';
+    return `<button class="preview-trigger" data-preview-open data-preview-title="${escapeHtml(row.brokenUrl)}" data-preview-full="${escapeHtml(full)}"><img src="${escapeHtml(thumb)}" alt="Broken link preview thumbnail">${fallbackBadge}</button>`;
+  }
+  if (row.screenshot.type === 'fullpage') return '<span class="badge">Fallback</span>';
+  return '<span class="badge">No preview</span>';
+}
+
 export function bindBrokenLinks(scope){
   const filterInput = scope.querySelector('[data-broken-filter]');
   const rows = [...scope.querySelectorAll('[data-broken-row]')];
   const countTarget = scope.querySelector('[data-broken-visible-count]');
-  if (!filterInput || rows.length === 0 || !countTarget) return;
 
-  const applyFilter = () => {
-    const query = String(filterInput.value ?? '').trim().toLowerCase();
-    let visible = 0;
-    for (const row of rows) {
-      const haystack = String(row.dataset.brokenSearch ?? '').toLowerCase();
-      const matched = !query || haystack.includes(query);
-      row.hidden = !matched;
-      if (matched) visible += 1;
-    }
-    countTarget.textContent = String(visible);
-  };
+  if (filterInput && rows.length > 0 && countTarget) {
+    const applyFilter = () => {
+      const query = String(filterInput.value ?? '').trim().toLowerCase();
+      let visible = 0;
+      for (const row of rows) {
+        const haystack = String(row.dataset.brokenSearch ?? '').toLowerCase();
+        const matched = !query || haystack.includes(query);
+        row.hidden = !matched;
+        if (matched) visible += 1;
+      }
+      countTarget.textContent = String(visible);
+    };
 
-  filterInput.oninput = applyFilter;
-  applyFilter();
+    filterInput.oninput = applyFilter;
+    applyFilter();
+  }
+
+  const modal = scope.querySelector('[data-broken-preview-modal]');
+  if (!modal) return;
+  const modalImage = modal.querySelector('[data-broken-preview-image]');
+  const modalTitle = modal.querySelector('[data-broken-preview-title]');
+  const modalOpenLink = modal.querySelector('[data-broken-preview-open-tab]');
+  scope.querySelectorAll('[data-preview-open]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const full = button.getAttribute('data-preview-full');
+      const title = button.getAttribute('data-preview-title') ?? 'Broken link preview';
+      if (!full || !modalImage) return;
+      modalImage.setAttribute('src', full);
+      modalImage.setAttribute('alt', title);
+      modalOpenLink?.setAttribute('href', full);
+      if (modalTitle) modalTitle.textContent = title;
+      modal.showModal();
+    });
+  });
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) modal.close();
+  });
 }
 
 export function renderBroken(report = {}, options = {}) {
@@ -196,7 +244,7 @@ export function renderBroken(report = {}, options = {}) {
   const tableRows = rows.map((row) => {
     const errors = row.errors.length ? row.errors.map((error) => `<code>${escapeHtml(error)}</code>`).join('<br>') : MISSING;
     const search = [row.sourcePageUrl, row.brokenUrl, row.linkText, row.selector, row.status, row.reason].filter(Boolean).join(' ');
-    return `<tr data-broken-row data-broken-search="${escapeHtml(search)}"><td>${renderLink(row.sourcePageUrl)}</td><td>${renderLink(row.brokenUrl)}</td><td>${escapeHtml(formatUnknown(row.linkText))}</td><td>${escapeHtml(formatUnknown(row.selector))}</td><td>${escapeHtml(formatUnknown(row.status))}</td><td>${errors}</td></tr>`;
+    return `<tr data-broken-row data-broken-search="${escapeHtml(search)}"><td>${renderLink(row.sourcePageUrl)}</td><td>${renderLink(row.brokenUrl)}</td><td>${escapeHtml(formatUnknown(row.linkText))}</td><td>${escapeHtml(formatUnknown(row.selector))}</td><td>${escapeHtml(formatUnknown(row.status))}</td><td>${errors}</td><td>${previewCell(row, options.runId ?? '')}</td></tr>`;
   }).join('');
 
   const summary = `<div class="kpis">${metric('Checked', normalized.checked)}${metric('Broken', normalized.broken)}${metric('Redirect chains', normalized.redirectChains)}${metric('Loops', normalized.loops)}</div><p class="inline-hint">Broken links: ${formatCount(normalized.broken)} across ${formatCount(normalized.pageCount)} pages</p>`;
@@ -205,5 +253,5 @@ export function renderBroken(report = {}, options = {}) {
     return `${summary}<p class="inline-hint">No broken links detected for this run.</p>`;
   }
 
-  return `${summary}<label class="inline-hint" for="broken-links-filter">Filter broken URL</label><input id="broken-links-filter" data-broken-filter type="search" placeholder="Search broken URL or source page"><p class="inline-hint">Showing <span data-broken-visible-count>${rows.length}</span> of ${rows.length} rows</p><table><thead><tr><th>Source page</th><th>Broken URL</th><th>Link text</th><th>Selector</th><th>Status</th><th>Failure reason</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+  return `${summary}<label class="inline-hint" for="broken-links-filter">Filter broken URL</label><input id="broken-links-filter" data-broken-filter type="search" placeholder="Search broken URL or source page"><p class="inline-hint">Showing <span data-broken-visible-count>${rows.length}</span> of ${rows.length} rows</p><table><thead><tr><th>Source page</th><th>Broken URL</th><th>Link text</th><th>Selector</th><th>Status</th><th>Failure reason</th><th>Preview</th></tr></thead><tbody>${tableRows}</tbody></table><dialog class="broken-links-modal" data-broken-preview-modal><form method="dialog"><button class="link" aria-label="Close preview">Close</button></form><h3 data-broken-preview-title>Broken link preview</h3><div class="broken-links-modal-body"><img data-broken-preview-image alt="Broken link preview"></div><p><a data-broken-preview-open-tab target="_blank" rel="noreferrer noopener">Open in new tab</a></p></dialog>`;
 }

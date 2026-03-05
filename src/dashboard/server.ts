@@ -46,7 +46,7 @@ async function sendFile(response: http.ServerResponse, filePath: string, artifac
   try {
     const content = await fs.readFile(filePath);
     const ext = path.extname(filePath);
-    const contentType = ext === '.css' ? 'text/css; charset=utf-8' : ext === '.js' ? 'text/javascript; charset=utf-8' : ext === '.json' ? 'application/json; charset=utf-8' : ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'text/html; charset=utf-8';
+    const contentType = ext === '.css' ? 'text/css; charset=utf-8' : ext === '.js' ? 'text/javascript; charset=utf-8' : ext === '.json' ? 'application/json; charset=utf-8' : ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.svg' ? 'image/svg+xml; charset=utf-8' : 'text/html; charset=utf-8';
     response.writeHead(200, { 'content-type': contentType });
     response.end(content);
     op.end('ok', { bytes: content.byteLength });

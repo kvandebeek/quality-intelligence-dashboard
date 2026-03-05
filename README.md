@@ -196,6 +196,7 @@ This view aggregates results across all checked URLs and renders 8 tiles:
 - Accessibility issues by severity (critical/serious/moderate/minor)
 - Content load FCP (domain average, min, max)
 - Broken links (broken + total + coverage)
+- Broken links now include visual previews (thumbnail + modal full-size image) with a red highlight around detected link location when evidence is available.
 - SEO score (domain average, min, max)
 - Core Web Vitals status by metric (distribution + LCP/INP/CLS Good rates)
 - Client-side errors (total errors + affected URLs)
