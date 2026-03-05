@@ -54,6 +54,7 @@ describe('domain summary aggregation', () => {
 
     const summary = await buildDomainSummary(index, store, 'run-1');
 
+    expect(summary.runPath).toBe('../../tmp/run-missing-metadata');
     expect(summary.startUrl).toBe('https://fallback.example/path?q=1');
     expect(summary.domain).toBe('fallback.example');
 
@@ -93,4 +94,20 @@ describe('domain summary aggregation', () => {
     expect(summary.uxSummary.passingUrls).toBe(1);
     expect(summary.uxSummary.topIssues[0]).toEqual({ id: 'contrast', title: 'Low contrast', count: 1 });
   });
+
+  it('marks security as collected when scan executes with zero findings', async () => {
+    const index = { generatedAt: 'run-2', runPath: '/tmp/run-security-empty', urls: [{ id: 'u1', url: 'https://example.com' }] } as any;
+    const store = {
+      async loadSection(urlId: string, name: string) {
+        if (name === 'security-scan.json') return section('ok', { findings: [], severities: { high: 0, low: 0 } });
+        return section('missing', null);
+      }
+    } as any;
+
+    const summary = await buildDomainSummary(index, store, 'run-2');
+    expect(summary.security.coverage).toEqual({ measured: 1, total: 1 });
+    expect(summary.security.state).toBe('ok-empty');
+    expect(summary.security.totalFindings).toBe(0);
+  });
+
 });

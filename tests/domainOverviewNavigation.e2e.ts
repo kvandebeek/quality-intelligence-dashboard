@@ -16,37 +16,56 @@ test.afterAll(async () => {
 });
 
 test.describe('domain overview navigation', () => {
-  test('navigates to accessibility from accessibility severity card', async ({ page }) => {
+  test('domain overview tiles support repeated navigation and browser back', async ({ page }) => {
     await page.goto(`${server.url}/#/domain-overview`);
-    await page.getByTestId('domain-overview-accessibility-severity').click();
-    await expect(page).toHaveURL(/#\/accessibility$/);
+
+    const targets = [
+      { testId: 'domain-overview-accessibility-severity', url: /#\/accessibility$/ },
+      { testId: 'domain-overview-fcp', url: /#\/performance$/ },
+      { testId: 'domain-overview-seo-score', url: /#\/seo-score$/ },
+      { testId: 'domain-overview-cwv-status-by-metric', url: /#\/core-web-vitals$/ }
+    ];
+
+    for (const target of targets) {
+      await page.getByTestId(target.testId).click();
+      await expect(page).toHaveURL(target.url);
+      await page.goBack();
+      await expect(page).toHaveURL(/#\/domain-overview$/);
+      await page.getByTestId(target.testId).click();
+      await expect(page).toHaveURL(target.url);
+      await page.goBack();
+      await expect(page).toHaveURL(/#\/domain-overview$/);
+    }
   });
 
-  test('does not render cwv info icon affordance', async ({ page }) => {
+  test('domain overview hides cross-browser card and trims cwv copy', async ({ page }) => {
     await page.goto(`${server.url}/#/domain-overview`);
-    await expect(page.getByLabel('Based on Google Core Web Vitals thresholds; aggregated across pages.')).toHaveCount(0);
-    await expect(page.getByTestId('domain-overview-cwv-info')).toHaveCount(0);
+    await expect(page.getByText('Cross-browser performance', { exact: false })).toHaveCount(0);
+    await expect(page.getByText('Needs improvement')).toHaveCount(0);
+    await expect(page.getByText('LCP:', { exact: false })).toHaveCount(0);
+    await expect(page.getByText('Based on 1/2 URLs')).toBeVisible();
   });
 
-  test('navigates to performance from fcp card', async ({ page }) => {
+  test('domain header shows data path and keeps external domain link', async ({ page, context }) => {
     await page.goto(`${server.url}/#/domain-overview`);
-    const fcp = page.getByTestId('domain-overview-fcp');
-    await fcp.focus();
-    await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/#\/performance$/);
+    await expect(page.getByText('Data path:', { exact: false })).toContainText('./tests/fixtures/dashboard-run');
+
+    const [newPage] = await Promise.all([
+      context.waitForEvent('page'),
+      page.getByRole('link', { name: 'example.com' }).click()
+    ]);
+    await expect(newPage).toHaveURL(/example.com/);
+    await newPage.close();
   });
 
-  test('navigates to seo score from seo score card', async ({ page }) => {
+  test('a11y legend hover/focus highlights matching donut segment', async ({ page }) => {
     await page.goto(`${server.url}/#/domain-overview`);
-    await page.getByTestId('domain-overview-seo-score').click();
-    await expect(page).toHaveURL(/#\/seo-score$/);
-  });
-
-  test('navigates to core web vitals from cwv status by metric card', async ({ page }) => {
-    await page.goto(`${server.url}/#/domain-overview`);
-    const cwv = page.getByTestId('domain-overview-cwv-status-by-metric');
-    await cwv.focus();
-    await page.keyboard.press(' ');
-    await expect(page).toHaveURL(/#\/core-web-vitals$/);
+    const donut = page.locator('[data-tile="accessibility-severity"] .donut-interactive');
+    await page.locator('[data-severity="critical"]').hover();
+    await expect(donut).toHaveAttribute('data-active-segment', 'critical');
+    await page.locator('[data-severity="critical"]').focus();
+    await expect(donut).toHaveAttribute('data-active-segment', 'critical');
+    await page.locator('[data-severity="critical"]').blur();
+    await expect(donut).not.toHaveAttribute('data-active-segment', 'critical');
   });
 });

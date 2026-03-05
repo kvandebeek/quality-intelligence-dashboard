@@ -52,6 +52,15 @@ function normalizeDomainLink(value){
   return { displayDomain, domainHref };
 }
 
+
+function formatDataPath(runPath){
+  if(typeof runPath !== 'string' || !runPath.trim()) return './artifacts';
+  const normalized = runPath.replace(/\\/g, '/');
+  if(normalized.startsWith('./') || normalized.startsWith('../')) return normalized;
+  if(normalized.startsWith('/')) return normalized;
+  return `./${normalized}`;
+}
+
 function renderDomainHeader(data){
   const heading = data.domainHref && data.displayDomain
     ? `<a class="domain-title-link" href="${escapeHtml(data.domainHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(data.displayDomain)}</a>`
@@ -59,6 +68,7 @@ function renderDomainHeader(data){
   return `<header class="detail-header domain-header">
     <h2>${heading}</h2>
     <div class="meta">${safe(data.runTime)} · ${safe(data.runId)}</div>
+    <div class="meta">Data path: ${escapeHtml(formatDataPath(data.dataPath))}</div>
     <div class="top-issues">${data.topIssues.map((item)=>`<span>${item}</span>`).join('')}</div>
   </header>`;
 }
@@ -269,18 +279,19 @@ function renderCwvStoplights(cwv={}){
   return `<div class="cwv-stoplights">${cards.map((card)=>{ const stop = cwvStoplight(card.metric, card.value); return `<div class="cwv-stoplight"><span class="metric">${card.metric}</span><span class="value">${card.display}</span><span class="light ${stop.state}" aria-hidden="true"></span><span class="label">${stop.label}</span></div>`; }).join('')}</div>`;
 }
 
-function renderDonut(segments, total){
+function renderDonut(segments, total, options={}){
   if(!total) return '<div class="donut-empty">Not measured</div>';
-  const cs = [];
   let acc = 0;
-  for(const seg of segments){
+  const arcs = segments.map((seg)=>{
     const pct = (seg.value/total)*100;
     const start = acc;
     const end = acc + pct;
-    cs.push(`${seg.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`);
     acc = end;
-  }
-  return `<div class="donut" style="background:conic-gradient(${cs.join(',')})"></div>`;
+    return `<span class="donut-segment" data-segment="${escapeHtml(seg.label)}" style="--segment-start:${start.toFixed(2)}%;--segment-end:${end.toFixed(2)}%;--segment-color:${seg.color}"></span>`;
+  }).join('');
+  const interactive = options.interactive ? ' donut-interactive' : '';
+  const tile = options.tile ? ` data-interactive-donut="${options.tile}"` : '';
+  return `<div class="donut${interactive}"${tile}>${arcs}<span class="donut-hole" aria-hidden="true"></span></div>`;
 }
 
 
@@ -333,6 +344,7 @@ function renderDomainOverview(selected){
     domainHref: normalizedDomain.domainHref,
     runTime: selected?.runTime,
     runId: selected?.runId,
+    dataPath: s.runPath,
     topIssues: [
       `URLs scanned: ${toNum(s.totals?.urls) ?? 0}`,
       `A11y issues: ${a11yTotal}`,
@@ -344,16 +356,15 @@ function renderDomainOverview(selected){
   });
 
   return `${header}<section class="domain-grid" aria-label="Domain overview tiles">
-    <button type="button" class="summary-card summary-card-link" data-tile="accessibility-severity" data-testid="domain-overview-accessibility-severity" data-nav-hash="#/accessibility" aria-label="Go to accessibility"><h3>Accessibility issues severity</h3>${renderDonut(a11ySegments, a11yTotal)}<p class="primary">${a11yTotal} total issues</p><p class="secondary"><span class="severity-label severity-critical">critical</span> ${a11ySegments[0].value} · <span class="severity-label severity-serious">serious</span> ${a11ySegments[1].value} · <span class="severity-label severity-moderate">moderate</span> ${a11ySegments[2].value} · <span class="severity-label severity-minor">minor</span> ${a11ySegments[3].value}</p><p class="coverage">${coverageText(s.accessibility?.coverage)}</p></button>
+    <button type="button" class="summary-card summary-card-link" data-tile="accessibility-severity" data-testid="domain-overview-accessibility-severity" data-nav-hash="#/accessibility" aria-label="Go to accessibility"><h3>Accessibility issues severity</h3>${renderDonut(a11ySegments, a11yTotal, { interactive: true, tile: 'accessibility-severity' })}<p class="primary">${a11yTotal} total issues</p><p class="secondary"><span class="severity-label severity-critical" data-severity="critical" tabindex="0">critical</span> ${a11ySegments[0].value} · <span class="severity-label severity-serious" data-severity="serious" tabindex="0">serious</span> ${a11ySegments[1].value} · <span class="severity-label severity-moderate" data-severity="moderate" tabindex="0">moderate</span> ${a11ySegments[2].value} · <span class="severity-label severity-minor" data-severity="minor" tabindex="0">minor</span> ${a11ySegments[3].value}</p><p class="coverage">${coverageText(s.accessibility?.coverage)}</p></button>
     <button type="button" class="summary-card summary-card-link" data-tile="fcp-counter" data-testid="domain-overview-fcp" data-nav-hash="#/performance" aria-label="Go to performance"><h3>Content load: FCP</h3><p class="primary ${fcpBandClass(s.fcp?.avgSeconds)}">${fmtSeconds(s.fcp?.avgSeconds)}</p><p class="secondary">Min ${fmtSeconds(s.fcp?.minSeconds)} · Max ${fmtSeconds(s.fcp?.maxSeconds)}</p><p class="secondary">Issues ${toNum(s.fcp?.issues)??0} · Intermittent ${toNum(s.fcp?.intermittent)??0}</p><p class="coverage">${coverageText(s.fcp?.coverage)}</p></button>
     <article class="summary-card" data-tile="broken-links" data-nav-tab="broken-links.json"><h3>Broken links</h3><p class="primary">${toNum(s.brokenLinks?.broken) ?? 'Not measured'}</p><p class="secondary">${toNum(s.brokenLinks?.broken)??0}/${toNum(s.brokenLinks?.total)??0} broken/total</p><p class="coverage">${coverageText(s.brokenLinks?.coverage)}</p></article>
     <button type="button" class="summary-card summary-card-link" data-tile="seo-score" data-testid="domain-overview-seo-score" data-nav-hash="#/seo-score" aria-label="Go to SEO score"><h3>SEO score</h3><p class="primary">${valueOrNotMeasured(s.seoScore?.avg,(n)=>n.toFixed(0))}</p><p class="secondary">Min ${valueOrNotMeasured(s.seoScore?.min,(n)=>n.toFixed(0))} · Max ${valueOrNotMeasured(s.seoScore?.max,(n)=>n.toFixed(0))}</p><p class="coverage">${coverageText(s.seoScore?.coverage)}</p></button>
 
-    <button type="button" class="summary-card summary-card-link" data-tile="cwv-status-by-metric" data-testid="domain-overview-cwv-status-by-metric" data-nav-hash="#/core-web-vitals" aria-label="Go to Core Web Vitals"><h3>Core Web Vitals status by metric</h3>${cwvState==='has-data'?renderCwvStoplights(cwv):`<div class="donut-empty">${cwvState==='empty'?'No data':'Not collected'}</div>`}<p class="secondary" title="Core Web Vitals distribution across scanned pages (Good / Needs improvement / Poor).">Good ${toNum(cwv.good)??0} · ${CWV_NEEDS_IMPROVEMENT_LABEL} ${toNum(cwv.needsImprovement)??0} · Poor ${toNum(cwv.poor)??0}</p><p class="secondary">LCP: ${metricGoodRate(cwv.metrics?.lcp)} · INP: ${metricGoodRate(cwv.metrics?.inp)} · CLS: ${metricGoodRate(cwv.metrics?.cls)}</p><p class="coverage">${coverageText(cwv.coverage)}</p></button>
+    <button type="button" class="summary-card summary-card-link" data-tile="cwv-status-by-metric" data-testid="domain-overview-cwv-status-by-metric" data-nav-hash="#/core-web-vitals" aria-label="Go to Core Web Vitals"><h3>Core Web Vitals status by metric</h3>${cwvState==='has-data'?renderCwvStoplights(cwv):`<div class="donut-empty">${cwvState==='empty'?'No data':'Not collected'}</div>`}<p class="coverage">${coverageText(cwv.coverage)}</p></button>
     <article class="summary-card" data-tile="client-errors" data-nav-tab="stability.json"><h3>Client-side errors</h3><p class="primary">${toNum(s.clientErrors?.totalErrors) ?? 'Not measured'}</p><p class="secondary">${toNum(s.clientErrors?.affectedUrls)??0} URLs with errors</p><p class="coverage">${coverageText(s.clientErrors?.coverage)}</p></article>
-    <article class="summary-card" data-tile="security-findings" data-nav-tab="security-scan.json"><h3>Security findings by severity</h3>${secState==='ok-has-findings'?renderDonut(secSegments, secTotal):'<div class="donut-empty">No findings</div>'}<p class="primary">${secPrimary}</p><p class="secondary">${secState==='not-collected'?'Not collected':secSecondary}</p><p class="coverage">${coverageText(sec.coverage)}</p></article>
+    <article class="summary-card" data-tile="security-findings" data-nav-tab="security-scan.json"><h3>Security findings by severity</h3>${secState==='ok-has-findings'?renderDonut(secSegments, secTotal):'<div class="donut-empty">No findings</div>'}<p class="primary">${secPrimary}</p><p class="secondary">${secState==='not-collected'?'Not collected':secTotal===0?'0 findings':secSecondary}</p><p class="coverage">${coverageText(sec.coverage)}</p></article>
     <article class="summary-card" data-tile="ux-summary" data-nav-tab="ux-overview.json"><h3>UI/UX checks summary</h3><p class="primary">${ux.state==='not-collected'?'Not collected':`${toNum(ux.passingUrls)??0} pass · ${toNum(ux.failingUrls)??0} fail`}</p><p class="secondary">${uxSecondary}</p><p class="coverage">${coverageText(ux.coverage)}</p></article>
-    <article class="summary-card" data-tile="cross-browser-performance" data-nav-tab="cross-browser-performance.json"><h3>Cross-browser performance</h3><p class="primary">${cbPrimary}</p><p class="secondary">tested ${toNum(cb.testedUrls)??0} / total ${toNum(s.totals?.urls)??0}</p><p class="coverage">${coverageText(cb.coverage)}</p></article>
   </section>`;
 }
 
@@ -410,6 +421,22 @@ function render(options = {}){
     state.selectedId = selected.id;
     setSelectedTab(nextTab);
     render();
+  });
+  document.querySelectorAll('[data-severity]').forEach((el)=>{
+    const apply = ()=>{
+      const tile = el.closest('[data-tile]');
+      const donut = tile?.querySelector('.donut-interactive');
+      if(donut) donut.setAttribute('data-active-segment', (el.getAttribute('data-severity') || '').toLowerCase());
+    };
+    const clear = ()=>{
+      const tile = el.closest('[data-tile]');
+      const donut = tile?.querySelector('.donut-interactive');
+      if(donut) donut.removeAttribute('data-active-segment');
+    };
+    el.addEventListener('mouseenter', apply);
+    el.addEventListener('mouseleave', clear);
+    el.addEventListener('focus', apply);
+    el.addEventListener('blur', clear);
   });
   document.querySelectorAll('[data-nav-hash]').forEach((el)=>el.onclick=()=>{
     const nextHash = el.getAttribute('data-nav-hash');
