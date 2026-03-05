@@ -3,3 +3,4 @@ dist/
 artifacts/
 .env
 .playwright/
+config/
