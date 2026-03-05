@@ -39,9 +39,25 @@ function renderHelpTip(text){
   return `<span class="help-tip" role="img" aria-label="${text}" title="${text}">i</span>`;
 }
 
+function normalizeDomainLink(value){
+  if(typeof value !== 'string' || !value.trim()) return { displayDomain: null, domainHref: null };
+  const trimmed = value.trim();
+  const parse = (input)=>{
+    try { return new URL(input); } catch { return null; }
+  };
+  const parsed = parse(trimmed) ?? parse(`https://${trimmed}`);
+  if(!parsed || !parsed.hostname) return { displayDomain: null, domainHref: null };
+  const displayDomain = parsed.hostname;
+  const domainHref = parse(trimmed) ? trimmed : `https://${displayDomain}`;
+  return { displayDomain, domainHref };
+}
+
 function renderDomainHeader(data){
+  const heading = data.domainHref && data.displayDomain
+    ? `<a class="domain-title-link" href="${escapeHtml(data.domainHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(data.displayDomain)}</a>`
+    : escapeHtml(data.title);
   return `<header class="detail-header domain-header">
-    <h2>${data.title}</h2>
+    <h2>${heading}</h2>
     <div class="meta">${safe(data.runTime)} · ${safe(data.runId)}</div>
     <div class="top-issues">${data.topIssues.map((item)=>`<span>${item}</span>`).join('')}</div>
   </header>`;
@@ -263,8 +279,11 @@ function renderDomainOverview(selected){
       ? 'Partial'
       : 'Untested';
 
+  const normalizedDomain = normalizeDomainLink(s.startUrl ?? s.domain);
   const header = renderDomainHeader({
-    title: 'Domain overview',
+    title: normalizedDomain.displayDomain ?? 'Domain overview',
+    displayDomain: normalizedDomain.displayDomain,
+    domainHref: normalizedDomain.domainHref,
     runTime: selected?.runTime,
     runId: selected?.runId,
     topIssues: [
