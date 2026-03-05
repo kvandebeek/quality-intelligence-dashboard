@@ -1,4 +1,5 @@
 import { applyTheme, getInitialTheme, toggleTheme } from './theme.js';
+import { buildStabilityRows } from './stability.js';
 
 const app = document.getElementById('app');
 
@@ -18,6 +19,9 @@ const state = {
 };
 
 const MISSING = 'Not available';
+const STABILITY_SLOW_ABSOLUTE_MS = 1000;
+const STABILITY_SLOW_RELATIVE_MULTIPLIER = 1.2;
+
 const safe = (v, fallback=MISSING) => {
   if (v === 'not measured') return v;
   if (v === null || v === undefined || v === '' || v === 'null') return fallback;
@@ -653,7 +657,7 @@ const renderSeoScore = (r={})=>{
   return `<div class="kpis">${metric('Overall SEO score', overall)}${textMetric('Band', seoBand(overall))}</div><div class="kpis">${categoryCards}</div><details open><summary>Checks</summary><table><tr><th>Check</th><th>Status</th><th>Points</th><th>Recommendation</th></tr>${checks.map((c)=>`<tr><td>${safe(c.label)}</td><td>${checkBadge(c.status)}</td><td>${safe(c.points)}/${safe(c.maxPoints)}</td><td>${safe(c.recommendation)}</td></tr>`).join('')}</table></details>`;
 };
 const renderSeo = (r={})=>`<div class="kpis">${textMetric('Title',r.title)}${textMetric('Description',r.description)}${textMetric('Canonical',r.canonical)}${textMetric('Robots',r.robots ?? r.robotsMeta)}${metric('Structured data count',r.structuredDataCount)}</div><blockquote><strong>${safe(r.title,'(title missing)')}</strong><p>${safe(r.description,'(description missing)')}</p></blockquote>`;
-const renderStability = (r={})=>{const samples=(r.loadEventSamples||[]).map((v,i)=>({index:i+1,sample:Math.round(v),timestamp:r.timestamps?.[i]??'n/a'})); const avg=samples.length?samples.reduce((sum,row)=>sum+row.sample,0)/samples.length:0; const sorted=sortRows(samples,state.sorts.stability); return `<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs,'ms')}${metric('CV',r.coefficientOfVariation)}${textMetric('Unstable',r.unstable?'Yes':'No')}</div><table><tr>${sortableHeader('#','stability','index')}${sortableHeader('Load event','stability','sample')}${sortableHeader('Timestamp','stability','timestamp')}</tr>${sorted.slice(0,300).map(x=>`<tr class="${x.sample<=avg?'fast':'slow'}"><td>${x.index}</td><td>${fmt(x.sample,'ms')}</td><td>${x.timestamp}</td></tr>`).join('')}</table>`;};
+const renderStability = (r={})=>{const samples=buildStabilityRows(r.loadEventSamples||[],r.timestamps,STABILITY_SLOW_ABSOLUTE_MS,STABILITY_SLOW_RELATIVE_MULTIPLIER); const sorted=sortRows(samples,state.sorts.stability); return `<div class="kpis">${metric('Iterations',r.iterations)}${metric('Std Dev',r.stdDev ?? r.stdDevLoadMs,'ms')}${metric('CV',r.coefficientOfVariation)}${textMetric('Unstable',r.unstable?'Yes':'No')}</div><table><tr>${sortableHeader('#','stability','index')}${sortableHeader('Load event','stability','sample')}${sortableHeader('Timestamp','stability','timestamp')}</tr>${sorted.slice(0,300).map(x=>`<tr class="${x.rowClass}"><td>${x.index}</td><td>${fmt(x.sample,'ms')}</td><td>${x.timestamp}</td></tr>`).join('')}</table>`;};
 const resolveOverallScore = (r={}) => {
   const explicit = toNum(r.overallScore ?? r.score);
   if (explicit !== null) return explicit;

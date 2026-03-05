@@ -39,7 +39,7 @@ export interface SectionInfoContent {
 export type SectionCategory =
   | 'accessibility'
   | 'performance'
-  | 'quality-reliability'
+  | 'stability'
   | 'security-risk'
   | 'seo'
   | 'visual'
@@ -189,7 +189,7 @@ export const GLOSSARY_TERMS = {
 export const SECTION_CATEGORIES = [
   { id: 'accessibility', label: 'Accessibility' },
   { id: 'performance', label: 'Performance' },
-  { id: 'quality-reliability', label: 'Quality & Reliability' },
+  { id: 'stability', label: 'Stability' },
   { id: 'security-risk', label: 'Security & Risk' },
   { id: 'seo', label: 'SEO' },
   { id: 'visual', label: 'Visual' },
@@ -207,7 +207,7 @@ export const SECTION_DEFINITIONS = {
   'target-summary.json': {
     route: 'target-summary.json',
     label: 'target-summary',
-    category: 'quality-reliability',
+    category: 'stability',
     info: {
       whatItIs: 'A high-level overview of the results for this specific URL.',
       whyItMatters: 'It gives a quick snapshot of overall quality without needing to open every detailed section.',
@@ -240,7 +240,7 @@ export const SECTION_DEFINITIONS = {
   'broken-links.json': {
     route: 'broken-links.json',
     label: 'broken-links',
-    category: 'quality-reliability',
+    category: 'stability',
     info: {
       whatItIs: 'A scan of links that do not work or return errors.',
       whyItMatters: 'Broken links create dead ends for users and can hurt trust and discoverability.',
@@ -339,7 +339,7 @@ export const SECTION_DEFINITIONS = {
   'stability.json': {
     route: 'stability.json',
     label: 'stability',
-    category: 'quality-reliability',
+    category: 'stability',
     info: {
       whatItIs: 'A repeat-run stability view showing variation and potential instability.',
       whyItMatters: 'Unstable behavior can cause flaky user experience and noisy performance signals.',
