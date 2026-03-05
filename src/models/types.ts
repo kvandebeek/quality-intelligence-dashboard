@@ -158,7 +158,6 @@ export interface AssuranceModulesConfig {
   enabled: {
     clientErrors: boolean;
     memoryLeaks: boolean;
-    cacheAnalysis: boolean;
     thirdPartyResilience: boolean;
     privacyAudit: boolean;
     runtimeSecurity: boolean;
@@ -173,9 +172,6 @@ export interface AssuranceModulesConfig {
   memory: {
     interactionLoops: number;
     growthThresholdMB: number;
-  };
-  cache: {
-    minStaticTtlSeconds: number;
   };
   thirdPartyResilience: {
     mode: 'trackers-only' | 'all-third-party';

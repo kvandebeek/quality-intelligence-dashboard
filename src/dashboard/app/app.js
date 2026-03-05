@@ -603,7 +603,6 @@ async function loadTab(id, tab){
     case 'ux-forms.json':
     case 'ux-visual-regression.json': body = renderUxGeneric(tab, unwrapped.payload, selected); break;
     case 'memory-leaks.json': body = renderMemoryLeaks(unwrapped.payload); break;
-    case 'cache-analysis.json': body = renderCacheAnalysis(unwrapped.payload); break;
     case 'third-party-resilience.json': body = renderThirdPartyResilience(unwrapped.payload); break;
     case 'privacy-audit.json': body = renderPrivacyAudit(unwrapped.payload); break;
     case 'runtime-security.json': body = renderRuntimeSecurity(unwrapped.payload); break;
@@ -703,7 +702,6 @@ const renderUxGeneric = (tab, r={})=>{
   return `<div class="kpis">${textMetric('Status',r.meta?.status ?? r.status)}${metric('Score',r.score)}${metric('Issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>${screens}<h4>Signals</h4><pre>${escapeHtml(JSON.stringify(r.signals||{},null,2))}</pre><h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Description</th><th>Targets</th></tr>${(r.topIssues||[]).map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.description)}</td><td>${renderIssueTargets(x.targets)}</td></tr>`).join('')}</table>`;
 };
 const renderMemoryLeaks = (r={})=>`<div class="kpis">${textMetric('Mode',r.mode)}${metric('Initial heap',r.initialHeapMB,'MB')}${metric('Final heap',r.finalHeapMB,'MB')}${metric('Growth',r.growthMB,'MB')}${textMetric('Leak risk',r.leakRisk)}</div><ul>${(r.evidence||[]).map((line)=>`<li>${safe(line)}</li>`).join('')}</ul>`;
-const renderCacheAnalysis = (r={})=>`<div class="kpis">${metric('Cache score',r.cacheScore)}${metric('Improvement',r.improvementPercent,'%')}${metric('Cold LCP',r.cold?.lcpMs,'ms')}${metric('Warm LCP',r.warm?.lcpMs,'ms')}</div><table><tr><th>Asset</th><th>Cache-Control</th></tr>${(r.poorlyCachedAssets||[]).slice(0,40).map((item)=>`<tr><td>${safe(item.url)}</td><td>${safe(item.cacheControl)}</td></tr>`).join('')}</table>`;
 const renderThirdPartyResilience = (r={})=>`<div class="kpis">${textMetric('Functional breakage',r.functionalBreakage)}${textMetric('Layout impact',r.layoutImpact)}${metric('Resilience score',r.resilienceScore)}</div><p>Blocked domains: ${(r.blockedDomains||[]).join(', ') || 'None'}</p>`;
 const renderPrivacyAudit = (r={})=>`<div class="kpis">${textMetric('Consent banner detected',r.consentBannerDetected)}${metric('Cookies before consent',(r.cookiesBeforeConsent||[]).length)}${metric('Insecure cookies',(r.insecureCookies||[]).length)}${metric('Trackers before consent',(r.thirdPartyTrackers||[]).length)}${textMetric('GDPR risk',r.gdprRisk)}</div>`;
 const renderRuntimeSecurity = (r={})=>`<div class="kpis">${metric('Security score',r.securityScore)}${textMetric('CSP strength',r.cspStrength)}${metric('Missing headers',(r.missingHeaders||[]).length)}${metric('Mixed content',(r.mixedContent||[]).length)}${metric('Eval signals',r.evalSignals)}</div>`;

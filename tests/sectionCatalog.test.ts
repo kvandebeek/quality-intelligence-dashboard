@@ -13,7 +13,6 @@ describe('section catalog', () => {
       { label: 'Visual', sections: ['visual-current.png', 'visual-regression.json'] },
       { label: 'UX', sections: ['ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] },
       { label: 'Reliability & Client Health', sections: ['client-errors.json', 'memory-leaks.json'] },
-      { label: 'Performance Efficiency', sections: ['cache-analysis.json'] },
       { label: 'Resilience', sections: ['third-party-resilience.json'] },
       { label: 'Governance, Privacy & Security', sections: ['privacy-audit.json', 'runtime-security.json', 'dependency-risk.json'] },
       { label: 'Regression Intelligence', sections: ['regression-summary.json'] }

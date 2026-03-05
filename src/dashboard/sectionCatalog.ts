@@ -45,7 +45,6 @@ export type SectionCategory =
   | 'visual'
   | 'ux'
   | 'reliability-client-health'
-  | 'performance-efficiency'
   | 'resilience'
   | 'governance-privacy-security'
   | 'regression-intelligence';
@@ -195,7 +194,6 @@ export const SECTION_CATEGORIES = [
   { id: 'visual', label: 'Visual' },
   { id: 'ux', label: 'UX' },
   { id: 'reliability-client-health', label: 'Reliability & Client Health' },
-  { id: 'performance-efficiency', label: 'Performance Efficiency' },
   { id: 'resilience', label: 'Resilience' },
   { id: 'governance-privacy-security', label: 'Governance, Privacy & Security' },
   { id: 'regression-intelligence', label: 'Regression Intelligence' }
@@ -402,10 +400,6 @@ export const SECTION_DEFINITIONS = {
   'memory-leaks.json': {
     route: 'memory-leaks.json', label: 'memory-leaks', category: 'reliability-client-health',
     info: { whatItIs: 'Checks for suspicious memory growth after repeated interactions.', whyItMatters: 'Leaks can cause slow pages, crashes, and degraded session quality.', howToRead: ['Compare initial vs final heap.', 'Review leak risk label.', 'High growth means investigate retained objects/components.', 'Use evidence notes to reproduce with dev tools.'], keyTerms: baseTerms }
-  },
-  'cache-analysis.json': {
-    route: 'cache-analysis.json', label: 'cache-efficiency', category: 'performance-efficiency',
-    info: { whatItIs: 'Compares cold vs warm loading to validate caching quality.', whyItMatters: 'Good caching improves repeat visit speed and reduces infrastructure cost.', howToRead: ['Check improvement percentage first.', 'Review cache score and offender assets.', 'Missing cache headers are common root cause.', 'Increase TTLs for static assets where safe.'], keyTerms: baseTerms }
   },
   'third-party-resilience.json': {
     route: 'third-party-resilience.json', label: 'third-party-resilience', category: 'resilience',
