@@ -13,6 +13,12 @@ import { buildDomainSummary, type DomainSummary } from './domainSummary.js';
 
 const execFileAsync = promisify(execFile);
 
+const DASHBOARD_USAGE = `Usage: npm run dashboard -- [options]\n\nOptions:\n  --run <path>      Path to an artifact run directory (defaults to ARTIFACT_RUN_DIR or cwd)\n  --port <number>   Port to bind server to (default: 4173)\n  --static          Serve static assets from dist/dashboard\n  -h, --help        Show this help message\n`;
+
+function printDashboardUsage(): void {
+  process.stdout.write(DASHBOARD_USAGE);
+}
+
 interface ServerOptions { runPath: string; port: number; staticDir?: string }
 
 export interface StartedDashboardServer {
@@ -279,8 +285,12 @@ export async function startDashboardServer(options: ServerOptions): Promise<Star
   return { url, server, close };
 }
 
-export function parseServerOptions(argv: readonly string[]): ServerOptions {
-  const parsed = parseArgs({ args: argv, options: { run: { type: 'string' }, port: { type: 'string', default: '4173' }, static: { type: 'boolean', default: false } } });
+export function parseServerOptions(argv: readonly string[]): ServerOptions | null {
+  const parsed = parseArgs({ args: argv, options: { run: { type: 'string' }, port: { type: 'string', default: '4173' }, static: { type: 'boolean', default: false }, help: { type: 'boolean', short: 'h', default: false } } });
+  if (parsed.values.help) {
+    printDashboardUsage();
+    return null;
+  }
   const runPath = resolveRunPath({ cliRunPath: parsed.values.run, envRunPath: process.env.ARTIFACT_RUN_DIR });
   const port = Number(parsed.values.port);
   if (!Number.isFinite(port) || port <= 0) throw new Error(`Invalid port: ${parsed.values.port}`);
@@ -293,6 +303,11 @@ export function isMainModule(metaUrl: string, argvPath: string | undefined): boo
 }
 
 async function main(): Promise<void> {
+  const options = parseServerOptions(process.argv.slice(2));
+  if (!options) {
+    return;
+  }
+
   await logger.initialize();
   logger.info('Application start', { datasetPath: process.env.ARTIFACT_RUN_DIR, pid: process.pid });
 
@@ -303,7 +318,6 @@ async function main(): Promise<void> {
     logger.fatal('Unhandled promise rejection', { view: 'server' }, reason);
   });
 
-  const options = parseServerOptions(process.argv.slice(2));
   const startedServer = await startDashboardServer(options);
   logger.info('Application ready', { datasetPath: options.runPath, port: options.port });
   process.stdout.write(`Dashboard listening on ${startedServer.url} for run ${options.runPath}\n`);

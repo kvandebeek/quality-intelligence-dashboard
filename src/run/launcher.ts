@@ -8,6 +8,13 @@ import { createRequire } from 'node:module';
 interface LauncherOptions {
   config?: string;
   listOnly: boolean;
+  help: boolean;
+}
+
+const RUNS_USAGE = `Usage: npm run runs -- [options]\n\nOptions:\n  --config <path>   Launch src/cli.ts run with the selected config path\n  --list            List discoverable configs and exit\n  -h, --help        Show this help message\n`;
+
+function printUsage(): void {
+  process.stdout.write(RUNS_USAGE);
 }
 
 interface DiscoveredConfig {
@@ -39,13 +46,18 @@ async function findRepoRoot(startDir: string): Promise<string> {
 }
 
 function parseArgs(argv: readonly string[]): LauncherOptions {
-  const options: LauncherOptions = { listOnly: false };
+  const options: LauncherOptions = { listOnly: false, help: false };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
     if (arg === '--list') {
       options.listOnly = true;
+      continue;
+    }
+
+    if (arg === '-h' || arg === '--help') {
+      options.help = true;
       continue;
     }
 
@@ -59,7 +71,7 @@ function parseArgs(argv: readonly string[]): LauncherOptions {
       continue;
     }
 
-    throw new Error(`Unknown argument: ${arg}`);
+    throw new Error(`Unknown argument: ${arg}\n\n${RUNS_USAGE}`);
   }
 
   return options;
@@ -174,6 +186,10 @@ function normalizeConfigPath(inputPath: string, repoRoot: string): { absolutePat
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
+  if (options.help) {
+    printUsage();
+    return;
+  }
   const repoRoot = await findRepoRoot(process.cwd());
   const configDir = path.join(repoRoot, 'config');
 
