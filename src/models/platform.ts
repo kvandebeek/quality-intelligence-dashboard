@@ -25,7 +25,7 @@ export interface UnifiedUrlModel {
   visualRegression: { baselineFound: boolean; diffRatio: number | null; passed: boolean };
   brokenLinks: { checked: number; broken: number; redirectChains: number; loops: number };
   thirdPartyRisk: Array<{ domain: string; requests: number; transferSize: number; avgDurationMs: number; trackerHeuristic: boolean }>;
-  accessibilityBeyondAxe: { keyboardReachable: boolean; possibleFocusTrap: boolean; possibleFocusTrapDetails?: { candidates: Array<Record<string, unknown>> }; contrastSimulationScore: number | null; contrastSimulationScoreReason?: string | null; contrastSimulationDetails?: { method: Record<string, unknown>; findings: Array<Record<string, unknown>> } };
+  accessibilityBeyondAxe: { keyboardReachable: boolean; possibleFocusTrap: boolean; possibleFocusTrapDetails?: { candidates: Array<Record<string, unknown>> }; contrastSimulationScore: number | null; contrastSimulationScoreReason?: string | null; contrastSimulationResult?: { status: 'ok' | 'not_available'; score: number | null; reasonCode?: 'missing_screenshots' | 'screenshot_capture_failed' | 'page_not_loaded' | 'no_text_nodes_detected' | 'insufficient_color_pairs' | 'algorithm_error' | 'timeout'; reasonMessage?: string; evidence: Record<string, unknown>; samples?: Array<Record<string, unknown>>; screenshotRefs?: string[] }; contrastSimulationDetails?: { method: Record<string, unknown>; findings: Array<Record<string, unknown>> } };
   stability: { iterations: number; stdDevLoadMs: number; coefficientOfVariation: number; unstable: boolean };
   memory: { samples: number[]; growth: number | null };
   derived: {

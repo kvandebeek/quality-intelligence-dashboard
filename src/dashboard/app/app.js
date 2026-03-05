@@ -615,11 +615,14 @@ async function loadTab(id, tab){
 }
 
 const renderA11yHeuristics = (r={})=>{
-  const score = toNum(r.contrastSimulationScore);
-  const reason = safe(r.contrastSimulationScoreReason, '');
+  const simulation = r.contrastSimulationResult || {};
+  const score = toNum(simulation.score ?? r.contrastSimulationScore);
+  const reason = safe(simulation.reasonMessage || r.contrastSimulationScoreReason, '');
+  const reasonCode = safe(simulation.reasonCode, '');
   const scoreValue = score === null ? MISSING : score;
   const candidates = r.possibleFocusTrapDetails?.candidates || [];
   const findings = r.contrastSimulationDetails?.findings || [];
+  const worstSamples = Array.isArray(simulation.samples) ? simulation.samples.slice(0, 5) : [];
   state.a11yContrastFindings = findings;
   const method = r.contrastSimulationDetails?.method;
   const focusStatus = r.possibleFocusTrap ? 'Possible trap detected' : 'No trap detected';
@@ -630,7 +633,9 @@ const renderA11yHeuristics = (r={})=>{
   }).join('')}</div>` : `<p>${escapeHtml(focusStatus)}</p>`;
   const methodPanel = method ? `<details><summary>How this score is calculated</summary><pre>${escapeHtml(JSON.stringify(method,null,2))}</pre></details>` : '';
   const thumbs = findings.length ? `<div class="a11y-thumb-grid">${findings.map((sample, index)=>`<button class="a11y-thumb-button" data-contrast-sample-index="${index}"><img class="a11y-thumb" src="/artifacts/${encodeURIComponent(state.selectedId)}/${encodeURIComponent(sample.thumbnailId ? `a11y-beyond-axe/${sample.thumbnailId}` : sample.screenshotPath)}" alt="Contrast sample ${index + 1}"><span>scrollY ${safe(sample.scrollY,0)}</span></button>`).join('')}</div>` : '<p>No contrast samples available.</p>';
-  return `<div class="kpis">${textMetric('keyboardReachable',r.keyboardReachable)}${textMetric('possibleFocusTrap',r.possibleFocusTrap)}${textMetric('contrastSimulationScore',scoreValue)}</div>${score===null&&reason?`<p>contrastSimulationScore reason: ${escapeHtml(reason)}</p>`:''}<h4>possibleFocusTrap</h4>${focusCards}<h4>contrastSimulationScore</h4>${methodPanel}${thumbs}<dialog class="a11y-modal"><form method="dialog"><button class="link">Close</button></form><div class="a11y-modal-body"></div></dialog>`;
+  const worstList = worstSamples.length ? `<details open><summary>Most influential low-contrast samples</summary><table><tr><th>Selector</th><th>Ratio</th><th>Score</th><th>Foreground</th><th>Background</th></tr>${worstSamples.map((sample)=>`<tr><td>${safe(sample.selector)}</td><td>${safe(sample.contrastRatio)}</td><td>${safe(sample.regionScore)}</td><td>${safe(sample.foregroundColor)}</td><td>${safe(sample.backgroundColor)}</td></tr>`).join('')}</table></details>` : '';
+  const statusLine = simulation.status === 'not_available' && reason ? `<p>contrastSimulationScore unavailable (${escapeHtml(reasonCode || 'unknown')}): ${escapeHtml(reason)}</p>` : '';
+  return `<div class="kpis">${textMetric('keyboardReachable',r.keyboardReachable)}${textMetric('possibleFocusTrap',r.possibleFocusTrap)}${textMetric('contrastSimulationScore',scoreValue)}</div>${statusLine}<h4>possibleFocusTrap</h4>${focusCards}<h4>contrastSimulationScore</h4>${methodPanel}${worstList}${thumbs}<dialog class="a11y-modal"><form method="dialog"><button class="link">Close</button></form><div class="a11y-modal-body"></div></dialog>`;
 };
 
 function bindA11yHeuristics(scope){
