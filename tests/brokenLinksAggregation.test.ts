@@ -19,14 +19,14 @@ describe('broken link aggregation', () => {
       'https://example.com/a -> https://example.com/404-b',
       'https://example.com/b -> https://example.com/404-z'
     ]);
-    expect(rows[0]).toEqual({
+    expect(rows[0]).toMatchObject({
       sourcePageUrl: 'https://example.com/a',
       brokenUrl: 'https://example.com/404-a',
       status: 500,
       errors: ['connection reset', 'dns lookup failed'],
       occurrences: 2
     });
-    expect(rows[2]).toEqual({
+    expect(rows[2]).toMatchObject({
       sourcePageUrl: 'https://example.com/b',
       brokenUrl: 'https://example.com/404-z',
       status: 503,

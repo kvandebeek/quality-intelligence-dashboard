@@ -142,6 +142,95 @@ export class ArtifactStore {
     }
   }
 
+  private async readText(filePath: string): Promise<{ ok: boolean; data?: string; error?: string }> {
+    const startedAt = Date.now();
+    this.logger?.debug('Dataset text read started', { filePath });
+    try {
+      const raw = await fs.readFile(filePath, 'utf8');
+      this.logger?.debug('Dataset text loaded', { filePath, bytes: Buffer.byteLength(raw), durationMs: Date.now() - startedAt });
+      return { ok: true, data: raw };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.parseErrors.push({ file: path.relative(this.runPath, filePath), message });
+      this.logger?.error('Dataset text read failed', { filePath, durationMs: Date.now() - startedAt }, error);
+      return { ok: false, error: message };
+    }
+  }
+
+  private parseCsvRow(line: string): string[] {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const ch = line[index];
+      if (ch === '"') {
+        if (inQuotes && line[index + 1] === '"') {
+          current += '"';
+          index += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (ch === ',' && !inQuotes) {
+        values.push(current.trim());
+        current = '';
+        continue;
+      }
+      current += ch;
+    }
+    values.push(current.trim());
+    return values;
+  }
+
+  private parseBrokenLinksCsv(csv: string): { details: Array<Record<string, unknown>>; summary: Record<string, unknown> } {
+    const lines = csv.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (lines.length === 0) return { details: [], summary: {} };
+    const header = this.parseCsvRow(lines[0]).map((value) => value.toLowerCase());
+    const details = lines.slice(1).map((line) => {
+      const cells = this.parseCsvRow(line);
+      const row: Record<string, unknown> = {};
+      for (let index = 0; index < header.length; index += 1) {
+        const key = header[index];
+        if (!key) continue;
+        row[key] = cells[index] ?? '';
+      }
+      return {
+        sourcePageUrl: row.sourcepageurl ?? row.source_url ?? row.source ?? row.pageurl ?? row.page,
+        brokenUrl: row.brokenurl ?? row.url ?? row.linkurl ?? row.href,
+        linkText: row.linktext ?? row.text,
+        selector: row.selector ?? row.cssselector,
+        statusCode: row.statuscode ?? row.status ?? row.code,
+        failureReason: row.failurereason ?? row.reason ?? row.error
+      };
+    });
+    return { details, summary: { broken: details.length } };
+  }
+
+  private async loadBrokenLinksFallback(urlId: string): Promise<{ state: SectionIndexStatus['state']; raw: unknown; summary: Record<string, unknown>; error?: string } | null> {
+    const candidates = ['broken-links.csv', 'broken_links.csv', 'brokenLinks.csv', 'brokenLinks.json'];
+    for (const candidate of candidates) {
+      const filePath = path.join(this.runPath, urlId, candidate);
+      try {
+        await fs.access(filePath);
+      } catch {
+        continue;
+      }
+
+      if (candidate.endsWith('.json')) {
+        const parsed = await this.readJson(filePath);
+        if (parsed.ok) return normalizeSection('broken-links.json', parsed.data ?? {});
+        return { state: 'error', raw: null, summary: {}, error: parsed.error ?? 'Malformed JSON' };
+      }
+
+      const text = await this.readText(filePath);
+      if (!text.ok) return { state: 'error', raw: null, summary: {}, error: text.error ?? 'Unreadable CSV' };
+      const payload = this.parseBrokenLinksCsv(text.data ?? '');
+      return normalizeSection('broken-links.json', payload);
+    }
+    return null;
+  }
+
   async loadSection(urlId: string, section: SectionFile): Promise<{ state: SectionIndexStatus['state']; raw: unknown; summary: Record<string, unknown>; error?: string }> {
     const filePath = path.join(this.runPath, urlId, section);
     if (section === 'visual-current.png') {
@@ -156,6 +245,10 @@ export class ArtifactStore {
     const cached = this.cache.get(filePath);
     const data = cached ?? (await this.readJson(filePath)).data;
     if (data === undefined) {
+      if (section === 'broken-links.json') {
+        const fallback = await this.loadBrokenLinksFallback(urlId);
+        if (fallback) return fallback;
+      }
       try {
         await fs.access(filePath);
         return { state: 'error', raw: null, summary: {}, error: this.parseErrors.at(-1)?.message ?? 'Malformed JSON' };

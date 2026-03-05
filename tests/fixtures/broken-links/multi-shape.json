@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "pageUrl": "https://example.com/source-a",
+      "url": "https://example.com/missing-a",
+      "status": 404,
+      "reason": "Not Found",
+      "text": "Read more"
+    },
+    {
+      "sourceUrl": "https://example.com/source-b",
+      "href": "https://example.com/missing-b",
+      "code": 0,
+      "error": "DNS failure",
+      "selector": "a.hero-link"
+    }
+  ]
+}
