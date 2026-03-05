@@ -34,10 +34,13 @@ describe('dashboard parsing', () => {
     const withTargets = run.urls.find((entry) => entry.id === 'page-0001-example-com-aaaa1111');
     const withoutTargets = run.urls.find((entry) => entry.id === 'page-0002-example-com-about-bbbb2222');
 
-    const withTargetsIssue = ((withTargets?.artifacts['ux-click-friction.json'] as { topIssues?: Array<{ targets?: string[] }> })?.topIssues ?? [])[0];
+    const withTargetsIssue = ((withTargets?.artifacts['ux-click-friction.json'] as { topIssues?: Array<{ targets?: string[]; visualization?: { annotatedScreenshotPath?: string; metaPath?: string } }> })?.topIssues ?? [])[0];
     const withoutTargetsIssue = ((withoutTargets?.artifacts['ux-click-friction.json'] as { topIssues?: Array<{ targets?: string[] }> })?.topIssues ?? [])[0];
 
     expect(withTargetsIssue?.targets).toEqual(['button.buy', 'div.product > a.add']);
+
+    expect(withTargetsIssue?.visualization?.annotatedScreenshotPath).toBe('ux/visualization/ux-click-friction/dead-click/annotated.png');
+    expect(withTargetsIssue?.visualization?.metaPath).toBe('ux/visualization/ux-click-friction/dead-click/meta.json');
     expect(withoutTargetsIssue?.targets).toBeUndefined();
   });
 

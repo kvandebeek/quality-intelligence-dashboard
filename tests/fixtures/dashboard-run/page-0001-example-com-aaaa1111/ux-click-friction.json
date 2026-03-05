@@ -1,12 +1,21 @@
 {
-  "meta": { "status": "warn" },
+  "meta": {
+    "status": "warn"
+  },
   "score": 70,
   "topIssues": [
     {
       "id": "dead-click",
       "severity": "medium",
       "description": "2 click targets had no reaction.",
-      "targets": ["button.buy", "div.product > a.add"]
+      "targets": [
+        "button.buy",
+        "div.product > a.add"
+      ],
+      "visualization": {
+        "annotatedScreenshotPath": "ux/visualization/ux-click-friction/dead-click/annotated.png",
+        "metaPath": "ux/visualization/ux-click-friction/dead-click/meta.json"
+      }
     }
   ]
 }
