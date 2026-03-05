@@ -1,4 +1,5 @@
 const MISSING = 'unknown';
+const NON_FAILURE_MARKERS = new Set(['none', 'ok', 'success', 'pass']);
 
 const toNum = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 const escapeHtml = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
@@ -42,7 +43,25 @@ function readErrors(record){
       if (value) found.push(value);
     }
   }
-  return [...new Set(found)].sort((a, b) => a.localeCompare(b));
+  return [...new Set(found.map((value) => value.trim()).filter((value) => value && !NON_FAILURE_MARKERS.has(value.toLowerCase())))].sort((a, b) => a.localeCompare(b));
+}
+
+function classifyFailureReason(status, errors){
+  if (errors.length > 0) return errors;
+  if (status === null) return [];
+  if (status === 401) return ['unauthorized'];
+  if (status === 403) return ['forbidden'];
+  if (status === 404) return ['not_found'];
+  if (status === 410) return ['gone'];
+  if (status >= 500) return ['server_error'];
+  if (status >= 400) return ['http_error'];
+  return [];
+}
+
+function isBrokenLinkRow(row){
+  // Broken links view intentionally only renders links that failed requests (HTTP >= 400)
+  // or links that carry an explicit non-empty/non-"none" failure reason.
+  return (typeof row.status === 'number' && row.status >= 400) || row.errors.length > 0;
 }
 
 export function normalizeBrokenLinkRow(raw){
@@ -51,10 +70,20 @@ export function normalizeBrokenLinkRow(raw){
   const brokenUrl = asUrl(raw.brokenUrl ?? raw.url ?? raw.linkUrl ?? raw.href ?? raw.targetUrl ?? raw.destinationUrl);
   if (!brokenUrl) return null;
 
-  const status = toNum(raw.statusCode ?? raw.status ?? raw.httpStatus ?? raw.code);
+  const rawStatus = raw.statusCode ?? raw.status ?? raw.httpStatus ?? raw.code;
+  const status = toNum(rawStatus);
   const linkText = asText(raw.linkText ?? raw.anchorText ?? raw.text ?? raw.label);
   const selector = asText(raw.selector ?? raw.cssSelector ?? raw.xpath);
   const errors = readErrors(raw);
+  const statusLabel = typeof rawStatus === 'string' ? rawStatus.trim().toLowerCase() : null;
+
+  if (status === null && statusLabel && !NON_FAILURE_MARKERS.has(statusLabel)) {
+    if (statusLabel.includes('timeout')) errors.push('null_response');
+    else if (statusLabel.includes('dns')) errors.push('dns_error');
+    else if (statusLabel.includes('network')) errors.push('network_error');
+  }
+
+  const normalizedErrors = classifyFailureReason(status, [...new Set(errors)]);
 
   return {
     sourcePageUrl,
@@ -62,8 +91,8 @@ export function normalizeBrokenLinkRow(raw){
     status,
     linkText,
     selector,
-    errors,
-    reason: errors.length ? errors.join('; ') : null
+    errors: normalizedErrors,
+    reason: normalizedErrors.length ? normalizedErrors.join('; ') : null
   };
 }
 
@@ -111,12 +140,12 @@ function readDetailCandidates(report){
 
 export function normalizeBrokenLinksReport(report = {}) {
   const details = readDetailCandidates(report);
-  const rows = aggregateBrokenLinkDetails(details);
+  const rows = aggregateBrokenLinkDetails(details).filter(isBrokenLinkRow);
 
   const uniquePages = new Set(rows.map((row) => row.sourcePageUrl).filter(Boolean));
   const summary = report && typeof report.summary === 'object' && report.summary !== null ? report.summary : {};
   const checked = toNum(summary.checked ?? report.checkedCount ?? report.totalLinks ?? report.checked) ?? 0;
-  const broken = toNum(summary.broken ?? report.brokenCount ?? report.broken) ?? rows.length;
+  const broken = rows.length;
 
   return {
     checked,
