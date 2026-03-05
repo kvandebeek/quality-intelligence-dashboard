@@ -67,7 +67,6 @@ Example (`batch-test.json`):
 New categories added to dashboard (layout/style unchanged):
 - **UX**: generic site-agnostic UX checks (sanity, layout stability, interaction, dead-click friction, keyboard, overlays, readability, forms, visual snapshots).
 - **Reliability & Client Health**: client-side errors and memory leaks.
-- **Resilience**: third-party resilience simulation.
 - **Governance, Privacy & Security**: privacy/GDPR, runtime security, dependency risk.
 - **Regression Intelligence**: regression delta summary.
 
@@ -77,7 +76,6 @@ Use `assuranceModules` in config to enable/disable modules and tune thresholds:
 - `assuranceModules.enabled.*` toggles each module.
 - `assuranceModules.uxSuite` for generic UX suite bounds (`maxClickCandidates`, `maxTabSteps`, `observationWindowMs`).
 - `assuranceModules.memory` for loop count and growth threshold.
-- `assuranceModules.thirdPartyResilience` for block mode and blocklist.
 - `assuranceModules.privacy` for consent selector hints and tracker domains.
 - `assuranceModules.regression` for `watch`/`elevated` thresholds.
 
@@ -126,7 +124,6 @@ Per target URL folder:
 - `ux-visual-regression.json` (plus `ux-visual-above-the-fold.png` and `ux-visual-fullpage.png`)
 - `memory-leaks.json`
 - `cross-browser-performance.json` (desktop Chromium/Firefox/WebKit load-time comparison with 5 iterations each)
-- `third-party-resilience.json`
 - `privacy-audit.json`
 - `runtime-security.json`
 - `dependency-risk.json`
@@ -160,14 +157,13 @@ Notes:
 
 ## Score interpretation (quick)
 
-- Higher scores are better (`severityScore`, `uxScore`, `cacheScore`, `securityScore`, `dependencyRiskScore`, `resilienceScore`).
+- Higher scores are better (`severityScore`, `uxScore`, `cacheScore`, `securityScore`, `dependencyRiskScore`).
 - Risk labels are qualitative (`low/medium/high` and `ok/watch/elevated` for regression).
 
 ## Known limitations
 
 - Memory leak metrics depend on browser/runtime support (CDP or `performance.memory`).
 - Consent detection and tracker classification are heuristic and configurable.
-- Third-party failure simulation uses deterministic blocklists/modes and does not infer business-critical intent automatically.
 
 ## Traceability
 

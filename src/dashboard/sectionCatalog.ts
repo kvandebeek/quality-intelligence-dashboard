@@ -45,7 +45,6 @@ export type SectionCategory =
   | 'visual'
   | 'ux'
   | 'reliability-client-health'
-  | 'resilience'
   | 'governance-privacy-security'
   | 'regression-intelligence';
 
@@ -194,7 +193,6 @@ export const SECTION_CATEGORIES = [
   { id: 'visual', label: 'Visual' },
   { id: 'ux', label: 'UX' },
   { id: 'reliability-client-health', label: 'Reliability & Client Health' },
-  { id: 'resilience', label: 'Resilience' },
   { id: 'governance-privacy-security', label: 'Governance, Privacy & Security' },
   { id: 'regression-intelligence', label: 'Regression Intelligence' }
 ] as const satisfies readonly SectionCategoryDefinition[];
@@ -400,10 +398,6 @@ export const SECTION_DEFINITIONS = {
   'memory-leaks.json': {
     route: 'memory-leaks.json', label: 'memory-leaks', category: 'reliability-client-health',
     info: { whatItIs: 'Checks for suspicious memory growth after repeated interactions.', whyItMatters: 'Leaks can cause slow pages, crashes, and degraded session quality.', howToRead: ['Compare initial vs final heap.', 'Review leak risk label.', 'High growth means investigate retained objects/components.', 'Use evidence notes to reproduce with dev tools.'], keyTerms: baseTerms }
-  },
-  'third-party-resilience.json': {
-    route: 'third-party-resilience.json', label: 'third-party-resilience', category: 'resilience',
-    info: { whatItIs: 'Tests how the page behaves when selected third-party services are blocked.', whyItMatters: 'Resilient pages should keep core journeys working even if vendors fail.', howToRead: ['Check blocked domains list and mode.', 'Functional breakage should be zero for critical pages.', 'Layout impact highlights dependency on external scripts.', 'Defer or isolate non-critical third-party code.'], keyTerms: baseTerms }
   },
   'privacy-audit.json': {
     route: 'privacy-audit.json', label: 'privacy-gdpr-audit', category: 'governance-privacy-security',
