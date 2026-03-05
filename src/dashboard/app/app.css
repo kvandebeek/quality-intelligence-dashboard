@@ -125,6 +125,7 @@ pre{overflow:auto;max-height:300px;background:var(--preBg);padding:8px;border-ra
 
 .domain-grid{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:12px}
 .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:var(--shadow)}
+.summary-card-link{display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer}
 .summary-card h3{margin:0 0 10px;font-size:14px}
 .summary-card .primary{font-size:22px;font-weight:700;margin:8px 0}
 .summary-card .secondary,.summary-card .coverage{margin:6px 0 0;color:var(--textMuted);font-size:12px}
@@ -142,8 +143,9 @@ pre{overflow:auto;max-height:300px;background:var(--preBg);padding:8px;border-ra
 @media (max-width:700px){.domain-grid{grid-template-columns:1fr;}}
 
 .help-tip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;border:1px solid var(--border);font-size:10px;color:var(--textMuted);margin-left:6px;vertical-align:middle;cursor:help}
-.summary-card[data-nav-tab]{cursor:pointer}
-.summary-card[data-nav-tab]:hover{border-color:var(--accentHover)}
+.summary-card[data-nav-tab],.summary-card[data-nav-hash]{cursor:pointer}
+.summary-card[data-nav-tab]:hover,.summary-card[data-nav-hash]:hover{border-color:var(--accentHover)}
+.summary-card-link:focus-visible{outline:2px solid var(--accentHover);outline-offset:2px}
 .domain-header{margin-bottom:12px}
 .domain-title-link{color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .domain-title-link:hover,.domain-title-link:focus-visible{text-decoration-thickness:2px}
