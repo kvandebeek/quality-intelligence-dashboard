@@ -54,14 +54,36 @@ export const accessibilitySchema = z.object({
 
 
 
-export const brokenLinksItemSchema = z.object({
-  url: z.string(),
-  statusCode: z.number().nullable(),
-  chainLength: z.number().nonnegative(),
-  isBroken: z.boolean(),
-  isRedirectChain: z.boolean(),
-  hasLoop: z.boolean()
+const brokenLinkScreenshotSchema = z.object({
+  type: z.enum(['snippet', 'fullpage', 'none']),
+  path: z.string().nullable(),
+  thumbnailPath: z.string().nullable(),
+  elementSelector: z.string().optional(),
+  bbox: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }).optional(),
+  crop: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }).optional(),
+  error: z.string().optional()
 });
+
+export const brokenLinksItemSchema = z.union([
+  z.object({
+    url: z.string(),
+    statusCode: z.number().nullable(),
+    chainLength: z.number().nonnegative(),
+    isBroken: z.boolean(),
+    isRedirectChain: z.boolean(),
+    hasLoop: z.boolean()
+  }),
+  z.object({
+    brokenUrl: z.string(),
+    sourcePageUrl: z.string(),
+    linkText: z.string().optional(),
+    selector: z.string().nullable().optional(),
+    findingId: z.string().optional(),
+    statusCode: z.number().nullable(),
+    failureReason: z.string().optional(),
+    screenshot: brokenLinkScreenshotSchema.optional()
+  })
+]);
 
 export const brokenLinksSchema = z.object({
   summary: z.object({

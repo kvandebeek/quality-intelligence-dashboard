@@ -43,8 +43,19 @@ export const artifactSchemas = {
         brokenUrl: z.string(),
         sourcePageUrl: z.string(),
         linkText: z.string(),
+        selector: z.string().nullable().optional(),
+        findingId: z.string(),
         statusCode: z.number().nullable(),
-        failureReason: z.enum(['4xx', '5xx', 'timeout', 'dns', 'invalid_url', 'request_failed', 'blocked_by_cors'])
+        failureReason: z.enum(['4xx', '5xx', 'timeout', 'dns', 'invalid_url', 'request_failed', 'blocked_by_cors']),
+        screenshot: z.object({
+          type: z.enum(['snippet', 'fullpage', 'none']),
+          path: z.string().nullable(),
+          thumbnailPath: z.string().nullable(),
+          elementSelector: z.string().optional(),
+          bbox: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }).optional(),
+          crop: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }).optional(),
+          error: z.string().optional()
+        })
       })
     ])).optional()
   })),

@@ -21,6 +21,7 @@ import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
 import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
 import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
+import { buildBrokenLinkFindingId, captureBrokenLinkPreview, shouldSkipBrokenLinkPreview, type BrokenLinkScreenshot } from './brokenLinkPreview.js';
 
 const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 const FOCUS_TAB_SAMPLE_LIMIT = 14;
@@ -162,26 +163,42 @@ function sanitizeSlug(url: string): string {
   return `${slug || 'root'}-${hash}`;
 }
 
-type ScrapedPageLink = { href: string; text: string };
+type ScrapedPageLink = { href: string; text: string; domIndex: number; selector: string | null };
 
 type BrokenLinkItem = {
   brokenUrl: string;
   sourcePageUrl: string;
   linkText: string;
+  selector: string | null;
+  findingId: string;
   statusCode: number | null;
   failureReason: '4xx' | '5xx' | 'timeout' | 'dns' | 'invalid_url' | 'request_failed' | 'blocked_by_cors';
+  screenshot: BrokenLinkScreenshot;
 };
 
 async function scrapePageLinks(page: Page): Promise<ScrapedPageLink[]> {
-  const links = await page.locator('a[href]').evaluateAll((anchors) => anchors.map((anchor) => ({
-    href: anchor.getAttribute('href'),
-    text: anchor.textContent?.trim() ?? ''
-  })));
+  const links = await page.locator('a[href]').evaluateAll((anchors) => anchors.map((anchor, index) => {
+    const id = anchor.getAttribute('id');
+    const testId = anchor.getAttribute('data-testid');
+    const ariaLabel = anchor.getAttribute('aria-label');
+    const href = anchor.getAttribute('href');
+    const text = anchor.textContent?.trim() ?? '';
+    const selector = id
+      ? `a#${CSS.escape(id)}`
+      : testId
+        ? `a[data-testid="${CSS.escape(testId)}"]`
+        : ariaLabel
+          ? `a[aria-label="${CSS.escape(ariaLabel)}"]`
+          : typeof href === 'string'
+            ? `a[href="${CSS.escape(href)}"]`
+            : null;
+    return { href, text, domIndex: index, selector };
+  }));
   const hrefs = extractAnchorHrefs(links.map((link) => link.href));
   const hrefSet = new Set(hrefs);
   return links
-    .filter((link): link is { href: string; text: string } => typeof link.href === 'string' && hrefSet.has(link.href))
-    .map((link) => ({ href: link.href, text: link.text.replace(/\s+/g, ' ').trim() }));
+    .filter((link): link is ScrapedPageLink => typeof link.href === 'string' && hrefSet.has(link.href))
+    .map((link) => ({ href: link.href, text: link.text.replace(/\s+/g, ' ').trim(), domIndex: link.domIndex, selector: link.selector }));
 }
 
 function classifyBrokenLinkFailure(statusCode: number | null, error: unknown): BrokenLinkItem['failureReason'] {
@@ -475,6 +492,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const brokenLinksItems: BrokenLinkItem[] = [];
   const linkRequestContext = await browser.newContext();
   const sampledLinks = scrapedLinks.slice(0, 50);
+  let brokenPreviewCount = 0;
   for (const link of sampledLinks) {
     try {
       const resolved = new URL(link.href, target.url).toString();
@@ -485,12 +503,33 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
       brokenLinksDetails.push({ sourcePageUrl: target.url, brokenUrl: resolved, status: statusCode, chainLength: 1 });
 
       if (statusCode >= 400) {
+        const canPreview = !shouldSkipBrokenLinkPreview(brokenPreviewCount);
+        const preview = canPreview
+          ? await captureBrokenLinkPreview(page, targetFolder, {
+            sourcePageUrl: target.url,
+            brokenUrl: resolved,
+            linkText: link.text,
+            index: link.domIndex,
+            elementSelector: link.selector ?? undefined,
+            locator: page.locator('a[href]').nth(link.domIndex)
+          })
+          : {
+            type: 'none' as const,
+            path: null,
+            thumbnailPath: null,
+            elementSelector: link.selector ?? undefined,
+            error: 'Preview skipped due to per-page preview limit (50).'
+          };
+        brokenPreviewCount += 1;
         brokenLinksItems.push({
           brokenUrl: resolved,
           sourcePageUrl: target.url,
           linkText: link.text,
+          selector: link.selector,
+          findingId: buildBrokenLinkFindingId({ sourcePageUrl: target.url, brokenUrl: resolved, linkText: link.text, index: link.domIndex }),
           statusCode,
-          failureReason: classifyBrokenLinkFailure(statusCode, null)
+          failureReason: classifyBrokenLinkFailure(statusCode, null),
+          screenshot: preview
         });
       }
     } catch (error) {
@@ -502,12 +541,33 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
           return rawTarget;
         }
       })();
+      const canPreview = !shouldSkipBrokenLinkPreview(brokenPreviewCount);
+      const preview = canPreview
+        ? await captureBrokenLinkPreview(page, targetFolder, {
+          sourcePageUrl: target.url,
+          brokenUrl: maybeResolved,
+          linkText: link.text,
+          index: link.domIndex,
+          elementSelector: link.selector ?? undefined,
+          locator: page.locator('a[href]').nth(link.domIndex)
+        })
+        : {
+          type: 'none' as const,
+          path: null,
+          thumbnailPath: null,
+          elementSelector: link.selector ?? undefined,
+          error: 'Preview skipped due to per-page preview limit (50).'
+        };
+      brokenPreviewCount += 1;
       brokenLinksItems.push({
         brokenUrl: maybeResolved,
         sourcePageUrl: target.url,
         linkText: link.text,
+        selector: link.selector,
+        findingId: buildBrokenLinkFindingId({ sourcePageUrl: target.url, brokenUrl: maybeResolved, linkText: link.text, index: link.domIndex }),
         statusCode: null,
-        failureReason: classifyBrokenLinkFailure(null, error)
+        failureReason: classifyBrokenLinkFailure(null, error),
+        screenshot: preview
       });
     }
   }

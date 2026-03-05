@@ -25,6 +25,7 @@ describe('renderBroken', () => {
     expect(html).toContain('<th>Broken URL</th>');
     expect(html).toContain('<th>Status</th>');
     expect(html).toContain('<th>Failure reason</th>');
+    expect(html).toContain('<th>Preview</th>');
     expect(html).toContain('<a href="https://example.com/a" target="_blank" rel="noreferrer noopener">https://example.com/a</a>');
     expect(html).toContain('<a href="https://example.com/404-a" target="_blank" rel="noreferrer noopener">https://example.com/404-a</a>');
 
@@ -43,13 +44,14 @@ describe('renderBroken', () => {
     const normalized = normalizeBrokenLinksReport(fixture);
 
     expect(normalized.rows).toHaveLength(2);
-    expect(normalized.rows[0]).toMatchObject({
+    const rows = normalized.rows as Array<Record<string, unknown>>;
+    expect(rows[0]).toMatchObject({
       sourcePageUrl: 'https://example.com/source-a',
       brokenUrl: 'https://example.com/missing-a',
       status: 404,
       linkText: 'Read more'
     });
-    expect(normalized.rows[1]).toMatchObject({
+    expect(rows[1]).toMatchObject({
       sourcePageUrl: 'https://example.com/source-b',
       brokenUrl: 'https://example.com/missing-b',
       selector: 'a.hero-link',
@@ -66,11 +68,34 @@ describe('renderBroken', () => {
       ]
     });
 
-    expect(normalized.rows.map((row) => row.reason)).toEqual(['forbidden', 'not_found', 'server_error']);
+    const rows = normalized.rows as Array<Record<string, unknown>>;
+    expect(rows.map((row) => row.reason)).toEqual(['forbidden', 'not_found', 'server_error']);
   });
 
   it('shows explicit empty state when artifact is missing', () => {
     const html = renderBroken({}, { artifactMissing: true });
     expect(html).toContain('No broken links artifact found in this run');
+  });
+
+  it('renders preview thumbnail and modal for screenshot-enabled rows', () => {
+    const html = renderBroken({
+      items: [{
+        sourcePageUrl: 'https://example.com/a',
+        brokenUrl: 'https://example.com/missing',
+        linkText: 'Missing page',
+        selector: 'a[href="/missing"]',
+        statusCode: 404,
+        failureReason: '4xx',
+        screenshot: {
+          type: 'snippet',
+          path: 'broken-links/previews/abc.png',
+          thumbnailPath: 'broken-links/previews/abc_thumb.png'
+        }
+      }]
+    }, { runId: 'page-1' });
+
+    expect(html).toContain('data-preview-open');
+    expect(html).toContain('/artifacts/page-1/broken-links/previews/abc_thumb.png');
+    expect(html).toContain('data-broken-preview-modal');
   });
 });

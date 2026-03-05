@@ -39,8 +39,19 @@ export interface UnifiedUrlModel {
         brokenUrl: string;
         sourcePageUrl: string;
         linkText: string;
+        selector?: string | null;
+        findingId?: string;
         statusCode: number | null;
         failureReason: '4xx' | '5xx' | 'timeout' | 'dns' | 'invalid_url' | 'request_failed' | 'blocked_by_cors';
+        screenshot?: {
+          type: 'snippet' | 'fullpage' | 'none';
+          path: string | null;
+          thumbnailPath: string | null;
+          elementSelector?: string;
+          bbox?: { x: number; y: number; width: number; height: number };
+          crop?: { x: number; y: number; width: number; height: number };
+          error?: string;
+        };
       }
     >;
   };
