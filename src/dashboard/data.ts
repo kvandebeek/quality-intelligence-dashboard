@@ -38,7 +38,6 @@ export const SECTION_FILES = [
   'ux-forms.json',
   'ux-visual-regression.json',
   'client-errors.json',
-  'ux-friction.json',
   'memory-leaks.json',
   'cache-analysis.json',
   'third-party-resilience.json',
@@ -338,10 +337,6 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
   if (section === 'client-errors.json') {
     const score = toNum(obj.severityScore) ?? 100;
     return { state: score < 70 ? 'issues' : 'ok', raw, summary: { severityScore: score, totalErrors: toNum(obj.totalErrors) ?? 0 } };
-  }
-  if (section === 'ux-friction.json') {
-    const score = toNum(obj.uxScore) ?? 100;
-    return { state: score < 75 ? 'issues' : 'ok', raw, summary: { uxScore: score, rageClicks: toNum(obj.rageClicks) ?? 0, deadClicks: toNum(obj.deadClicks) ?? 0 } };
   }
   if (section === 'memory-leaks.json') {
     const risk = String(obj.leakRisk ?? 'unknown');

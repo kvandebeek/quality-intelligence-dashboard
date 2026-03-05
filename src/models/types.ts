@@ -157,7 +157,6 @@ export interface ElasticConfig {
 export interface AssuranceModulesConfig {
   enabled: {
     clientErrors: boolean;
-    uxFriction: boolean;
     memoryLeaks: boolean;
     cacheAnalysis: boolean;
     thirdPartyResilience: boolean;
@@ -170,11 +169,6 @@ export interface AssuranceModulesConfig {
   clientErrors: {
     topErrorsLimit: number;
     ignoreMessages: string[];
-  };
-  ux: {
-    rageClickWindowMs: number;
-    rageClickThreshold: number;
-    deadClickWindowMs: number;
   };
   memory: {
     interactionLoops: number;

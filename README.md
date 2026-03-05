@@ -66,7 +66,7 @@ Example (`batch-test.json`):
 
 New categories added to dashboard (layout/style unchanged):
 - **UX**: generic site-agnostic UX checks (sanity, layout stability, interaction, dead-click friction, keyboard, overlays, readability, forms, visual snapshots).
-- **Reliability & Client Health**: client-side errors, UX friction, memory leaks.
+- **Reliability & Client Health**: client-side errors and memory leaks.
 - **Performance Efficiency**: cache analysis.
 - **Resilience**: third-party resilience simulation.
 - **Governance, Privacy & Security**: privacy/GDPR, runtime security, dependency risk.
@@ -76,7 +76,6 @@ New categories added to dashboard (layout/style unchanged):
 
 Use `assuranceModules` in config to enable/disable modules and tune thresholds:
 - `assuranceModules.enabled.*` toggles each module.
-- `assuranceModules.ux` for legacy UX friction thresholds.
 - `assuranceModules.uxSuite` for generic UX suite bounds (`maxClickCandidates`, `maxTabSteps`, `observationWindowMs`).
 - `assuranceModules.memory` for loop count and growth threshold.
 - `assuranceModules.thirdPartyResilience` for block mode and blocklist.
@@ -116,7 +115,6 @@ Untested reasons shown in artifacts/dashboard:
 
 Per target URL folder:
 - `client-errors.json`
-- `ux-friction.json`
 - `ux-overview.json`
 - `ux-sanity.json`
 - `ux-layout-stability.json`
