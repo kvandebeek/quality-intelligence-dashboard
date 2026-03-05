@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { chromium, firefox, webkit, type Browser, type BrowserType, type Page, type BrowserContext } from 'playwright';
 import { CROSS_BROWSER_PERFORMANCE_FILE, type AppConfig, type CrawlPageMetadata, type RunMetadata, type RunSummary, type RunTarget, type TargetRunArtifacts } from '../models/types.js';
-import { collectCacheAnalysis, collectClientErrors, collectDependencyRisk, collectMemoryLeaks, collectPrivacyAudit, collectRuntimeSecurity, collectThirdPartyResilience, installErrorAndUxObservers } from '../collectors/extensionPackCollector.js';
+import { collectClientErrors, collectDependencyRisk, collectMemoryLeaks, collectPrivacyAudit, collectRuntimeSecurity, collectThirdPartyResilience, installErrorAndUxObservers } from '../collectors/extensionPackCollector.js';
 import { compactTimestamp, stableRunId } from '../utils/time.js';
 import { ensureDir, writeJson } from '../utils/file.js';
 import { ensureUniqueRunRoot } from '../utils/artifactPaths.js';
@@ -22,7 +22,7 @@ import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
 import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
 import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 
-const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
+const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
 
 function sanitizeSlug(url: string): string {
@@ -389,7 +389,6 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, CROSS_BROWSER_PERFORMANCE_FILE), 'crossBrowserPerformance', meta, crossBrowserPerformance);
   const clientErrors = config.assuranceModules.enabled.clientErrors ? await timing.step(testReference, 'Extension: Client errors', async () => collectClientErrors(page, config.assuranceModules)) : { totalErrors: 0, severityScore: 100, uncaughtExceptions: 0, unhandledRejections: 0, consoleErrors: 0, consoleWarnings: 0, failedRequests: [], topErrors: [] };
   const memoryLeaks = config.assuranceModules.enabled.memoryLeaks ? await timing.step(testReference, 'Extension: Memory leaks', async () => collectMemoryLeaks(page, config.assuranceModules)) : { available: false, mode: 'not_supported', initialHeapMB: null, finalHeapMB: null, growthMB: null, leakRisk: 'unknown', evidence: ['disabled'] };
-  const cacheAnalysis = config.assuranceModules.enabled.cacheAnalysis ? await timing.step(testReference, 'Extension: Cache analysis', async () => collectCacheAnalysis(browser, target.url, config.assuranceModules)) : { cold: { ttfbMs: null, fcpMs: null, lcpMs: null }, warm: { ttfbMs: null, fcpMs: null, lcpMs: null }, improvementPercent: 0, cacheScore: 0, poorlyCachedAssets: [] };
   const thirdPartyDomains = [...new Set(requests.map((request) => parseDomain(request.url)).filter((domain) => domain && domain !== parseDomain(target.url)))];
   const thirdPartyResilience = config.assuranceModules.enabled.thirdPartyResilience ? await timing.step(testReference, 'Extension: Third-party resilience', async () => collectThirdPartyResilience(browser, target.url, thirdPartyDomains, config.assuranceModules)) : { blockedDomains: [], functionalBreakage: false, layoutImpact: 'none', resilienceScore: 100 };
   const privacyAudit = config.assuranceModules.enabled.privacyAudit ? await timing.step(testReference, 'Extension: Privacy audit', async () => collectPrivacyAudit(page, config.assuranceModules)) : { consentBannerDetected: false, cookiesBeforeConsent: [], insecureCookies: [], thirdPartyTrackers: [], gdprRisk: 'low' };
@@ -398,7 +397,6 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   writeValidatedArtifact(path.join(targetFolder, 'client-errors.json'), 'clientErrors', meta, clientErrors);
   writeValidatedArtifact(path.join(targetFolder, 'memory-leaks.json'), 'memoryLeaks', meta, memoryLeaks);
-  writeValidatedArtifact(path.join(targetFolder, 'cache-analysis.json'), 'cacheAnalysis', meta, cacheAnalysis);
   writeValidatedArtifact(path.join(targetFolder, 'third-party-resilience.json'), 'thirdPartyResilience', meta, thirdPartyResilience);
   writeValidatedArtifact(path.join(targetFolder, 'privacy-audit.json'), 'privacyAudit', meta, privacyAudit);
   writeValidatedArtifact(path.join(targetFolder, 'runtime-security.json'), 'runtimeSecurity', meta, runtimeSecurity);
@@ -418,7 +416,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   await timing.step(testReference, 'Write target summary', async () => Promise.resolve(writeJson(path.join(targetFolder, 'target-summary.json'), artifact)));
 
     timing.endTest(testReference, 'passed');
-    return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs, extensionScores: { clientErrors: clientErrors.severityScore, memory: memoryLeaks.growthMB, cache: cacheAnalysis.cacheScore, resilience: thirdPartyResilience.resilienceScore, privacy: privacyAudit.gdprRisk, runtimeSecurity: runtimeSecurity.securityScore, dependency: dependencyRisk.dependencyRiskScore } };
+    return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs, extensionScores: { clientErrors: clientErrors.severityScore, memory: memoryLeaks.growthMB, resilience: thirdPartyResilience.resilienceScore, privacy: privacyAudit.gdprRisk, runtimeSecurity: runtimeSecurity.securityScore, dependency: dependencyRisk.dependencyRiskScore } };
   } catch (error) {
     timing.endTest(testReference, 'failed');
     throw error;

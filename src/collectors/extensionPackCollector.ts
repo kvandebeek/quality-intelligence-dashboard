@@ -28,14 +28,6 @@ export interface MemoryLeaksArtifact {
   evidence: string[];
 }
 
-export interface CacheAnalysisArtifact {
-  cold: { ttfbMs: number | null; fcpMs: number | null; lcpMs: number | null };
-  warm: { ttfbMs: number | null; fcpMs: number | null; lcpMs: number | null };
-  improvementPercent: number;
-  cacheScore: number;
-  poorlyCachedAssets: Array<{ url: string; cacheControl: string; expires: string; etag: string; lastModified: string }>;
-}
-
 export interface ThirdPartyResilienceArtifact {
   blockedDomains: string[];
   functionalBreakage: boolean;
@@ -88,19 +80,6 @@ function classifyDomain(domain: string, rules: Record<string, string>): string {
     if (domain.includes(pattern)) return category;
   }
   return 'unknown';
-}
-
-function collectNavMetrics(page: Page): Promise<{ ttfbMs: number | null; fcpMs: number | null; lcpMs: number | null }> {
-  return page.evaluate(() => {
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-    const fcp = performance.getEntriesByName('first-contentful-paint')[0];
-    const lcp = performance.getEntriesByType('largest-contentful-paint').at(-1);
-    return {
-      ttfbMs: nav ? Math.round(nav.responseStart - nav.requestStart) : null,
-      fcpMs: fcp ? Math.round(fcp.startTime) : null,
-      lcpMs: lcp ? Math.round(lcp.startTime) : null
-    };
-  });
 }
 
 export async function installErrorAndUxObservers(page: Page, config: AssuranceModulesConfig): Promise<void> {
@@ -226,44 +205,6 @@ export async function collectMemoryLeaks(page: Page, config: AssuranceModulesCon
     leakRisk,
     evidence
   };
-}
-
-export async function collectCacheAnalysis(browser: Browser, url: string, config: AssuranceModulesConfig): Promise<CacheAnalysisArtifact> {
-  const coldContext = await browser.newContext();
-  const coldPage = await coldContext.newPage();
-  const seenAssets: CacheAnalysisArtifact['poorlyCachedAssets'] = [];
-
-  coldPage.on('response', async (response: Response) => {
-    const request = response.request();
-    const type = request.resourceType();
-    if (!['script', 'stylesheet', 'image', 'font'].includes(type)) return;
-    const headers = response.headers();
-    const cacheControl = headers['cache-control'] ?? '';
-    const expires = headers.expires ?? '';
-    const etag = headers.etag ?? '';
-    const lastModified = headers['last-modified'] ?? '';
-    if (!cacheControl.includes('max-age') || cacheControl.includes('no-store') || cacheControl.includes('max-age=0')) {
-      seenAssets.push({ url: response.url(), cacheControl, expires, etag, lastModified });
-    }
-  });
-
-  await coldPage.goto(url, { waitUntil: 'load' });
-  const cold = await collectNavMetrics(coldPage);
-  await coldContext.close();
-
-  const warmContext = await browser.newContext();
-  const warmPage = await warmContext.newPage();
-  await warmPage.goto(url, { waitUntil: 'load' });
-  await warmPage.reload({ waitUntil: 'load' });
-  const warm = await collectNavMetrics(warmPage);
-  await warmContext.close();
-
-  const coldLcp = cold.lcpMs ?? cold.fcpMs ?? 0;
-  const warmLcp = warm.lcpMs ?? warm.fcpMs ?? 0;
-  const improvementPercent = coldLcp > 0 ? round2(((coldLcp - warmLcp) / coldLcp) * 100) : 0;
-  const cacheScore = Math.max(0, Math.min(100, Math.round(60 + improvementPercent - (seenAssets.length * 2))));
-
-  return { cold, warm, improvementPercent, cacheScore, poorlyCachedAssets: seenAssets.slice(0, 50) };
 }
 
 async function runResiliencePass(browser: Browser, url: string, blockedDomains: string[]): Promise<{ errors: number; hasMainContent: boolean; cls: number | null }> {

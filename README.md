@@ -67,7 +67,6 @@ Example (`batch-test.json`):
 New categories added to dashboard (layout/style unchanged):
 - **UX**: generic site-agnostic UX checks (sanity, layout stability, interaction, dead-click friction, keyboard, overlays, readability, forms, visual snapshots).
 - **Reliability & Client Health**: client-side errors and memory leaks.
-- **Performance Efficiency**: cache analysis.
 - **Resilience**: third-party resilience simulation.
 - **Governance, Privacy & Security**: privacy/GDPR, runtime security, dependency risk.
 - **Regression Intelligence**: regression delta summary.
@@ -126,7 +125,6 @@ Per target URL folder:
 - `ux-forms.json`
 - `ux-visual-regression.json` (plus `ux-visual-above-the-fold.png` and `ux-visual-fullpage.png`)
 - `memory-leaks.json`
-- `cache-analysis.json`
 - `cross-browser-performance.json` (desktop Chromium/Firefox/WebKit load-time comparison with 5 iterations each)
 - `third-party-resilience.json`
 - `privacy-audit.json`
