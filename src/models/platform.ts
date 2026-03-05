@@ -23,6 +23,15 @@ export interface UnifiedUrlModel {
   security: Record<string, boolean | string | null>;
   seoScore: { overallScore: number };
   visualRegression: { baselineFound: boolean; diffRatio: number | null; passed: boolean };
+  brokenLinks: {
+    summary: { checked: number; broken: number; redirectChains: number; loops: number };
+    items?: Array<{
+      url: string;
+      statusCode: number | null;
+      chainLength: number;
+      isBroken: boolean;
+      isRedirectChain: boolean;
+      hasLoop: boolean;
   brokenLinks: { checked: number; broken: number; redirectChains: number; loops: number; details?: Array<{ sourcePageUrl: string; brokenUrl: string; status: number; chainLength: number }> };
   brokenLinks: {
     checked: number;

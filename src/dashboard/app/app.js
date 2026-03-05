@@ -657,6 +657,7 @@ function bindA11yHeuristics(scope){
 }
 
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
+const renderBroken = (r={})=>{ const s = asRecord(r.summary); return `<div class="kpis">${metric('Checked',s.checked ?? r.checkedCount ?? r.checked)}${metric('Broken',s.broken ?? r.brokenCount ?? r.broken)}${metric('Redirect chains',s.redirectChains ?? r.redirectChains)}${metric('Loops',s.loops ?? r.loops)}</div>`; };
 const renderBroken = (r={})=>{
   const hasDetailField = Object.prototype.hasOwnProperty.call(r,'details');
   const detailItems = Array.isArray(r.details)

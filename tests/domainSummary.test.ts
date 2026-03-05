@@ -16,7 +16,7 @@ describe('domain summary aggregation', () => {
       u1: {
         'accessibility.json': section('ok', { counters: { critical: 1, serious: 2, moderate: 3, minor: 4 } }),
         'performance.json': section('ok', { paint: { fcpMs: 1600 } }),
-        'broken-links.json': section('ok', { brokenCount: 2, checkedCount: 20 }),
+        'broken-links.json': section('ok', { summary: { broken: 2, checked: 20, redirectChains: 1, loops: 0 }, items: [] }),
         'seo-score.json': section('ok', { overallScore: 90 }),
         'core-web-vitals.json': section('ok', { lcpMs: 2400, cls: 0.08, inpMs: 190 }),
         'stability.json': section('ok', { totalErrors: 3 }),
