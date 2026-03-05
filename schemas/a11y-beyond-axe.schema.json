@@ -1,48 +1,152 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["meta", "payload"],
+  "required": [
+    "meta",
+    "payload"
+  ],
   "properties": {
     "meta": {
       "type": "object",
-      "required": ["runId", "url", "urlSlug", "timestamp", "toolVersion", "schemaVersion"],
+      "required": [
+        "runId",
+        "url",
+        "urlSlug",
+        "timestamp",
+        "toolVersion",
+        "schemaVersion"
+      ],
       "properties": {
-        "runId": {"type": "string"},
-        "url": {"type": "string"},
-        "urlSlug": {"type": "string"},
-        "timestamp": {"type": "string"},
-        "toolVersion": {"type": "string"},
-        "schemaVersion": {"type": "string"}
+        "runId": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "urlSlug": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "toolVersion": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        }
       }
     },
     "payload": {
       "type": "object",
-      "required": ["keyboardReachable", "possibleFocusTrap", "contrastSimulationScore"],
+      "required": [
+        "keyboardReachable",
+        "possibleFocusTrap",
+        "contrastSimulationScore"
+      ],
       "properties": {
-        "keyboardReachable": {"type": "boolean"},
-        "possibleFocusTrap": {"type": "boolean"},
+        "keyboardReachable": {
+          "type": "boolean"
+        },
+        "possibleFocusTrap": {
+          "type": "boolean"
+        },
         "possibleFocusTrapDetails": {
           "type": "object",
           "properties": {
             "candidates": {
               "type": "array",
-              "items": {"type": "object"}
+              "items": {
+                "type": "object"
+              }
             }
           },
-          "required": ["candidates"]
+          "required": [
+            "candidates"
+          ]
         },
-        "contrastSimulationScore": {"type": ["number", "null"]},
-        "contrastSimulationScoreReason": {"type": ["string", "null"]},
+        "contrastSimulationScore": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "contrastSimulationScoreReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "contrastSimulationDetails": {
           "type": "object",
           "properties": {
-            "method": {"type": "object"},
+            "method": {
+              "type": "object"
+            },
             "findings": {
               "type": "array",
-              "items": {"type": "object"}
+              "items": {
+                "type": "object"
+              }
             }
           },
-          "required": ["method", "findings"]
+          "required": [
+            "method",
+            "findings"
+          ]
+        },
+        "contrastSimulationResult": {
+          "type": "object",
+          "required": [
+            "status",
+            "score",
+            "evidence"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "not_available"
+              ]
+            },
+            "score": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "reasonCode": {
+              "type": "string",
+              "enum": [
+                "missing_screenshots",
+                "screenshot_capture_failed",
+                "page_not_loaded",
+                "no_text_nodes_detected",
+                "insufficient_color_pairs",
+                "algorithm_error",
+                "timeout"
+              ]
+            },
+            "reasonMessage": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "object"
+            },
+            "samples": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "screenshotRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     }

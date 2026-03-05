@@ -35,6 +35,15 @@ export const artifactSchemas = {
     possibleFocusTrapDetails: z.object({ candidates: z.array(z.record(z.string(), z.unknown())) }).optional(),
     contrastSimulationScore: z.number().nullable(),
     contrastSimulationScoreReason: z.string().nullable().optional(),
+    contrastSimulationResult: z.object({
+      status: z.enum(['ok', 'not_available']),
+      score: z.number().nullable(),
+      reasonCode: z.enum(['missing_screenshots', 'screenshot_capture_failed', 'page_not_loaded', 'no_text_nodes_detected', 'insufficient_color_pairs', 'algorithm_error', 'timeout']).optional(),
+      reasonMessage: z.string().optional(),
+      evidence: z.record(z.string(), z.unknown()),
+      samples: z.array(z.record(z.string(), z.unknown())).optional(),
+      screenshotRefs: z.array(z.string()).optional()
+    }).optional(),
     contrastSimulationDetails: z.object({
       method: z.record(z.string(), z.unknown()),
       findings: z.array(z.record(z.string(), z.unknown()))

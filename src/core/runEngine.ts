@@ -34,6 +34,31 @@ type ContrastRegion = {
   why: string;
   selector: string;
   contrastRatio: number;
+  foregroundColor?: string;
+  backgroundColor?: string;
+  textSizePx?: number;
+  textWeight?: string;
+  screenshotId?: string;
+};
+
+type ContrastReasonCode = 'missing_screenshots' | 'screenshot_capture_failed' | 'page_not_loaded' | 'no_text_nodes_detected' | 'insufficient_color_pairs' | 'algorithm_error' | 'timeout';
+
+type ContrastSimulationResult = {
+  status: 'ok' | 'not_available';
+  score: number | null;
+  reasonCode?: ContrastReasonCode;
+  reasonMessage?: string;
+  evidence: {
+    runId: string;
+    testedUrl: string;
+    viewport: { width: number; height: number };
+    screenshotCount: number;
+    stepName: string;
+    timingMs: number;
+    error?: string;
+  };
+  samples?: ContrastRegion[];
+  screenshotRefs?: string[];
 };
 
 async function evaluateFocusStep(page: Page): Promise<{ selector: string; accessibleName: string; tagName: string; role: string | null; ariaModal: string | null; ariaHiddenAncestry: boolean; isVisible: boolean; isEnabled: boolean; boundingBox: { x: number; y: number; width: number; height: number } | null; activeElementHtmlSnippet: string }> {
@@ -110,6 +135,12 @@ function contrastScoreFromRatio(ratio: number): number {
   if (ratio >= 3) return 60;
   return Math.max(10, Math.round((ratio / 3) * 50));
 }
+
+export function aggregateContrastSimulationScore(sampleScores: number[]): number | null {
+  if (sampleScores.length === 0) return null;
+  return Math.round(sampleScores.reduce((sum, score) => sum + score, 0) / sampleScores.length);
+}
+
 function sanitizeSlug(url: string): string {
   const value = new URL(url);
   const slug = `${value.hostname}${value.pathname}`.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
@@ -373,9 +404,42 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   await seoContext.close();
 
   const focusCheck = await browser.newPage().then(async (checkPage) => {
+    const contrastStepName = 'artifact.accessibility_beyond_axe.contrast_simulation';
+    const startedAt = Date.now();
+    let viewport = { width: 1366, height: 768 };
+    let screenshotCount = 0;
+    const screenshotRefs: string[] = [];
+    const serializeError = (error: unknown): string => {
+      const raw = error instanceof Error ? error.message : String(error);
+      return raw.replace(/https?:\/\/[^\s]+/gi, '[redacted-url]').slice(0, 240);
+    };
+    const notAvailableResult = (reasonCode: ContrastReasonCode, reasonMessage: string, stepName: string, error?: unknown): ContrastSimulationResult => {
+      const evidence: ContrastSimulationResult['evidence'] = {
+        runId,
+        testedUrl: target.url,
+        viewport,
+        screenshotCount,
+        stepName,
+        timingMs: Date.now() - startedAt
+      };
+      if (error) evidence.error = serializeError(error);
+      process.stderr.write(`[${contrastStepName}] status=not_available reasonCode=${reasonCode} testedUrl=${target.url} runId=${runId} step=${stepName}${evidence.error ? ` error=${evidence.error}` : ''}\n`);
+      return { status: 'not_available', score: null, reasonCode, reasonMessage, evidence, screenshotRefs };
+    };
+
     try {
-      await checkPage.setViewportSize({ width: 1366, height: 768 });
-      await gotoWithConsent(checkPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
+      await checkPage.setViewportSize(viewport);
+      const gotoResult = await gotoWithConsent(checkPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
+      if (!gotoResult.response) {
+        await checkPage.close();
+        return {
+          keyboardReachable: false,
+          possibleFocusTrap: false,
+          contrastSimulationScore: null as number | null,
+          contrastSimulationResult: notAvailableResult('page_not_loaded', 'Page did not return a successful response during contrast simulation.', contrastStepName)
+        };
+      }
+
       const a11yArtifactDir = path.join(targetFolder, 'a11y-beyond-axe');
       ensureDir(a11yArtifactDir);
 
@@ -403,6 +467,8 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
         const screenshotId = 'focus-trap-candidate-1.png';
         const screenshotPath = path.join(a11yArtifactDir, screenshotId);
         await checkPage.screenshot({ path: screenshotPath, fullPage: false });
+        screenshotCount += 1;
+        screenshotRefs.push(`a11y-beyond-axe/${screenshotId}`);
         const repeatPatternDetected = repeated.slice(0, 2).map((entry) => `${entry[0]} (${entry[1]} times)`).join(' ↔ ');
         trapCandidates.push({
           url: checkPage.url(),
@@ -410,12 +476,9 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
           stepContext: `after tabbing ${trapDetectedAt + 1} times`,
           trapCandidate: {
             selector: trapDetectionSample.selector,
-            roleAriaSummary: {
-              role: trapDetectionSample.role,
-              ariaModal: trapDetectionSample.ariaModal,
-              ariaHiddenAncestry: trapDetectionSample.ariaHiddenAncestry
-            },
-            boundingBox: trapDetectionSample.boundingBox,
+            role: trapDetectionSample.role,
+            ariaModal: trapDetectionSample.ariaModal,
+            ariaHiddenAncestry: trapDetectionSample.ariaHiddenAncestry,
             isVisible: trapDetectionSample.isVisible,
             isEnabled: trapDetectionSample.isEnabled
           },
@@ -430,12 +493,29 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
         });
       }
 
-      const viewport = checkPage.viewportSize() ?? { width: 1366, height: 768 };
-      const pageMetrics = await checkPage.evaluate(() => ({ scrollHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight), deviceScaleFactor: window.devicePixelRatio || 1 }));
+      viewport = checkPage.viewportSize() ?? viewport;
+      const pageMetrics = await checkPage.evaluate(() => ({
+        scrollHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+        deviceScaleFactor: window.devicePixelRatio || 1,
+        readyState: document.readyState
+      }));
+      if (pageMetrics.readyState !== 'complete' && pageMetrics.readyState !== 'interactive') {
+        await checkPage.close();
+        return {
+          keyboardReachable,
+          possibleFocusTrap,
+          possibleFocusTrapDetails: trapCandidates.length > 0 ? { candidates: trapCandidates } : undefined,
+          contrastSimulationScore: null as number | null,
+          contrastSimulationResult: notAvailableResult('page_not_loaded', `Page readyState was ${pageMetrics.readyState}.`, `${contrastStepName}.ready_state`)
+        };
+      }
+
       const maxScroll = Math.max(0, pageMetrics.scrollHeight - viewport.height);
       const scrollSamples = [0, Math.round(maxScroll / 2), maxScroll].slice(0, MAX_CONTRAST_SAMPLES_PER_URL);
       const contrastSamples: Array<Record<string, unknown>> = [];
       const sampleScores: number[] = [];
+      const topSamples: ContrastRegion[] = [];
+
       for (let index = 0; index < scrollSamples.length; index += 1) {
         const scrollY = scrollSamples[index] ?? 0;
         await checkPage.evaluate((y) => window.scrollTo(0, y), scrollY);
@@ -455,27 +535,63 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
               selector: html.id ? `#${html.id}` : `${html.tagName.toLowerCase()}${html.classList.length ? `.${[...html.classList].slice(0, 2).join('.')}` : ''}`,
               color: style.color,
               backgroundColor: style.backgroundColor,
+              textSizePx: Number.parseFloat(style.fontSize || '0') || null,
+              textWeight: style.fontWeight || null,
               box: { x: Math.max(0, Math.round(rect.x)), y: Math.max(0, Math.round(rect.y)), width: Math.round(rect.width), height: Math.round(rect.height) }
             };
           });
         });
 
-        const measuredRegions: ContrastRegion[] = regionStats.map((region) => {
-          const fg = parseCssColor(region.color);
-          const bg = parseCssColor(region.backgroundColor) ?? [255, 255, 255];
-          const ratio = fg ? contrastRatio(fg, bg) : 1;
-          const regionScore = contrastScoreFromRatio(ratio);
-          const why = ratio < 3 ? 'Text blends into background under low-contrast simulation' : ratio < 4.5 ? 'Contrast is borderline for normal text' : 'Acceptable contrast in sampled region';
-          return { boundingBox: region.box, regionScore, why, selector: region.selector, contrastRatio: ratio };
-        }).sort((a, b) => a.regionScore - b.regionScore).slice(0, 4);
+        if (!regionStats.length) {
+          continue;
+        }
 
-        const averageScore = measuredRegions.length > 0 ? Math.round(measuredRegions.reduce((sum, region) => sum + region.regionScore, 0) / measuredRegions.length) : 0;
-        sampleScores.push(averageScore);
         const screenshotId = `contrast-sample-${index + 1}.png`;
         const screenshotPath = path.join(a11yArtifactDir, screenshotId);
-        await checkPage.screenshot({ path: screenshotPath, fullPage: false });
+        try {
+          await checkPage.screenshot({ path: screenshotPath, fullPage: false });
+        } catch (error) {
+          await checkPage.close();
+          return {
+            keyboardReachable,
+            possibleFocusTrap,
+            possibleFocusTrapDetails: trapCandidates.length > 0 ? { candidates: trapCandidates } : undefined,
+            contrastSimulationScore: null as number | null,
+            contrastSimulationResult: notAvailableResult('screenshot_capture_failed', `Failed to capture screenshot ${screenshotId}.`, `${contrastStepName}.screenshot`, error)
+          };
+        }
+        screenshotCount += 1;
+        screenshotRefs.push(`a11y-beyond-axe/${screenshotId}`);
+
+        const measuredRegions: ContrastRegion[] = regionStats.flatMap((region) => {
+          const fg = parseCssColor(region.color);
+          const bg = parseCssColor(region.backgroundColor);
+          if (!fg || !bg) return [];
+          const ratio = contrastRatio(fg, bg);
+          const regionScore = contrastScoreFromRatio(ratio);
+          const why = ratio < 3 ? 'Text blends into background under low-contrast simulation' : ratio < 4.5 ? 'Contrast is borderline for normal text' : 'Acceptable contrast in sampled region';
+          return [{
+            boundingBox: region.box,
+            regionScore,
+            why,
+            selector: region.selector,
+            contrastRatio: ratio,
+            foregroundColor: region.color,
+            backgroundColor: region.backgroundColor,
+            textSizePx: region.textSizePx ?? undefined,
+            textWeight: region.textWeight ?? undefined,
+            screenshotId
+          }];
+        }).sort((a, b) => a.regionScore - b.regionScore).slice(0, 6);
+
+        if (!measuredRegions.length) continue;
+
+        topSamples.push(...measuredRegions);
+        const averageScore = Math.round(measuredRegions.reduce((sum, region) => sum + region.regionScore, 0) / measuredRegions.length);
+        sampleScores.push(averageScore);
         contrastSamples.push({
-          url: checkPage.url(),
+          runId,
+          testedUrl: target.url,
           viewport,
           deviceScaleFactor: pageMetrics.deviceScaleFactor,
           scrollY,
@@ -489,7 +605,55 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
         });
       }
 
-      const contrastSimulationScore = sampleScores.length > 0 ? Math.round(sampleScores.reduce((sum, score) => sum + score, 0) / sampleScores.length) : null;
+      if (screenshotCount === 0) {
+        await checkPage.close();
+        return {
+          keyboardReachable,
+          possibleFocusTrap,
+          possibleFocusTrapDetails: trapCandidates.length > 0 ? { candidates: trapCandidates } : undefined,
+          contrastSimulationScore: null as number | null,
+          contrastSimulationResult: notAvailableResult('missing_screenshots', 'No screenshots were captured for contrast simulation.', `${contrastStepName}.screenshots`)
+        };
+      }
+
+      if (contrastSamples.length === 0) {
+        await checkPage.close();
+        return {
+          keyboardReachable,
+          possibleFocusTrap,
+          possibleFocusTrapDetails: trapCandidates.length > 0 ? { candidates: trapCandidates } : undefined,
+          contrastSimulationScore: null as number | null,
+          contrastSimulationResult: notAvailableResult('no_text_nodes_detected', 'No visible text nodes were detected for contrast sampling.', `${contrastStepName}.nodes`)
+        };
+      }
+
+      if (sampleScores.length < 1) {
+        await checkPage.close();
+        return {
+          keyboardReachable,
+          possibleFocusTrap,
+          possibleFocusTrapDetails: trapCandidates.length > 0 ? { candidates: trapCandidates } : undefined,
+          contrastSimulationScore: null as number | null,
+          contrastSimulationResult: notAvailableResult('insufficient_color_pairs', 'Color pairs were detected but no valid contrast ratios could be computed.', `${contrastStepName}.ratios`)
+        };
+      }
+
+      const contrastSimulationScore = aggregateContrastSimulationScore(sampleScores) as number;
+      const contrastSimulationResult: ContrastSimulationResult = {
+        status: 'ok',
+        score: contrastSimulationScore,
+        evidence: {
+          runId,
+          testedUrl: target.url,
+          viewport,
+          screenshotCount,
+          stepName: contrastStepName,
+          timingMs: Date.now() - startedAt
+        },
+        samples: topSamples.sort((a, b) => a.regionScore - b.regionScore).slice(0, 12),
+        screenshotRefs
+      };
+
       await checkPage.close();
       return {
         keyboardReachable,
@@ -497,22 +661,24 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
         possibleFocusTrapDetails: trapCandidates.length > 0 ? { candidates: trapCandidates } : undefined,
         contrastSimulationScore,
         contrastSimulationScoreReason: null as string | null,
+        contrastSimulationResult,
         contrastSimulationDetails: {
           method: {
             simulations: ['low-contrast approximation'],
             sampleStrategy: { viewport, scrollPositions: scrollSamples, samplesPerUrl: scrollSamples.length },
-            measurements: ['foreground/background color contrast ratio proxy', 'luminance delta proxy from computed styles']
+            measurements: ['foreground/background color contrast ratio proxy', 'luminance delta proxy from computed styles'],
+            scopedToRun: { runId, testedUrl: target.url }
           },
           findings: contrastSamples
         }
       };
-    } catch {
+    } catch (error) {
       await checkPage.close();
       return {
         keyboardReachable: false,
         possibleFocusTrap: false,
         contrastSimulationScore: null as number | null,
-        contrastSimulationScoreReason: 'Unable to evaluate keyboard contrast simulation on this page'
+        contrastSimulationResult: notAvailableResult(error instanceof Error && /timeout/i.test(error.message) ? 'timeout' : 'algorithm_error', 'Unable to evaluate keyboard contrast simulation on this page.', contrastStepName, error)
       };
     }
   });
