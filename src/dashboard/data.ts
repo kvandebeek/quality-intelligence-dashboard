@@ -284,8 +284,11 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
     return { state: total > 0 ? 'issues' : 'ok', raw, summary: { ...severities, total } };
   }
   if (section === 'broken-links.json') {
-    const broken = toNum(obj.brokenCount ?? obj.broken) ?? 0;
-    return { state: broken > 0 ? 'issues' : 'ok', raw, summary: { brokenCount: broken } };
+    const summary = asRecord(obj.summary);
+    const broken = toNum(summary.broken ?? obj.brokenCount ?? obj.broken) ?? 0;
+    const checked = toNum(summary.checked ?? obj.checkedCount ?? obj.totalLinks ?? obj.checked) ?? 0;
+    const hasDetails = Array.isArray(obj.items) || Array.isArray(obj.details);
+    return { state: broken > 0 ? 'issues' : 'ok', raw, summary: { brokenCount: broken, checkedCount: checked, hasDetails } };
   }
   if (section === 'visual-regression.json') {
     const passed = obj.passed === true;

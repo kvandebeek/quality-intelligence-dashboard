@@ -139,8 +139,9 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
 
     if (brokenLoaded.state === 'ok' || brokenLoaded.state === 'issues') {
       const links = unwrap(brokenLoaded.raw);
-      const brokenCount = toNum(links.brokenCount ?? links.broken);
-      const checkedCount = toNum(links.checkedCount ?? links.totalLinks ?? links.checked);
+      const summary = asRecord(links.summary);
+      const brokenCount = toNum(summary.broken ?? links.brokenCount ?? links.broken);
+      const checkedCount = toNum(summary.checked ?? links.checkedCount ?? links.totalLinks ?? links.checked);
       if (brokenCount !== null || checkedCount !== null) {
         broken += brokenCount ?? 0;
         totalLinks += checkedCount ?? 0;
