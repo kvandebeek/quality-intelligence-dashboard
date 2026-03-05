@@ -11,10 +11,10 @@ async function main(): Promise<void> {
   const runPath = resolveRunPath({ cliRunPath: parsed.values.run, envRunPath: process.env.ARTIFACT_RUN_DIR });
   const run = await loadDashboardRun(runPath);
   const rows = toOverviewRows(run);
-  const failedPages = rows.filter((row) => row.failedRequestCount > 0).length;
+  const pagesWithCriticalIssues = rows.filter((row) => row.critical > 0).length;
   process.stdout.write(`Run path: ${runPath}\n`);
   process.stdout.write(`Pages: ${rows.length}\n`);
-  process.stdout.write(`Pages with network failures: ${failedPages}\n`);
+  process.stdout.write(`Pages with critical accessibility issues: ${pagesWithCriticalIssues}\n`);
 }
 
 main().catch((error: unknown) => {

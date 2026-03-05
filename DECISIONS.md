@@ -2,7 +2,7 @@
 
 ## Existing artifact structure (P0-1)
 - Legacy runs stored URL artifacts directly under a run folder using `page-*` directory names.
-- Legacy artifact files observed: `performance.json`, `network-requests.json`, `network-recommendations.json`, `accessibility.json`, `target-summary.json`, and `network.har`.
+- Legacy artifact files observed: `performance.json`, `accessibility.json`, and `target-summary.json`.
 
 ## Output structure migration (P0-2)
 - New runs are written to `results/<runId>/<urlSlug>/` where `urlSlug` is sanitized and hash-suffixed.
@@ -19,7 +19,7 @@
 
 ## Ambiguous/blocked requirements and assumptions
 - Lighthouse integration: package installation is blocked in the current environment (registry policy), so artifacts are generated with `available=false` plus explanatory notes.
-- CPU/network throttling: Playwright-only portable alternative currently records explicit unavailability with preserved baseline metrics.
+- CPU throttling: Playwright-only portable alternative currently records explicit unavailability with preserved baseline metrics.
 - PDF output: environment constraints prevent adding a PDF generator dependency, so a deterministic placeholder report file is emitted.
 - Visual regression: without image-diff libraries, diff ratio is computed via byte-level screenshot comparison as best-effort fallback.
 - JUnit output is always generated (`junit.xml`) and treated as the “optional” CI format.

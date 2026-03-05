@@ -18,7 +18,7 @@
   - [x] Acceptance self-check complete with missing-field fallbacks.
 
 - [x] Phase 4 — Remaining Sections
-  - [x] Security, Network, Stability, SEO, Visual sections added.
+  - [x] Security, Stability, SEO, Visual sections added.
   - [x] Navigable and resilient with unavailable data states.
   - [x] Acceptance self-check complete.
 
