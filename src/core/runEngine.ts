@@ -66,23 +66,35 @@ type ContrastSimulationResult = {
 async function evaluateFocusStep(page: Page): Promise<{ selector: string; accessibleName: string; tagName: string; role: string | null; ariaModal: string | null; ariaHiddenAncestry: boolean; isVisible: boolean; isEnabled: boolean; boundingBox: { x: number; y: number; width: number; height: number } | null; activeElementHtmlSnippet: string }> {
   return page.evaluate(() => {
     const active = document.activeElement as HTMLElement | null;
-    const compact = (value: string) => value.trim().replace(/\s+/g, ' ').slice(0, 180);
-    const selectorFor = (element: Element | null): string => {
-      if (!element) return 'document.body';
-      const id = element.getAttribute('id');
-      if (id) return `#${id}`;
-      const testId = element.getAttribute('data-testid');
-      if (testId) return `[data-testid="${testId}"]`;
-      const name = element.getAttribute('name');
-      if (name) return `${element.tagName.toLowerCase()}[name="${name}"]`;
-      const classes = [...(element.classList || [])].slice(0, 2).join('.');
-      const classSegment = classes ? `.${classes}` : '';
-      const parent = element.parentElement;
-      if (!parent) return `${element.tagName.toLowerCase()}${classSegment}`;
-      const siblings = [...parent.children].filter((child) => child.tagName === element.tagName);
-      const nth = siblings.length > 1 ? `:nth-of-type(${siblings.indexOf(element) + 1})` : '';
-      return `${element.tagName.toLowerCase()}${classSegment}${nth}`;
-    };
+    const compactText = (active?.getAttribute('aria-label') ?? active?.textContent ?? active?.getAttribute('title') ?? '').trim().replace(/\s+/g, ' ').slice(0, 180);
+    let selector = 'document.body';
+    if (active) {
+      const id = active.getAttribute('id');
+      if (id) {
+        selector = `#${id}`;
+      } else {
+        const testId = active.getAttribute('data-testid');
+        if (testId) {
+          selector = `[data-testid="${testId}"]`;
+        } else {
+          const name = active.getAttribute('name');
+          if (name) {
+            selector = `${active.tagName.toLowerCase()}[name="${name}"]`;
+          } else {
+            const classes = [...(active.classList || [])].slice(0, 2).join('.');
+            const classSegment = classes ? `.${classes}` : '';
+            const parent = active.parentElement;
+            if (!parent) {
+              selector = `${active.tagName.toLowerCase()}${classSegment}`;
+            } else {
+              const siblings = [...parent.children].filter((child) => child.tagName === active.tagName);
+              const nth = siblings.length > 1 ? `:nth-of-type(${siblings.indexOf(active) + 1})` : '';
+              selector = `${active.tagName.toLowerCase()}${classSegment}${nth}`;
+            }
+          }
+        }
+      }
+    }
     const role = active?.getAttribute('role') ?? null;
     const ariaModal = active?.getAttribute('aria-modal') ?? null;
     const ariaHiddenAncestry = Boolean(active?.closest('[aria-hidden="true"]'));
@@ -91,8 +103,8 @@ async function evaluateFocusStep(page: Page): Promise<{ selector: string; access
     const isVisible = Boolean(active && rect && rect.width > 0 && rect.height > 0 && style && style.visibility !== 'hidden' && style.display !== 'none');
     const isEnabled = Boolean(active && !active.hasAttribute('disabled') && active.getAttribute('aria-disabled') !== 'true');
     return {
-      selector: selectorFor(active),
-      accessibleName: compact(active?.getAttribute('aria-label') ?? active?.textContent ?? active?.getAttribute('title') ?? ''),
+      selector,
+      accessibleName: compactText,
       tagName: active?.tagName ?? 'BODY',
       role,
       ariaModal,
@@ -100,7 +112,7 @@ async function evaluateFocusStep(page: Page): Promise<{ selector: string; access
       isVisible,
       isEnabled,
       boundingBox: rect ? { x: Math.max(0, Math.round(rect.x)), y: Math.max(0, Math.round(rect.y)), width: Math.round(rect.width), height: Math.round(rect.height) } : null,
-      activeElementHtmlSnippet: compact((active?.outerHTML ?? '<body>').replace(/\s+/g, ' ').slice(0, 220))
+      activeElementHtmlSnippet: (active?.outerHTML ?? '<body>').replace(/\s+/g, ' ').trim().slice(0, 220)
     };
   });
 }
