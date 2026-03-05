@@ -6,7 +6,7 @@ import { CROSS_BROWSER_PERFORMANCE_FILE, type AppConfig, type CrawlPageMetadata,
 import { collectClientErrors, collectDependencyRisk, collectMemoryLeaks, collectPrivacyAudit, collectRuntimeSecurity, installErrorAndUxObservers } from '../collectors/extensionPackCollector.js';
 import { compactTimestamp, stableRunId } from '../utils/time.js';
 import { ensureDir, writeJson } from '../utils/file.js';
-import { ensureUniqueRunRoot } from '../utils/artifactPaths.js';
+import { ensureUniqueRunRoot, resolveBatchItemFolderName } from '../utils/artifactPaths.js';
 import { collectPerformance } from '../collectors/performanceCollector.js';
 import { collectCrossBrowserPerformance } from '../collectors/crossBrowserPerformanceCollector.js';
 import { loadCrossBrowserConfig } from '../config/loadCrossBrowserConfig.js';
@@ -617,9 +617,24 @@ function resolveLinearTargets(config: AppConfig): RunTarget[] { return config.ta
 
 export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   const timestamp = compactTimestamp();
-  const runId = stableRunId(timestamp, config.browser, config.iteration, config.name);
+  const runId = config.name
+    ? resolveBatchItemFolderName(config.name, config.startUrl)
+    : stableRunId(timestamp, config.browser, config.iteration);
   const metadata: RunMetadata = { runId, timestamp, browser: config.browser, environment: config.environment, iteration: config.iteration, name: config.name, startUrl: config.startUrl, targets: config.targets };
-  const runRoot = ensureUniqueRunRoot(config.outputDir, runId);
+  const runRoot = (() => {
+    if (!config.name) {
+      return ensureUniqueRunRoot(config.outputDir, runId);
+    }
+
+    const namedFolder = resolveBatchItemFolderName(config.name, config.startUrl);
+    const outputLeaf = path.basename(path.normalize(config.outputDir));
+
+    if (outputLeaf === namedFolder) {
+      return ensureUniqueRunRoot(path.dirname(path.normalize(config.outputDir)), namedFolder);
+    }
+
+    return ensureUniqueRunRoot(config.outputDir, namedFolder);
+  })();
   ensureDir(runRoot);
   writeJson(path.join(runRoot, 'run-metadata.json'), metadata);
   const timing = new TestTimingTracker(runId);
