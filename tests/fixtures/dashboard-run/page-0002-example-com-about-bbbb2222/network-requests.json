@@ -1,4 +1,0 @@
-[
-  {"url": "https://example.com/about", "method": "GET", "status": 200, "resourceType": "document", "transferSize": 50000, "durationMs": 160, "fromCache": false},
-  {"url": "https://example.com/about.css", "method": "GET", "status": 200, "resourceType": "stylesheet", "transferSize": 40000, "durationMs": 110, "fromCache": true}
-]

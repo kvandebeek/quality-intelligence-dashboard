@@ -22,9 +22,6 @@ export const SECTION_FILES = [
   'performance.json',
   'cross-browser-performance.json',
   'throttled-run.json',
-  'api-monitoring.json',
-  'network-recommendations.json',
-  'network-requests.json',
   'security-scan.json',
   'third-party-risk.json',
   'seo-checks.json',
@@ -95,7 +92,7 @@ export interface UrlIndexEntry {
   runTime: string | null;
   environment: string | null;
   hasFailures: boolean;
-  badges: Record<'a11y' | 'perf' | 'net' | 'sec' | 'seo' | 'visual' | 'ux' | 'stability', 'missing' | 'ok' | 'issues'>;
+  badges: Record<'a11y' | 'perf' | 'sec' | 'seo' | 'visual' | 'ux' | 'stability', 'missing' | 'ok' | 'issues'>;
   sections: Record<SectionFile, SectionIndexStatus>;
 }
 
@@ -304,11 +301,6 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
     const missingHeaders = Array.isArray(obj.missingHeaders) ? obj.missingHeaders.length : 0;
     return { state: missingHeaders > 0 ? 'issues' : 'ok', raw, summary: { missingHeaders } };
   }
-  if (section === 'network-recommendations.json') {
-    const list = Array.isArray(unwrapped.payload) ? unwrapped.payload as Record<string, unknown>[] : Array.isArray(obj.recommendations) ? obj.recommendations as Record<string, unknown>[] : [];
-    const high = list.filter((x) => String(x.severity ?? '').toLowerCase() === 'high').length;
-    return { state: list.length > 0 ? 'issues' : 'ok', raw, summary: { count: list.length, high } };
-  }
   if (section === 'stability.json') {
     const unstable = obj.unstable === true;
     return { state: unstable ? 'issues' : 'ok', raw, summary: { unstable } };
@@ -438,7 +430,6 @@ export async function buildDashboardIndexWithLogger(runPath: string, logger?: Ap
       badges: {
         a11y: aggregateBadge(sections['accessibility.json'].state, sections['a11y-beyond-axe.json'].state),
         perf: aggregateBadge(sections['performance.json'].state, sections['cross-browser-performance.json'].state, sections['core-web-vitals.json'].state, sections['lighthouse-summary.json'].state),
-        net: aggregateBadge(sections['network-requests.json'].state, sections['network-recommendations.json'].state, sections['api-monitoring.json'].state),
         sec: aggregateBadge(sections['security-scan.json'].state, sections['third-party-risk.json'].state),
         seo: aggregateBadge(sections['seo-checks.json'].state, sections['seo-score.json'].state),
         visual: aggregateBadge(sections['visual-regression.json'].state, sections['visual-current.png'].state),
@@ -515,7 +506,7 @@ export async function loadDashboardRun(runPath: string): Promise<DashboardRunDat
   };
 }
 
-export interface OverviewRow { folderName: string; url: string; critical: number; serious: number; moderate: number; minor: number; ttfbMs: number; dclMs: number; loadEventMs: number; totalTransferSize: number; resourceCount: number; requestCount: number; failedRequestCount: number; networkTransferSize: number; slowestRequestMs: number; recommendationCounts: Record<string, number>; accessibilityIssues: unknown[]; networkRequests: Record<string, unknown>[]; networkRecommendations: Record<string, unknown>[] }
+export interface OverviewRow { folderName: string; url: string; critical: number; serious: number; moderate: number; minor: number; ttfbMs: number; dclMs: number; loadEventMs: number; totalTransferSize: number; resourceCount: number; accessibilityIssues: unknown[] }
 export interface RunSummaryMetrics { totalPages: number; accessibilityTotals: { critical: number; serious: number; moderate: number; minor: number }; worstByLoadEventMs: OverviewRow[]; worstByCriticalIssues: OverviewRow[]; worstByTransferSize: OverviewRow[] }
 
 export function toOverviewRows(data: DashboardRunData): OverviewRow[] {
@@ -524,8 +515,6 @@ export function toOverviewRows(data: DashboardRunData): OverviewRow[] {
     const perf = (u.artifacts['performance.json'] as Record<string, unknown> | undefined) ?? {};
     const navigation = (perf.navigation as Record<string, unknown> | undefined) ?? {};
     const resourceSummary = (perf.resourceSummary as Record<string, unknown> | undefined) ?? {};
-    const requests = (Array.isArray(u.artifacts['network-requests.json']) ? u.artifacts['network-requests.json'] : []) as Record<string, unknown>[];
-    const recs = (Array.isArray(u.artifacts['network-recommendations.json']) ? u.artifacts['network-recommendations.json'] : []) as Record<string, unknown>[];
     const counters = (a11y.counters as Record<string, unknown> | undefined) ?? a11y;
     return {
       folderName: u.id,
@@ -539,18 +528,7 @@ export function toOverviewRows(data: DashboardRunData): OverviewRow[] {
       loadEventMs: toNum(navigation.loadEventMs) ?? 0,
       totalTransferSize: toNum(resourceSummary.transferSize) ?? 0,
       resourceCount: toNum(resourceSummary.count) ?? 0,
-      requestCount: requests.length,
-      failedRequestCount: requests.filter((r) => (toNum(r.status) ?? 200) >= 400).length,
-      networkTransferSize: requests.reduce((acc, r) => acc + (toNum(r.transferSize) ?? 0), 0),
-      slowestRequestMs: requests.reduce((acc, r) => Math.max(acc, toNum(r.durationMs ?? r.duration) ?? 0), 0),
-      recommendationCounts: recs.reduce<Record<string, number>>((acc, rec) => {
-        const sev = String(rec.severity ?? 'unknown');
-        acc[sev] = (acc[sev] ?? 0) + 1;
-        return acc;
-      }, {}),
-      accessibilityIssues: Array.isArray(a11y.issues) ? a11y.issues : [],
-      networkRequests: requests,
-      networkRecommendations: recs
+      accessibilityIssues: Array.isArray(a11y.issues) ? a11y.issues : []
     };
   });
 }

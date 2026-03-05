@@ -65,24 +65,6 @@ export interface PerformanceMetrics {
   };
 }
 
-export interface NetworkRequestRecord {
-  url: string;
-  method: string;
-  status: number;
-  resourceType: string;
-  transferSize: number;
-  durationMs: number;
-  fromCache: boolean;
-}
-
-export interface NetworkRecommendation {
-  id: string;
-  title: string;
-  description: string;
-  severity: 'high' | 'medium' | 'low';
-  impactedCount: number;
-}
-
 export interface AccessibilityIssue {
   id: string;
   impact: Severity;
@@ -102,11 +84,6 @@ export interface AccessibilityReport {
 export interface TargetRunArtifacts {
   target: RunTarget;
   performance: PerformanceMetrics;
-  network: {
-    harPath: string;
-    requests: NetworkRequestRecord[];
-    recommendations: NetworkRecommendation[];
-  };
   accessibility: AccessibilityReport;
 }
 

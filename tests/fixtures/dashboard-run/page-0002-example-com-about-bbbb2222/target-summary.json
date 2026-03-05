@@ -1,14 +1,36 @@
 {
-  "target": {"name": "Example About", "url": "https://example.com/about"},
+  "target": {
+    "name": "Example About",
+    "url": "https://example.com/about"
+  },
   "runId": "run-fixture-002",
   "durationSeconds": 59,
   "environment": "staging",
   "performance": {
     "url": "https://example.com/about",
-    "navigation": {"responseStart": 100, "domContentLoadedEventEnd": 390, "loadEventEnd": 710},
-    "paint": {"first-paint": 70},
-    "resourceSummary": {"count": 8, "transferSize": 85000, "encodedBodySize": 70000, "decodedBodySize": 130000}
+    "navigation": {
+      "responseStart": 100,
+      "domContentLoadedEventEnd": 390,
+      "loadEventEnd": 710
+    },
+    "paint": {
+      "first-paint": 70
+    },
+    "resourceSummary": {
+      "count": 8,
+      "transferSize": 85000,
+      "encodedBodySize": 70000,
+      "decodedBodySize": 130000
+    }
   },
-  "network": {"harPath": "page-0002-example-com-about-bbbb2222/network.har", "requests": [], "recommendations": []},
-  "accessibility": {"url": "https://example.com/about", "issues": [], "counters": {"critical": 0, "serious": 0, "moderate": 1, "minor": 2}}
+  "accessibility": {
+    "url": "https://example.com/about",
+    "issues": [],
+    "counters": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 1,
+      "minor": 2
+    }
+  }
 }

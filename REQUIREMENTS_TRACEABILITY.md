@@ -9,7 +9,7 @@
 ## Phase 1 dashboards/derived metrics
 - Executive and comparison metrics source model → `src/core/normalization.ts` (`UnifiedUrlModel` population + derived metrics).
 - Dashboard loads normalized run paths and wrapped artifacts → `src/dashboard/data.ts` (`loadDashboardRun`, `unwrapArtifact`).
-- Derived metrics formulas (performance/accessibility/network/backend-frontend/blocking ratio) → `src/core/normalization.ts` (`computeDerived`).
+- Derived metrics formulas (performance/accessibility/backend-frontend/blocking ratio) → `src/core/normalization.ts` (`computeDerived`).
 
 ## Phase 2 test modules artifacts
 - T1 Core Web Vitals → `src/core/runEngine.ts` (`collectCoreWebVitals`, `core-web-vitals.json`).
@@ -18,7 +18,6 @@
 - T4 Security scanning → `src/core/runEngine.ts` (`security-scan.json`).
 - T5 SEO checks → `src/core/runEngine.ts` (`seo-checks.json`).
 - T6 Visual regression baseline/diff → `src/core/runEngine.ts` (`visual-regression.json`, `visual-current.png`).
-- T7 API monitoring → `src/core/runEngine.ts` (`api-monitoring.json`).
 - T8 Broken-link detection → `src/core/runEngine.ts` (`broken-links.json`).
 - T9 Third-party risk ranking → `src/core/runEngine.ts` (`third-party-risk.json`).
 - T10 Accessibility beyond axe → `src/core/runEngine.ts` (`a11y-beyond-axe.json`).
