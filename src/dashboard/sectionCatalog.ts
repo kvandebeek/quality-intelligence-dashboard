@@ -39,7 +39,6 @@ export interface SectionInfoContent {
 export type SectionCategory =
   | 'accessibility'
   | 'performance'
-  | 'network'
   | 'quality-reliability'
   | 'security-risk'
   | 'seo'
@@ -190,7 +189,6 @@ export const GLOSSARY_TERMS = {
 export const SECTION_CATEGORIES = [
   { id: 'accessibility', label: 'Accessibility' },
   { id: 'performance', label: 'Performance' },
-  { id: 'network', label: 'Network' },
   { id: 'quality-reliability', label: 'Quality & Reliability' },
   { id: 'security-risk', label: 'Security & Risk' },
   { id: 'seo', label: 'SEO' },
@@ -239,17 +237,6 @@ export const SECTION_DEFINITIONS = {
       keyTerms: baseTerms
     }
   },
-  'api-monitoring.json': {
-    route: 'api-monitoring.json',
-    label: 'api-monitoring',
-    category: 'network',
-    info: {
-      whatItIs: 'A summary of how backend APIs responded during the test.',
-      whyItMatters: 'Slow or failing APIs can make pages feel broken even if the frontend code is healthy.',
-      howToRead: ['Review error rate before other metrics.', 'Check p95 latency for tail performance risk.', 'Use payload size to spot heavy responses.', 'Prioritize endpoints with high traffic and high latency.'],
-      keyTerms: baseTerms
-    }
-  },
   'broken-links.json': {
     route: 'broken-links.json',
     label: 'broken-links',
@@ -291,28 +278,6 @@ export const SECTION_DEFINITIONS = {
       whatItIs: 'A view of memory usage sampled while the page runs.',
       whyItMatters: 'High or growing memory usage can lead to slowdowns and instability.',
       howToRead: ['Check growth first.', 'Scan samples for spikes.', 'Compare with previous runs for regressions.', 'Investigate sustained upward trends.'],
-      keyTerms: baseTerms
-    }
-  },
-  'network-recommendations.json': {
-    route: 'network-recommendations.json',
-    label: 'network-recommendations',
-    category: 'network',
-    info: {
-      whatItIs: 'Suggestions for improving resource loading behavior.',
-      whyItMatters: 'Fixing high-impact network issues can reduce load time and bandwidth cost.',
-      howToRead: ['Sort by severity and impacted count.', 'Review recommendation titles for quick wins.', 'Use descriptions to plan implementation work.', 'Tackle high severity items first.'],
-      keyTerms: baseTerms
-    }
-  },
-  'network-requests.json': {
-    route: 'network-requests.json',
-    label: 'network-requests',
-    category: 'network',
-    info: {
-      whatItIs: 'A detailed list of requests captured during page load.',
-      whyItMatters: 'This helps identify heavy, slow, or unnecessary requests.',
-      howToRead: ['Sort by duration or transfer size.', 'Look for repeated requests to the same host.', 'Filter by domain when investigating third-party impact.', 'Focus on slow requests on critical page paths.'],
       keyTerms: baseTerms
     }
   },

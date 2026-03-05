@@ -7,8 +7,8 @@ Total enumerated requirements: 51.
 - REQ1: Implement a test automation and report generation engine (not a long-running service).
 - REQ2: Use Playwright with TypeScript as execution engine.
 - REQ3: Collect client-side performance timing metrics.
-- REQ4: Collect HAR/network artifacts.
-- REQ5: Generate network optimization recommendations.
+- REQ4: Collect core artifacts for performance, accessibility, security, SEO, visual, reliability, and UX.
+- REQ5: Generate actionable optimization recommendations across collected artifact domains.
 - REQ6: Collect accessibility scan results using axe-core Playwright integration.
 - REQ7: Enrich accessibility issues with recommendations.
 - REQ8: Compute accessibility severity counters.
@@ -44,9 +44,9 @@ Total enumerated requirements: 51.
 - REQ38: At phase end, report REQs closed and REQs remaining.
 - REQ39: End each phase in runnable state.
 - REQ40: Collect navigation/performance APIs data.
-- REQ41: Parse HAR into normalized network records.
+- REQ41: Build normalized records from persisted artifacts.
 - REQ42: Export performance JSON per target.
-- REQ43: Export network JSON per target.
+- REQ43: Export validated JSON artifacts per target.
 - REQ44: Export accessibility JSON per target.
 - REQ45: Provide page journey runner over configured targets.
 - REQ46: Define deterministic artifact folder structure.

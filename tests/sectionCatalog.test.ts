@@ -7,7 +7,6 @@ describe('section catalog', () => {
     const expected = [
       { label: 'Accessibility', sections: ['a11y-beyond-axe.json', 'accessibility.json'] },
       { label: 'Performance', sections: ['core-web-vitals.json', 'lighthouse-summary.json', 'memory-profile.json', 'performance.json', 'cross-browser-performance.json', 'throttled-run.json'] },
-      { label: 'Network', sections: ['api-monitoring.json', 'network-recommendations.json', 'network-requests.json'] },
       { label: 'Quality & Reliability', sections: ['target-summary.json', 'broken-links.json', 'stability.json'] },
       { label: 'Security & Risk', sections: ['security-scan.json', 'third-party-risk.json'] },
       { label: 'SEO', sections: ['seo-checks.json', 'seo-score.json'] },

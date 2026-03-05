@@ -11,7 +11,6 @@ import { collectPerformance } from '../collectors/performanceCollector.js';
 import { collectCrossBrowserPerformance } from '../collectors/crossBrowserPerformanceCollector.js';
 import { loadCrossBrowserConfig } from '../config/loadCrossBrowserConfig.js';
 import { collectAccessibility } from '../collectors/accessibilityCollector.js';
-import { parseHar, recommendNetworkOptimizations } from '../collectors/networkCollector.js';
 import { publishToElasticsearch } from '../publishers/elasticsearchPublisher.js';
 import { extractAnchorHrefs, runBfsCrawl } from './crawler.js';
 import { SCHEMA_VERSION, TOOL_VERSION, type ArtifactMeta } from '../models/platform.js';
@@ -23,9 +22,7 @@ import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
 import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
 import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 
-const ARTIFACT_FILES = ['performance.json', 'network-requests.json', 'network-recommendations.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'seo-score.json', 'visual-regression.json', 'api-monitoring.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
-const ENABLE_HAR_TESTS = false;
-
+const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'throttled-run.json', 'security-scan.json', 'seo-checks.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'ux-friction.json', 'memory-leaks.json', 'cache-analysis.json', 'third-party-resilience.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
 
 function sanitizeSlug(url: string): string {
@@ -176,10 +173,9 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const urlSlug = sanitizeSlug(target.url);
   const targetFolder = path.join(runRoot, urlSlug);
   ensureDir(targetFolder);
-  const harPath = path.join(targetFolder, 'network.har');
   const testReference = timing.startTest('src/core/runEngine.ts', target.name, retry);
 
-  const context = await timing.step(testReference, 'Create browser context', async () => browser.newContext(ENABLE_HAR_TESTS ? { recordHar: { path: harPath, mode: 'full' } } : undefined));
+  const context = await timing.step(testReference, 'Create browser context', async () => browser.newContext());
   const page = await timing.step(testReference, 'Create page', async () => context.newPage());
 
   await timing.step(testReference, 'Init extension observers', async () => installErrorAndUxObservers(page, config.assuranceModules));
@@ -233,8 +229,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     }
 
 
-    const requests = ENABLE_HAR_TESTS ? parseHar(harPath) : [];
-    const recommendations = recommendNetworkOptimizations(requests);
+    const requests: Array<{ url: string; resourceType: string; transferSize: number; durationMs: number }> = [];
 
   const securityHeaders = response?.headers() ?? {};
   const securityScan: Record<string, boolean | string | null> = {
@@ -257,14 +252,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     structuredDataCount: document.querySelectorAll('script[type="application/ld+json"]').length
   }));
 
-  const apiRequests = requests.filter((request) => /json|api|graphql|xhr|fetch/i.test(request.resourceType) || /\/api\//i.test(request.url));
-  const apiDurations = apiRequests.map((request) => request.durationMs).sort((a, b) => a - b);
-  const apiMonitoring = {
-    count: apiRequests.length,
-    errorRate: apiRequests.length > 0 ? apiRequests.filter((request) => request.status >= 400).length / apiRequests.length : 0,
-    p95Ms: apiDurations[Math.max(0, Math.floor(apiDurations.length * 0.95) - 1)] ?? 0,
-    avgSize: apiRequests.length > 0 ? apiRequests.reduce((sum, request) => sum + request.transferSize, 0) / apiRequests.length : 0
-  };
+
 
   const host = new URL(target.url).hostname;
   const thirdPartyRiskMap = new Map<string, { domain: string; requests: number; transferSize: number; totalDuration: number; trackerHeuristic: boolean }>();
@@ -393,11 +381,9 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     }
   };
 
-  const artifact: TargetRunArtifacts = { target, performance: perfMetrics, network: { harPath: path.relative(runRoot, harPath), requests, recommendations }, accessibility };
+  const artifact: TargetRunArtifacts = { target, performance: perfMetrics, accessibility };
 
   writeValidatedArtifact(path.join(targetFolder, 'performance.json'), 'performance', meta, perfMetrics);
-  writeValidatedArtifact(path.join(targetFolder, 'network-requests.json'), 'networkRequests', meta, requests);
-  writeValidatedArtifact(path.join(targetFolder, 'network-recommendations.json'), 'networkRecommendations', meta, recommendations);
   writeValidatedArtifact(path.join(targetFolder, 'accessibility.json'), 'accessibility', meta, accessibility);
   writeValidatedArtifact(path.join(targetFolder, 'core-web-vitals.json'), 'coreWebVitals', meta, coreWebVitals);
   writeValidatedArtifact(path.join(targetFolder, 'lighthouse-summary.json'), 'lighthouse', meta, lighthouseSummary);
@@ -406,7 +392,6 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   writeValidatedArtifact(path.join(targetFolder, 'seo-checks.json'), 'seo', meta, seoChecksWithScore);
   writeValidatedArtifact(path.join(targetFolder, 'seo-score.json'), 'seoScore', meta, seoScore);
   writeValidatedArtifact(path.join(targetFolder, 'visual-regression.json'), 'visualRegression', meta, { baselineFound, diffRatio, passed: diffRatio === null ? true : diffRatio < 0.05 });
-  writeValidatedArtifact(path.join(targetFolder, 'api-monitoring.json'), 'apiMonitoring', meta, apiMonitoring);
   writeValidatedArtifact(path.join(targetFolder, 'broken-links.json'), 'brokenLinks', meta, brokenLinks);
   writeValidatedArtifact(path.join(targetFolder, 'third-party-risk.json'), 'thirdPartyRisk', meta, thirdPartyRisk);
   writeValidatedArtifact(path.join(targetFolder, 'a11y-beyond-axe.json'), 'accessibilityBeyondAxe', meta, focusCheck);

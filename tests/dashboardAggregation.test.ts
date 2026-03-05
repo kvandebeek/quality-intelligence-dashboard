@@ -14,14 +14,7 @@ function row(overrides: Partial<OverviewRow>): OverviewRow {
     loadEventMs: 0,
     totalTransferSize: 0,
     resourceCount: 0,
-    requestCount: 0,
-    failedRequestCount: 0,
-    networkTransferSize: 0,
-    slowestRequestMs: 0,
-    recommendationCounts: {},
     accessibilityIssues: [],
-    networkRequests: [],
-    networkRecommendations: [],
     ...overrides
   };
 }
