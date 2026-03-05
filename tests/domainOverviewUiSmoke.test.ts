@@ -25,6 +25,9 @@ describe('domain overview UI smoke', () => {
     expect(file).toContain('domain-overview-active');
     expect(file).toContain('No security findings');
     expect(file).toContain('Needs improvement');
+    expect(file).toContain('renderCwvStoplights');
+    expect(file).toContain('severity-label');
+    expect(file).toContain('Intermittent');
     expect(file).toContain('renderIssueTargets');
     expect(file).toContain('Targets (');
     expect(file).toContain('+${remaining} more');

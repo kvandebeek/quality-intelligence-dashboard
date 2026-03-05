@@ -157,3 +157,22 @@ pre{overflow:auto;max-height:300px;background:var(--preBg);padding:8px;border-ra
 .a11y-full{max-width:100%}
 .a11y-overlays{position:absolute;left:0;top:0;pointer-events:none}
 .a11y-overlay{position:absolute;border:2px solid var(--danger);background:rgba(239,106,106,0.1)}
+
+
+.severity-label{font-weight:600}
+.severity-critical{color:var(--sev-critical)}
+.severity-serious{color:var(--sev-serious)}
+.severity-moderate{color:var(--sev-moderate)}
+.severity-minor{color:var(--sev-minor)}
+
+.cwv-stoplights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cwv-stoplight{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;display:grid;gap:2px;justify-items:start}
+.cwv-stoplight .metric{font-size:11px;color:var(--textMuted);font-weight:600}
+.cwv-stoplight .value{font-size:14px;font-weight:700}
+.cwv-stoplight .light{width:10px;height:10px;border-radius:50%;display:inline-block}
+.cwv-stoplight .light.good{background:var(--success)}
+.cwv-stoplight .light.needs{background:var(--warning)}
+.cwv-stoplight .light.poor{background:var(--danger)}
+.cwv-stoplight .light.missing{background:var(--textMuted)}
+.cwv-stoplight .label{font-size:11px;color:var(--textMuted)}
+@media (max-width:900px){.cwv-stoplights{grid-template-columns:1fr}}

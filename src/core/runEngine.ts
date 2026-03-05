@@ -25,6 +25,8 @@ import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
 const FOCUS_TAB_SAMPLE_LIMIT = 14;
 const MAX_CONTRAST_SAMPLES_PER_URL = 3;
+const MAX_ACCEPTABLE_FCP_MS = 3000;
+const FCP_RETRY_ATTEMPTS = 2;
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
 
 type FocusStepSample = { selector: string; accessibleName: string; tagName: string };
@@ -201,6 +203,18 @@ async function collectCoreWebVitals(page: Page): Promise<{ lcp: number | null; c
   });
 }
 
+
+function computeMedian(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[middle] ?? null;
+  const left = sorted[middle - 1];
+  const right = sorted[middle];
+  if (left === undefined || right === undefined) return null;
+  return Math.round((left + right) / 2);
+}
+
 function computeStats(values: number[]): { stdDevLoadMs: number; coefficientOfVariation: number; unstable: boolean } {
   if (values.length === 0) return { stdDevLoadMs: 0, coefficientOfVariation: 0, unstable: false };
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -339,7 +353,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
       });
     };
 
-    const [perfMetrics, accessibility, scrapedLinks, coreWebVitals] = await timing.step(testReference, 'Collect core artifacts', async () => {
+    const [basePerformanceMetrics, accessibility, scrapedLinks, coreWebVitals] = await timing.step(testReference, 'Collect core artifacts', async () => {
       const performancePromise = runArtifactStep('Artifact: Performance metrics', async () => collectPerformance(page, target.url));
       const accessibilityPromise = runArtifactStep('Artifact: Accessibility', async () => collectAccessibility(page, target.url));
       const pageLinksPromise = runArtifactStep('Artifact: Page links', async () => scrapePageLinks(page));
@@ -347,6 +361,53 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
       return Promise.all([performancePromise, accessibilityPromise, pageLinksPromise, webVitalsPromise]);
     });
+
+    const fcpAttempts: Array<{ attempt: number; fcpMs: number | null; cleanStateRetry: boolean }> = [
+      { attempt: 1, fcpMs: basePerformanceMetrics.paint.fcpMs ?? null, cleanStateRetry: false }
+    ];
+
+    if ((basePerformanceMetrics.paint.fcpMs ?? null) === null || (basePerformanceMetrics.paint.fcpMs ?? 0) > MAX_ACCEPTABLE_FCP_MS) {
+      for (let retryIndex = 0; retryIndex < FCP_RETRY_ATTEMPTS; retryIndex += 1) {
+        const cleanContext = await browser.newContext({ serviceWorkers: 'block' });
+        await cleanContext.clearCookies();
+        await cleanContext.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache', Pragma: 'no-cache' });
+        const cleanPage = await cleanContext.newPage();
+        try {
+          await gotoWithConsent(cleanPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
+          await cleanPage.evaluate(() => {
+            try { window.localStorage.clear(); } catch {}
+            try { window.sessionStorage.clear(); } catch {}
+          });
+          const retryPerformance = await collectPerformance(cleanPage, target.url);
+          fcpAttempts.push({ attempt: retryIndex + 2, fcpMs: retryPerformance.paint.fcpMs ?? null, cleanStateRetry: true });
+        } catch {
+          fcpAttempts.push({ attempt: retryIndex + 2, fcpMs: null, cleanStateRetry: true });
+        } finally {
+          await cleanPage.close();
+          await cleanContext.close();
+        }
+      }
+    }
+
+    const measuredAttemptValues = fcpAttempts.map((entry) => entry.fcpMs).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+    const medianFcpMs = computeMedian(measuredAttemptValues);
+    const slowAttempts = measuredAttemptValues.filter((value) => value > MAX_ACCEPTABLE_FCP_MS).length;
+    const fcpIssue = medianFcpMs === null ? true : (medianFcpMs > MAX_ACCEPTABLE_FCP_MS || slowAttempts >= 2);
+    const fcpDecisionReason = medianFcpMs === null
+      ? 'No successful FCP measurement across attempts; flagged as issue.'
+      : `Reported median from ${fcpAttempts.length} attempt(s); ${slowAttempts} over ${MAX_ACCEPTABLE_FCP_MS}ms.`;
+
+    const perfMetrics = {
+      ...basePerformanceMetrics,
+      paint: {
+        ...basePerformanceMetrics.paint,
+        fcpMs: medianFcpMs
+      },
+      fcpAttempts,
+      fcpReportedMs: medianFcpMs,
+      fcpDecisionReason,
+      fcpIssue
+    };
 
     const memorySamples = await page.evaluate(() => {
     const value = (window.performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize;

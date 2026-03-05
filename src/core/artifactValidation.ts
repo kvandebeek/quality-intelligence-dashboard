@@ -7,7 +7,7 @@ import { artifactMetaSchema, type ArtifactMeta } from '../models/platform.js';
 const wrapped = <T extends z.ZodTypeAny>(payload: T) => z.object({ meta: artifactMetaSchema, payload });
 
 export const artifactSchemas = {
-  performance: wrapped(z.object({ url: z.string().url(), navigation: z.record(z.string(), z.number()), paint: z.record(z.string(), z.number().nullable()), resourceSummary: z.object({ count: z.number(), transferSize: z.number(), encodedBodySize: z.number(), decodedBodySize: z.number() }) })),
+  performance: wrapped(z.object({ url: z.string().url(), navigation: z.record(z.string(), z.number()), paint: z.record(z.string(), z.number().nullable()), fcpAttempts: z.array(z.object({ attempt: z.number().int().positive(), fcpMs: z.number().nullable(), cleanStateRetry: z.boolean() })).optional(), fcpReportedMs: z.number().nullable().optional(), fcpDecisionReason: z.string().optional(), fcpIssue: z.boolean().optional(), resourceSummary: z.object({ count: z.number(), transferSize: z.number(), encodedBodySize: z.number(), decodedBodySize: z.number() }) })),
   accessibility: wrapped(z.object({ url: z.string().url(), issues: z.array(z.object({ id: z.string(), impact: z.string(), description: z.string(), help: z.string(), nodes: z.number(), tags: z.array(z.string()), recommendation: z.string() })), counters: z.record(z.string(), z.number()) })),
   coreWebVitals: wrapped(z.object({ lcp: z.number().nullable(), cls: z.number().nullable(), inp: z.number().nullable(), fcp: z.number().nullable() })),
   throttled: wrapped(z.object({ available: z.boolean(), baselineLoadMs: z.number().nullable(), throttledLoadMs: z.number().nullable(), degradationFactor: z.number().nullable() })),

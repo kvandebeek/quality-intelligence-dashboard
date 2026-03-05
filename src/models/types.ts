@@ -57,6 +57,14 @@ export interface PerformanceMetrics {
   url: string;
   navigation: Record<string, number>;
   paint: Record<string, number | null>;
+  fcpAttempts?: Array<{
+    attempt: number;
+    fcpMs: number | null;
+    cleanStateRetry: boolean;
+  }>;
+  fcpReportedMs?: number | null;
+  fcpDecisionReason?: string;
+  fcpIssue?: boolean;
   resourceSummary: {
     count: number;
     transferSize: number;
