@@ -195,3 +195,13 @@ All tiles include per-metric coverage (e.g., measured URLs / total URLs).
 - Selection persistence uses `localStorage["theme"]`.
 - Initial theme logic: use saved `theme` if present, otherwise default to `light`.
 - To tune colors for either theme, edit the token blocks in `src/dashboard/app/app.css` (`:root` for dark and `:root[data-theme='light']` for light).
+
+## a11y-beyond-axe details (focus trap + contrast simulation)
+
+`a11y-beyond-axe.json` now includes structured diagnostics that remain backward compatible:
+
+- `possibleFocusTrapDetails.candidates[]`: suspected trap selector, role/ARIA summary, visibility/enabled state, bounding box, tab sequence evidence, repeat pattern, repro text, and screenshot path.
+- `contrastSimulationDetails.method`: deterministic sampling metadata (viewport + scroll positions + what is measured).
+- `contrastSimulationDetails.findings[]`: per-sample screenshot references, measured regions with bounding boxes/region scores/reasons, and targeted recommendations.
+
+Artifacts are written under `<target-folder>/a11y-beyond-axe/` so evidence is run-scoped and deterministic.

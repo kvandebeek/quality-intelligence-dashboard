@@ -23,8 +23,93 @@ import { extractSeoSignals } from '../collectors/seoScore/extractSeoSignals.js';
 import { collectUxSuite } from '../collectors/uxSuiteCollector.js';
 
 const ARTIFACT_FILES = ['performance.json', 'accessibility.json', 'target-summary.json', 'core-web-vitals.json', 'throttled-run.json', 'security-scan.json', 'seo-score.json', 'visual-regression.json', 'broken-links.json', 'third-party-risk.json', 'a11y-beyond-axe.json', 'stability.json', 'memory-profile.json', CROSS_BROWSER_PERFORMANCE_FILE, 'client-errors.json', 'memory-leaks.json', 'privacy-audit.json', 'runtime-security.json', 'dependency-risk.json', 'regression-summary.json', 'ux-overview.json', 'ux-sanity.json', 'ux-layout-stability.json', 'ux-interaction.json', 'ux-click-friction.json', 'ux-keyboard.json', 'ux-overlays.json', 'ux-readability.json', 'ux-forms.json', 'ux-visual-regression.json'] as const;
+const FOCUS_TAB_SAMPLE_LIMIT = 14;
+const MAX_CONTRAST_SAMPLES_PER_URL = 3;
 function browserFactory(name: AppConfig['browser']): BrowserType { if (name === 'firefox') return firefox; if (name === 'webkit') return webkit; return chromium; }
 
+type FocusStepSample = { selector: string; accessibleName: string; tagName: string };
+type ContrastRegion = {
+  boundingBox: { x: number; y: number; width: number; height: number };
+  regionScore: number;
+  why: string;
+  selector: string;
+  contrastRatio: number;
+};
+
+async function evaluateFocusStep(page: Page): Promise<{ selector: string; accessibleName: string; tagName: string; role: string | null; ariaModal: string | null; ariaHiddenAncestry: boolean; isVisible: boolean; isEnabled: boolean; boundingBox: { x: number; y: number; width: number; height: number } | null; activeElementHtmlSnippet: string }> {
+  return page.evaluate(() => {
+    const active = document.activeElement as HTMLElement | null;
+    const compact = (value: string) => value.trim().replace(/\s+/g, ' ').slice(0, 180);
+    const selectorFor = (element: Element | null): string => {
+      if (!element) return 'document.body';
+      const id = element.getAttribute('id');
+      if (id) return `#${id}`;
+      const testId = element.getAttribute('data-testid');
+      if (testId) return `[data-testid="${testId}"]`;
+      const name = element.getAttribute('name');
+      if (name) return `${element.tagName.toLowerCase()}[name="${name}"]`;
+      const classes = [...(element.classList || [])].slice(0, 2).join('.');
+      const classSegment = classes ? `.${classes}` : '';
+      const parent = element.parentElement;
+      if (!parent) return `${element.tagName.toLowerCase()}${classSegment}`;
+      const siblings = [...parent.children].filter((child) => child.tagName === element.tagName);
+      const nth = siblings.length > 1 ? `:nth-of-type(${siblings.indexOf(element) + 1})` : '';
+      return `${element.tagName.toLowerCase()}${classSegment}${nth}`;
+    };
+    const role = active?.getAttribute('role') ?? null;
+    const ariaModal = active?.getAttribute('aria-modal') ?? null;
+    const ariaHiddenAncestry = Boolean(active?.closest('[aria-hidden="true"]'));
+    const rect = active?.getBoundingClientRect();
+    const style = active ? window.getComputedStyle(active) : null;
+    const isVisible = Boolean(active && rect && rect.width > 0 && rect.height > 0 && style && style.visibility !== 'hidden' && style.display !== 'none');
+    const isEnabled = Boolean(active && !active.hasAttribute('disabled') && active.getAttribute('aria-disabled') !== 'true');
+    return {
+      selector: selectorFor(active),
+      accessibleName: compact(active?.getAttribute('aria-label') ?? active?.textContent ?? active?.getAttribute('title') ?? ''),
+      tagName: active?.tagName ?? 'BODY',
+      role,
+      ariaModal,
+      ariaHiddenAncestry,
+      isVisible,
+      isEnabled,
+      boundingBox: rect ? { x: Math.max(0, Math.round(rect.x)), y: Math.max(0, Math.round(rect.y)), width: Math.round(rect.width), height: Math.round(rect.height) } : null,
+      activeElementHtmlSnippet: compact((active?.outerHTML ?? '<body>').replace(/\s+/g, ' ').slice(0, 220))
+    };
+  });
+}
+
+
+
+function parseCssColor(value: string | null): [number, number, number] | null {
+  if (!value) return null;
+  const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function luminanceFromRgb(rgb: [number, number, number]): number {
+  const normalized = rgb.map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return (0.2126 * normalized[0]) + (0.7152 * normalized[1]) + (0.0722 * normalized[2]);
+}
+
+function contrastRatio(fg: [number, number, number], bg: [number, number, number]): number {
+  const l1 = luminanceFromRgb(fg);
+  const l2 = luminanceFromRgb(bg);
+  const light = Math.max(l1, l2);
+  const dark = Math.min(l1, l2);
+  return Number(((light + 0.05) / (dark + 0.05)).toFixed(2));
+}
+
+function contrastScoreFromRatio(ratio: number): number {
+  if (!Number.isFinite(ratio)) return 0;
+  if (ratio >= 7) return 100;
+  if (ratio >= 4.5) return 85;
+  if (ratio >= 3) return 60;
+  return Math.max(10, Math.round((ratio / 3) * 50));
+}
 function sanitizeSlug(url: string): string {
   const value = new URL(url);
   const slug = `${value.hostname}${value.pathname}`.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
@@ -289,19 +374,146 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   const focusCheck = await browser.newPage().then(async (checkPage) => {
     try {
+      await checkPage.setViewportSize({ width: 1366, height: 768 });
       await gotoWithConsent(checkPage, target.url, { gotoOptions: { waitUntil: 'load' }, consent: config.consent });
-      await checkPage.keyboard.press('Tab');
-      const active1 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
-      await checkPage.keyboard.press('Tab');
-      const active2 = await checkPage.evaluate(() => document.activeElement?.tagName ?? '');
-      const keyboardReachable = active1.length > 0;
-      const possibleFocusTrap = active1 === active2 && active1 !== 'BODY';
-      const contrastSimulationScore = keyboardReachable ? (possibleFocusTrap ? 60 : 100) : 0;
+      const a11yArtifactDir = path.join(targetFolder, 'a11y-beyond-axe');
+      ensureDir(a11yArtifactDir);
+
+      const tabSequence: FocusStepSample[] = [];
+      const selectorHits = new Map<string, number>();
+      let trapDetectedAt = -1;
+      let trapDetectionSample: Awaited<ReturnType<typeof evaluateFocusStep>> | null = null;
+      for (let step = 0; step < FOCUS_TAB_SAMPLE_LIMIT; step += 1) {
+        await checkPage.keyboard.press('Tab');
+        const sample = await evaluateFocusStep(checkPage);
+        tabSequence.push({ selector: sample.selector, accessibleName: sample.accessibleName, tagName: sample.tagName });
+        selectorHits.set(sample.selector, (selectorHits.get(sample.selector) ?? 0) + 1);
+        if ((selectorHits.get(sample.selector) ?? 0) >= 3 && trapDetectedAt === -1) {
+          trapDetectedAt = step;
+          trapDetectionSample = sample;
+        }
+      }
+
+      const keyboardReachable = tabSequence.some((step) => step.selector !== 'document.body');
+      const repeated = [...selectorHits.entries()].sort((a, b) => b[1] - a[1]).filter((entry) => entry[1] > 1);
+      const possibleFocusTrap = repeated.length > 0 && repeated[0]![1] >= 3;
+      const trapCandidates = [] as Array<Record<string, unknown>>;
+
+      if (possibleFocusTrap && trapDetectionSample) {
+        const screenshotId = 'focus-trap-candidate-1.png';
+        const screenshotPath = path.join(a11yArtifactDir, screenshotId);
+        await checkPage.screenshot({ path: screenshotPath, fullPage: false });
+        const repeatPatternDetected = repeated.slice(0, 2).map((entry) => `${entry[0]} (${entry[1]} times)`).join(' ↔ ');
+        trapCandidates.push({
+          url: checkPage.url(),
+          timestamp: new Date().toISOString(),
+          stepContext: `after tabbing ${trapDetectedAt + 1} times`,
+          trapCandidate: {
+            selector: trapDetectionSample.selector,
+            roleAriaSummary: {
+              role: trapDetectionSample.role,
+              ariaModal: trapDetectionSample.ariaModal,
+              ariaHiddenAncestry: trapDetectionSample.ariaHiddenAncestry
+            },
+            boundingBox: trapDetectionSample.boundingBox,
+            isVisible: trapDetectionSample.isVisible,
+            isEnabled: trapDetectionSample.isEnabled
+          },
+          evidence: {
+            tabSequenceSample: tabSequence.slice(-8),
+            repeatPatternDetected: repeatPatternDetected || 'Repeated focus observed on same element',
+            activeElementHtmlSnippet: trapDetectionSample.activeElementHtmlSnippet,
+            screenshotId,
+            screenshotPath: `a11y-beyond-axe/${screenshotId}`
+          },
+          reproSteps: `Load page, then press Tab ${trapDetectedAt + 1} times until focus repeatedly returns to ${trapDetectionSample.selector}.`
+        });
+      }
+
+      const viewport = checkPage.viewportSize() ?? { width: 1366, height: 768 };
+      const pageMetrics = await checkPage.evaluate(() => ({ scrollHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight), deviceScaleFactor: window.devicePixelRatio || 1 }));
+      const maxScroll = Math.max(0, pageMetrics.scrollHeight - viewport.height);
+      const scrollSamples = [0, Math.round(maxScroll / 2), maxScroll].slice(0, MAX_CONTRAST_SAMPLES_PER_URL);
+      const contrastSamples: Array<Record<string, unknown>> = [];
+      const sampleScores: number[] = [];
+      for (let index = 0; index < scrollSamples.length; index += 1) {
+        const scrollY = scrollSamples[index] ?? 0;
+        await checkPage.evaluate((y) => window.scrollTo(0, y), scrollY);
+        const regionStats = await checkPage.evaluate(() => {
+          const nodes = [...document.querySelectorAll('body *')].filter((element) => {
+            const html = element as HTMLElement;
+            const rect = html.getBoundingClientRect();
+            if (rect.width < 20 || rect.height < 12) return false;
+            const style = window.getComputedStyle(html);
+            return style.visibility !== 'hidden' && style.display !== 'none' && Number.parseFloat(style.fontSize || '0') >= 11 && (html.innerText || '').trim().length > 0;
+          }).slice(0, 40);
+          return nodes.map((element) => {
+            const html = element as HTMLElement;
+            const style = window.getComputedStyle(html);
+            const rect = html.getBoundingClientRect();
+            return {
+              selector: html.id ? `#${html.id}` : `${html.tagName.toLowerCase()}${html.classList.length ? `.${[...html.classList].slice(0, 2).join('.')}` : ''}`,
+              color: style.color,
+              backgroundColor: style.backgroundColor,
+              box: { x: Math.max(0, Math.round(rect.x)), y: Math.max(0, Math.round(rect.y)), width: Math.round(rect.width), height: Math.round(rect.height) }
+            };
+          });
+        });
+
+        const measuredRegions: ContrastRegion[] = regionStats.map((region) => {
+          const fg = parseCssColor(region.color);
+          const bg = parseCssColor(region.backgroundColor) ?? [255, 255, 255];
+          const ratio = fg ? contrastRatio(fg, bg) : 1;
+          const regionScore = contrastScoreFromRatio(ratio);
+          const why = ratio < 3 ? 'Text blends into background under low-contrast simulation' : ratio < 4.5 ? 'Contrast is borderline for normal text' : 'Acceptable contrast in sampled region';
+          return { boundingBox: region.box, regionScore, why, selector: region.selector, contrastRatio: ratio };
+        }).sort((a, b) => a.regionScore - b.regionScore).slice(0, 4);
+
+        const averageScore = measuredRegions.length > 0 ? Math.round(measuredRegions.reduce((sum, region) => sum + region.regionScore, 0) / measuredRegions.length) : 0;
+        sampleScores.push(averageScore);
+        const screenshotId = `contrast-sample-${index + 1}.png`;
+        const screenshotPath = path.join(a11yArtifactDir, screenshotId);
+        await checkPage.screenshot({ path: screenshotPath, fullPage: false });
+        contrastSamples.push({
+          url: checkPage.url(),
+          viewport,
+          deviceScaleFactor: pageMetrics.deviceScaleFactor,
+          scrollY,
+          screenshotId,
+          thumbnailId: screenshotId,
+          screenshotPath: `a11y-beyond-axe/${screenshotId}`,
+          measuredRegions,
+          recommendations: measuredRegions.some((region) => region.contrastRatio < 3)
+            ? ['Increase text/background luminance difference.', 'Avoid mid-gray text on gray backgrounds.', 'Add solid background behind text over images.']
+            : ['Maintain current contrast levels and verify interactive states.']
+        });
+      }
+
+      const contrastSimulationScore = sampleScores.length > 0 ? Math.round(sampleScores.reduce((sum, score) => sum + score, 0) / sampleScores.length) : null;
       await checkPage.close();
-      return { keyboardReachable, possibleFocusTrap, contrastSimulationScore, contrastSimulationScoreReason: null as string | null };
+      return {
+        keyboardReachable,
+        possibleFocusTrap,
+        possibleFocusTrapDetails: trapCandidates.length > 0 ? { candidates: trapCandidates } : undefined,
+        contrastSimulationScore,
+        contrastSimulationScoreReason: null as string | null,
+        contrastSimulationDetails: {
+          method: {
+            simulations: ['low-contrast approximation'],
+            sampleStrategy: { viewport, scrollPositions: scrollSamples, samplesPerUrl: scrollSamples.length },
+            measurements: ['foreground/background color contrast ratio proxy', 'luminance delta proxy from computed styles']
+          },
+          findings: contrastSamples
+        }
+      };
     } catch {
       await checkPage.close();
-      return { keyboardReachable: false, possibleFocusTrap: false, contrastSimulationScore: null as number | null, contrastSimulationScoreReason: 'Unable to evaluate keyboard contrast simulation on this page' };
+      return {
+        keyboardReachable: false,
+        possibleFocusTrap: false,
+        contrastSimulationScore: null as number | null,
+        contrastSimulationScoreReason: 'Unable to evaluate keyboard contrast simulation on this page'
+      };
     }
   });
 
