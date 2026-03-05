@@ -8,9 +8,9 @@
   "startUrl": "https://www.resillion.com",
   "targets": [],
   "crawl": {
-    "enabled": false,
-    "maxDepth": 2,
-    "maxPages": 50,
+    "enabled": true,
+    "maxDepth": 1,
+    "maxPages": 1,
     "includeExternalDomains": false,
     "allowedDomains": ["resillion.com"]
   },
