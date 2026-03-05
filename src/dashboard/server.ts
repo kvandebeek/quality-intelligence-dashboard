@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import os from 'node:os';
 import http from 'node:http';
 import path from 'node:path';
@@ -7,6 +8,7 @@ import { parseArgs } from 'node:util';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { buildDashboardIndexWithLogger, resolveRunPath, SECTION_FILES, type ArtifactStore, type DashboardIndex } from './data.js';
+import { resolveArtifactLocalPath } from './paths.js';
 import { GLOSSARY_TERMS, SECTION_DEFINITIONS, SECTION_GROUPS } from './sectionCatalog.js';
 import { createLogger, newOperationId, sanitizeForDiagnostics, type LogContext, type LogLevel } from './logging.js';
 import { buildDomainSummary, type DomainSummary } from './domainSummary.js';
@@ -38,8 +40,9 @@ function readBody(request: http.IncomingMessage): Promise<string> {
   });
 }
 
-async function sendFile(response: http.ServerResponse, filePath: string): Promise<boolean> {
-  const op = logger.operation('file.send', { filePath });
+async function sendFile(response: http.ServerResponse, filePath: string, artifactKey?: string): Promise<boolean> {
+  const fileExists = fsSync.existsSync(filePath);
+  const op = logger.operation('file.send', artifactKey ? { artifactKey, resolvedLocalPath: filePath, exists: fileExists } : { filePath, exists: fileExists });
   try {
     const content = await fs.readFile(filePath);
     const ext = path.extname(filePath);
@@ -235,9 +238,9 @@ export async function startDashboardServer(options: ServerOptions): Promise<Star
       }
 
       if (requestUrl.pathname.startsWith('/artifacts/')) {
-        const rel = requestUrl.pathname.replace('/artifacts/', '');
-        const filePath = path.join(options.runPath, rel);
-        if (await sendFile(response, filePath)) return;
+        const artifactKey = requestUrl.pathname.replace('/artifacts/', '');
+        const filePath = resolveArtifactLocalPath(options.runPath, artifactKey);
+        if (await sendFile(response, filePath, artifactKey)) return;
       }
 
       const candidate = requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname;
