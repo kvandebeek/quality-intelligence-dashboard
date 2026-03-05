@@ -3,7 +3,6 @@
 | Artifact file | Producer (collector/function) | Dashboard view renderer |
 |---|---|---|
 | `client-errors.json` | `collectClientErrors` in `src/collectors/extensionPackCollector.ts` via `executePipelineForUrl` | `renderClientErrors` in `src/dashboard/app/app.js` |
-| `ux-friction.json` | `collectUxFriction` in `src/collectors/extensionPackCollector.ts` | `renderUxFriction` in `src/dashboard/app/app.js` |
 | `ux-overview.json` | `collectUxSuite` in `src/collectors/uxSuiteCollector.ts` | `renderUxOverview` in `src/dashboard/app/app.js` |
 | `ux-sanity.json` / `ux-layout-stability.json` / `ux-interaction.json` / `ux-click-friction.json` / `ux-keyboard.json` / `ux-overlays.json` / `ux-readability.json` / `ux-forms.json` / `ux-visual-regression.json` | `collectUxSuite` in `src/collectors/uxSuiteCollector.ts` | `renderUxGeneric` in `src/dashboard/app/app.js` |
 | `memory-leaks.json` | `collectMemoryLeaks` in `src/collectors/extensionPackCollector.ts` | `renderMemoryLeaks` in `src/dashboard/app/app.js` |

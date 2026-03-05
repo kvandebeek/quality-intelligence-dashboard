@@ -16,7 +16,6 @@ const consentSchema = z.object({
 const assuranceModulesSchema = z.object({
   enabled: z.object({
     clientErrors: z.boolean().default(true),
-    uxFriction: z.boolean().default(true),
     memoryLeaks: z.boolean().default(true),
     cacheAnalysis: z.boolean().default(true),
     thirdPartyResilience: z.boolean().default(true),
@@ -29,11 +28,6 @@ const assuranceModulesSchema = z.object({
   clientErrors: z.object({
     topErrorsLimit: z.number().int().positive().default(10),
     ignoreMessages: z.array(z.string()).default([])
-  }).default({}),
-  ux: z.object({
-    rageClickWindowMs: z.number().int().positive().default(1200),
-    rageClickThreshold: z.number().int().min(2).default(3),
-    deadClickWindowMs: z.number().int().positive().default(700)
   }).default({}),
   memory: z.object({
     interactionLoops: z.number().int().positive().default(5),

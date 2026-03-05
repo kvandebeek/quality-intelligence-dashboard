@@ -18,15 +18,6 @@ export interface ClientErrorsArtifact {
   topErrors: ClientErrorEntry[];
 }
 
-export interface UxFrictionArtifact {
-  rageClicks: number;
-  deadClicks: number;
-  longTasks: number;
-  layoutShifts: number;
-  topSelectors: Array<{ selector: string; count: number }>;
-  uxScore: number;
-}
-
 export interface MemoryLeaksArtifact {
   available: boolean;
   mode: 'cdp' | 'performance.memory' | 'not_supported';
@@ -75,16 +66,8 @@ export interface DependencyRiskArtifact {
   topRiskyDependencies: Array<{ domain: string; category: string; score: number }>;
 }
 
-interface UxRuntime {
-  clicks: Array<{ selector: string; ts: number }>;
-  deadClicks: number;
-  longTasks: number;
-  layoutShifts: number;
-}
-
 declare global {
   interface Window {
-    __qaUxRuntime?: UxRuntime;
     __qaUnhandledRejections?: string[];
     __qaEvalSignals?: number;
   }
@@ -121,7 +104,7 @@ function collectNavMetrics(page: Page): Promise<{ ttfbMs: number | null; fcpMs: 
 }
 
 export async function installErrorAndUxObservers(page: Page, config: AssuranceModulesConfig): Promise<void> {
-  await page.addInitScript((deadClickWindowMs: number) => {
+  await page.addInitScript(() => {
     window.__qaUnhandledRejections = [];
     window.addEventListener('unhandledrejection', (event) => {
       window.__qaUnhandledRejections?.push(String(event.reason ?? 'unknown rejection'));
@@ -134,39 +117,7 @@ export async function installErrorAndUxObservers(page: Page, config: AssuranceMo
       return originalEval(...args);
     };
 
-    window.__qaUxRuntime = { clicks: [], deadClicks: 0, longTasks: 0, layoutShifts: 0 };
-    let lastMutationAt = performance.now();
-    const observer = new MutationObserver(() => {
-      lastMutationAt = performance.now();
-    });
-    observer.observe(document, { childList: true, subtree: true, attributes: true });
-
-    document.addEventListener('click', (event) => {
-      const target = event.target as Element | null;
-      const selector = target ? `${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}` : 'unknown';
-      const ts = performance.now();
-      window.__qaUxRuntime?.clicks.push({ selector, ts });
-      window.setTimeout(() => {
-        if (Math.abs(lastMutationAt - ts) > deadClickWindowMs) {
-          window.__qaUxRuntime!.deadClicks += 1;
-        }
-      }, deadClickWindowMs);
-    }, { capture: true });
-
-    if ('PerformanceObserver' in window) {
-      const perfObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === 'longtask') window.__qaUxRuntime!.longTasks += 1;
-          if (entry.entryType === 'layout-shift') {
-            const shifted = entry as PerformanceEntry & { hadRecentInput?: boolean; value?: number };
-            if (!shifted.hadRecentInput && (shifted.value ?? 0) > 0) window.__qaUxRuntime!.layoutShifts += 1;
-          }
-        }
-      });
-      try { perfObserver.observe({ type: 'longtask', buffered: true }); } catch {}
-      try { perfObserver.observe({ type: 'layout-shift', buffered: true }); } catch {}
-    }
-  }, config.ux.deadClickWindowMs);
+  });
 }
 
 export async function collectClientErrors(page: Page, config: AssuranceModulesConfig): Promise<ClientErrorsArtifact> {
@@ -214,37 +165,6 @@ export async function collectClientErrors(page: Page, config: AssuranceModulesCo
     consoleWarnings: consoleWarningCount,
     failedRequests,
     topErrors
-  };
-}
-
-export async function collectUxFriction(page: Page, config: AssuranceModulesConfig): Promise<UxFrictionArtifact> {
-  const runtime = await page.evaluate(() => window.__qaUxRuntime ?? { clicks: [], deadClicks: 0, longTasks: 0, layoutShifts: 0 });
-  const selectorCounts = new Map<string, number>();
-  for (const click of runtime.clicks) selectorCounts.set(click.selector, (selectorCounts.get(click.selector) ?? 0) + 1);
-
-  let rageClicks = 0;
-  for (let index = 0; index < runtime.clicks.length; index += 1) {
-    const start = runtime.clicks[index];
-    if (!start) continue;
-    let count = 1;
-    for (let offset = index + 1; offset < runtime.clicks.length; offset += 1) {
-      const current = runtime.clicks[offset];
-      if (!current) continue;
-      if (current.selector !== start.selector) continue;
-      if ((current.ts - start.ts) <= config.ux.rageClickWindowMs) count += 1;
-    }
-    if (count >= config.ux.rageClickThreshold) rageClicks += 1;
-  }
-
-  const topSelectors = [...selectorCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([selector, count]) => ({ selector, count }));
-  const uxScore = Math.max(0, 100 - (rageClicks * 7) - (runtime.deadClicks * 5) - (runtime.longTasks * 2) - (runtime.layoutShifts * 3));
-  return {
-    rageClicks,
-    deadClicks: runtime.deadClicks,
-    longTasks: runtime.longTasks,
-    layoutShifts: runtime.layoutShifts,
-    topSelectors,
-    uxScore
   };
 }
 
@@ -480,4 +400,3 @@ export async function collectDependencyRisk(page: Page, firstPartyHost: string, 
 
   return { domainInventory, dependencyRiskScore, topRiskyDependencies };
 }
-

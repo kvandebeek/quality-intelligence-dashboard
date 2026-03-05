@@ -399,10 +399,6 @@ export const SECTION_DEFINITIONS = {
     route: 'client-errors.json', label: 'client-side-errors', category: 'reliability-client-health',
     info: { whatItIs: 'Tracks browser-side errors seen by users during page use.', whyItMatters: 'Client errors break journeys, increase support load, and hide conversion issues.', howToRead: ['Check total errors and severity score.', 'Review top repeated messages first.', 'Failed requests often point to API/CDN dependency problems.', 'Fix high-frequency errors before edge-case warnings.'], keyTerms: baseTerms }
   },
-  'ux-friction.json': {
-    route: 'ux-friction.json', label: 'ux-friction', category: 'reliability-client-health',
-    info: { whatItIs: 'Signals where interactions feel frustrating (rage clicks, dead clicks, long tasks).', whyItMatters: 'Friction directly impacts completion rate and user trust.', howToRead: ['Start with UX score trend.', 'Rage/dead clicks indicate confusion or non-responsive controls.', 'Long tasks suggest UI thread blocking.', 'Prioritize top affected selectors in critical flows.'], keyTerms: baseTerms }
-  },
   'memory-leaks.json': {
     route: 'memory-leaks.json', label: 'memory-leaks', category: 'reliability-client-health',
     info: { whatItIs: 'Checks for suspicious memory growth after repeated interactions.', whyItMatters: 'Leaks can cause slow pages, crashes, and degraded session quality.', howToRead: ['Compare initial vs final heap.', 'Review leak risk label.', 'High growth means investigate retained objects/components.', 'Use evidence notes to reproduce with dev tools.'], keyTerms: baseTerms }

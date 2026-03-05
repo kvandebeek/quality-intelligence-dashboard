@@ -6,4 +6,4 @@
 - SEO: `seo-score.json`.
 - Visual: `visual-current.png`, `visual-regression.json`.
 - Reliability: `stability.json`, `broken-links.json`, `client-errors.json`, `memory-leaks.json`.
-- UX: `ux-overview.json`, `ux-sanity.json`, `ux-layout-stability.json`, `ux-interaction.json`, `ux-click-friction.json`, `ux-keyboard.json`, `ux-overlays.json`, `ux-readability.json`, `ux-forms.json`, `ux-visual-regression.json`, `ux-friction.json`.
+- UX: `ux-overview.json`, `ux-sanity.json`, `ux-layout-stability.json`, `ux-interaction.json`, `ux-click-friction.json`, `ux-keyboard.json`, `ux-overlays.json`, `ux-readability.json`, `ux-forms.json`, `ux-visual-regression.json`.

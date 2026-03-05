@@ -592,7 +592,6 @@ async function loadTab(id, tab){
     case 'visual-current.png': body = payload.summary?.image ? `<div class="image-wrap"><img src="${payload.summary.image}"></div>` : `<p>${MISSING}</p>`; break;
     case 'visual-regression.json': body = renderVisualReg(unwrapped.payload); break;
     case 'client-errors.json': body = renderClientErrors(unwrapped.payload); break;
-    case 'ux-friction.json': body = renderUxFriction(unwrapped.payload); break;
     case 'ux-overview.json': body = renderUxOverview(unwrapped.payload, selected); break;
     case 'ux-sanity.json':
     case 'ux-layout-stability.json':
@@ -691,7 +690,6 @@ const renderThrottled = (r={})=>`<div class="kpis">${textMetric('Available',r.av
 const renderVisualReg = (r={})=>`<div class="kpis">${textMetric('Baseline found',r.baselineFound)}${metric('Diff ratio',r.diffRatio)}${textMetric('Passed',r.passed)}</div>${r.baselineFound===false?'<p class="inline-hint">No baseline exists yet. Create one to enable visual change detection.</p><button>Create baseline from visual-current.png</button>':''}`;
 
 const renderClientErrors = (r={})=>`<div class="kpis">${metric('Total errors',r.totalErrors)}${metric('Severity score',r.severityScore)}${metric('Console errors',r.consoleErrors)}${metric('Unhandled rejections',r.unhandledRejections)}</div><table><tr><th>Message</th><th>Count</th></tr>${(r.topErrors||[]).slice(0,20).map((item)=>`<tr><td>${safe(item.message)}</td><td>${safe(item.count)}</td></tr>`).join('')}</table>`;
-const renderUxFriction = (r={})=>`<div class="kpis">${metric('UX score',r.uxScore)}${metric('Rage clicks',r.rageClicks)}${metric('Dead clicks',r.deadClicks)}${metric('Long tasks',r.longTasks)}${metric('Layout shifts',r.layoutShifts)}</div><table><tr><th>Selector</th><th>Count</th></tr>${(r.topSelectors||[]).map((item)=>`<tr><td>${safe(item.selector)}</td><td>${safe(item.count)}</td></tr>`).join('')}</table>`;
 const renderUxOverview = (r={})=>{
   const artifacts = r.signals?.artifacts || {};
   const rows = Object.entries(artifacts);
