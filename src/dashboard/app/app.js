@@ -15,7 +15,8 @@ const state = {
   selectedView: 'domain-overview',
   domainSummary: null,
   facets: { failures:false, broken:false, visualFailed:false, throttled:false, a11y:new Set() },
-  sorts: { stability: { key: 'index', dir: 'asc' } }
+  sorts: { stability: { key: 'index', dir: 'asc' } },
+  a11yContrastFindings: []
 };
 
 const MISSING = 'Not available';
@@ -607,6 +608,7 @@ async function loadTab(id, tab){
   }
   el.innerHTML = `${explanationPanel(tab)}${head}${body}${rawPanel(raw, tab)}`;
   bindCollapsiblePanels(el);
+  if(tab === 'a11y-beyond-axe.json') bindA11yHeuristics(el);
   logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
   el.querySelectorAll('[data-sort-scope]').forEach((btn)=>btn.onclick=()=>{const scope=btn.dataset.sortScope;const key=btn.dataset.sortKey;const current=state.sorts[scope];state.sorts[scope]={key,dir:current.key===key&&current.dir==='asc'?'desc':'asc'};loadTab(id, tab);});
@@ -616,8 +618,39 @@ const renderA11yHeuristics = (r={})=>{
   const score = toNum(r.contrastSimulationScore);
   const reason = safe(r.contrastSimulationScoreReason, '');
   const scoreValue = score === null ? MISSING : score;
-  return `<div class="kpis">${textMetric('keyboardReachable',r.keyboardReachable)}${textMetric('possibleFocusTrap',r.possibleFocusTrap)}${textMetric('contrastSimulationScore',scoreValue)}</div>${score===null&&reason?`<p>contrastSimulationScore reason: ${escapeHtml(reason)}</p>`:''}<p>Manual checks are shown when flags indicate potential focus and keyboard issues.</p>`;
+  const candidates = r.possibleFocusTrapDetails?.candidates || [];
+  const findings = r.contrastSimulationDetails?.findings || [];
+  state.a11yContrastFindings = findings;
+  const method = r.contrastSimulationDetails?.method;
+  const focusStatus = r.possibleFocusTrap ? 'Possible trap detected' : 'No trap detected';
+  const focusCards = r.possibleFocusTrap && candidates.length ? `<div class="cards">${candidates.map((candidate)=>{
+    const shot = candidate.evidence?.screenshotPath;
+    const thumb = shot ? `<img class="a11y-thumb" src="/artifacts/${encodeURIComponent(state.selectedId)}/${encodeURIComponent(shot)}" alt="Focus trap evidence">` : '';
+    return `<article>${thumb}<p><strong>${escapeHtml(candidate.trapCandidate?.selector || 'Unknown selector')}</strong></p><p>${escapeHtml(candidate.evidence?.repeatPatternDetected || '')}</p><p>${escapeHtml(candidate.reproSteps || '')}</p></article>`;
+  }).join('')}</div>` : `<p>${escapeHtml(focusStatus)}</p>`;
+  const methodPanel = method ? `<details><summary>How this score is calculated</summary><pre>${escapeHtml(JSON.stringify(method,null,2))}</pre></details>` : '';
+  const thumbs = findings.length ? `<div class="a11y-thumb-grid">${findings.map((sample, index)=>`<button class="a11y-thumb-button" data-contrast-sample-index="${index}"><img class="a11y-thumb" src="/artifacts/${encodeURIComponent(state.selectedId)}/${encodeURIComponent(sample.thumbnailId ? `a11y-beyond-axe/${sample.thumbnailId}` : sample.screenshotPath)}" alt="Contrast sample ${index + 1}"><span>scrollY ${safe(sample.scrollY,0)}</span></button>`).join('')}</div>` : '<p>No contrast samples available.</p>';
+  return `<div class="kpis">${textMetric('keyboardReachable',r.keyboardReachable)}${textMetric('possibleFocusTrap',r.possibleFocusTrap)}${textMetric('contrastSimulationScore',scoreValue)}</div>${score===null&&reason?`<p>contrastSimulationScore reason: ${escapeHtml(reason)}</p>`:''}<h4>possibleFocusTrap</h4>${focusCards}<h4>contrastSimulationScore</h4>${methodPanel}${thumbs}<dialog class="a11y-modal"><form method="dialog"><button class="link">Close</button></form><div class="a11y-modal-body"></div></dialog>`;
 };
+
+function bindA11yHeuristics(scope){
+  const modal = scope.querySelector('.a11y-modal');
+  if(!modal) return;
+  scope.querySelectorAll('[data-contrast-sample-index]').forEach((button)=>button.onclick=()=>{
+    const index = Number(button.dataset.contrastSampleIndex);
+    const sample = state.a11yContrastFindings[index];
+    if(!sample) return;
+    const regions = Array.isArray(sample.measuredRegions) ? sample.measuredRegions : [];
+    const overlays = regions.map((region)=>`<div class="a11y-overlay" style="left:${region.boundingBox?.x || 0}px;top:${region.boundingBox?.y || 0}px;width:${region.boundingBox?.width || 0}px;height:${region.boundingBox?.height || 0}px;" title="${escapeHtml(region.why || '')}"></div>`).join('');
+    const rows = regions.map((region)=>`<tr><td>${safe(region.selector)}</td><td>${safe(region.regionScore)}</td><td>${safe(region.contrastRatio)}</td><td>${safe(region.why)}</td></tr>`).join('');
+    const recs = (sample.recommendations || []).map((rec)=>`<li>${escapeHtml(rec)}</li>`).join('');
+    modal.querySelector('.a11y-modal-body').innerHTML = `<label><input type="checkbox" checked data-toggle-overlays> Show overlays</label><div class="a11y-shot-wrap"><img class="a11y-full" src="/artifacts/${encodeURIComponent(state.selectedId)}/${encodeURIComponent(sample.screenshotPath)}" alt="contrast sample"><div class="a11y-overlays">${overlays}</div></div><table><tr><th>Selector</th><th>Region score</th><th>Contrast ratio</th><th>Explanation</th></tr>${rows}</table><ul>${recs}</ul>`;
+    const toggle = modal.querySelector('[data-toggle-overlays]');
+    if(toggle) toggle.onchange = ()=>{ const layer = modal.querySelector('.a11y-overlays'); if(layer) layer.style.display = toggle.checked ? 'block' : 'none'; };
+    modal.showModal();
+  });
+}
+
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
 const renderBroken = (r={})=>`<div class="kpis">${metric('Checked',r.checkedCount ?? r.checked)}${metric('Broken',r.brokenCount ?? r.broken)}${metric('Redirect chains',r.redirectChains)}${metric('Loops',r.loops)}</div>`;
 const renderCwv = (r={})=>{const vals=[toNum(r.lcpMs ?? r.lcp),toNum(r.cls),toNum(r.inpMs ?? r.inp),toNum(r.fcpMs ?? r.fcp)]; const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs ?? r.lcp,'ms','Largest Contentful Paint')}${metric('CLS',r.cls)}${metric('INP',r.inpMs ?? r.inp,'ms','Interaction to Next Paint')}${metric('FCP',r.fcpMs ?? r.fcp,'ms','First Contentful Paint')}${metric('Readiness',ready,'%')}</div>`};

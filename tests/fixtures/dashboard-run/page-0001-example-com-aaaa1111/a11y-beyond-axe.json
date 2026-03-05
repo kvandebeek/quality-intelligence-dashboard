@@ -1,16 +1,65 @@
 {
   "meta": {
-    "runId": "run-fixture-001",
-    "url": "https://example.com/",
-    "urlSlug": "page-0001-example-com-aaaa1111",
-    "timestamp": "2026-01-01T00:02:05.000Z",
+    "runId": "run-fixture",
+    "url": "https://example.com",
+    "urlSlug": "example-com",
+    "timestamp": "2025-02-01T00:00:00.000Z",
     "toolVersion": "2.0.0",
     "schemaVersion": "1.0.0"
   },
   "payload": {
     "keyboardReachable": true,
-    "possibleFocusTrap": false,
-    "contrastSimulationScore": 100,
-    "contrastSimulationScoreReason": null
+    "possibleFocusTrap": true,
+    "possibleFocusTrapDetails": {
+      "candidates": [
+        {
+          "url": "https://example.com",
+          "timestamp": "2025-02-01T00:00:02.000Z",
+          "stepContext": "after tabbing 6 times",
+          "trapCandidate": {
+            "selector": "#nav-close",
+            "roleAriaSummary": {"role": "button", "ariaModal": "true", "ariaHiddenAncestry": false},
+            "boundingBox": {"x": 120, "y": 84, "width": 90, "height": 32},
+            "isVisible": true,
+            "isEnabled": true
+          },
+          "evidence": {
+            "tabSequenceSample": [
+              {"selector": "#menu-toggle", "accessibleName": "Open menu", "tagName": "BUTTON"},
+              {"selector": "#nav-close", "accessibleName": "Close", "tagName": "BUTTON"}
+            ],
+            "repeatPatternDetected": "#menu-toggle (3 times) ↔ #nav-close (3 times)",
+            "activeElementHtmlSnippet": "<button id=\"nav-close\">Close</button>",
+            "screenshotId": "focus-trap-candidate-1.png",
+            "screenshotPath": "a11y-beyond-axe/focus-trap-candidate-1.png"
+          },
+          "reproSteps": "Load page, then press Tab 6 times until focus repeatedly returns to #nav-close."
+        }
+      ]
+    },
+    "contrastSimulationScore": 72,
+    "contrastSimulationScoreReason": null,
+    "contrastSimulationDetails": {
+      "method": {
+        "simulations": ["low-contrast approximation"],
+        "sampleStrategy": {"viewport": {"width": 1366, "height": 768}, "scrollPositions": [0, 450, 900], "samplesPerUrl": 3},
+        "measurements": ["foreground/background color contrast ratio proxy", "luminance delta proxy from computed styles"]
+      },
+      "findings": [
+        {
+          "url": "https://example.com",
+          "viewport": {"width": 1366, "height": 768},
+          "deviceScaleFactor": 1,
+          "scrollY": 0,
+          "screenshotId": "contrast-sample-1.png",
+          "thumbnailId": "contrast-sample-1.png",
+          "screenshotPath": "a11y-beyond-axe/contrast-sample-1.png",
+          "measuredRegions": [
+            {"boundingBox": {"x": 60, "y": 220, "width": 340, "height": 44}, "regionScore": 42, "why": "Text blends into background under low-contrast simulation", "selector": ".hero-title", "contrastRatio": 2.4}
+          ],
+          "recommendations": ["Increase text/background luminance difference.", "Use a stronger foreground color."]
+        }
+      ]
+    }
   }
 }

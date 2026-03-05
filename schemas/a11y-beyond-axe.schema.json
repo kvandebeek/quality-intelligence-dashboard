@@ -15,6 +15,36 @@
         "schemaVersion": {"type": "string"}
       }
     },
-    "payload": {}
+    "payload": {
+      "type": "object",
+      "required": ["keyboardReachable", "possibleFocusTrap", "contrastSimulationScore"],
+      "properties": {
+        "keyboardReachable": {"type": "boolean"},
+        "possibleFocusTrap": {"type": "boolean"},
+        "possibleFocusTrapDetails": {
+          "type": "object",
+          "properties": {
+            "candidates": {
+              "type": "array",
+              "items": {"type": "object"}
+            }
+          },
+          "required": ["candidates"]
+        },
+        "contrastSimulationScore": {"type": ["number", "null"]},
+        "contrastSimulationScoreReason": {"type": ["string", "null"]},
+        "contrastSimulationDetails": {
+          "type": "object",
+          "properties": {
+            "method": {"type": "object"},
+            "findings": {
+              "type": "array",
+              "items": {"type": "object"}
+            }
+          },
+          "required": ["method", "findings"]
+        }
+      }
+    }
   }
 }
