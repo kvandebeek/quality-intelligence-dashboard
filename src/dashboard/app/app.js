@@ -1,5 +1,6 @@
 import { applyTheme, getInitialTheme, toggleTheme } from './theme.js';
 import { buildStabilityRows } from './stability.js';
+import { renderBroken } from './brokenLinks.js';
 
 const app = document.getElementById('app');
 
