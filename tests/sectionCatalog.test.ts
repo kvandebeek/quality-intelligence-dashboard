@@ -6,7 +6,7 @@ describe('section catalog', () => {
   it('matches the expected top-level group and section navigation order', () => {
     const expected = [
       { label: 'Accessibility', sections: ['a11y-beyond-axe.json', 'accessibility.json'] },
-      { label: 'Performance', sections: ['core-web-vitals.json', 'lighthouse-summary.json', 'memory-profile.json', 'performance.json', 'cross-browser-performance.json', 'throttled-run.json'] },
+      { label: 'Performance', sections: ['core-web-vitals.json', 'memory-profile.json', 'performance.json', 'cross-browser-performance.json', 'throttled-run.json'] },
       { label: 'Stability', sections: ['target-summary.json', 'broken-links.json', 'stability.json'] },
       { label: 'Security & Risk', sections: ['security-scan.json', 'third-party-risk.json'] },
       { label: 'SEO', sections: ['seo-score.json'] },

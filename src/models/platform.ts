@@ -19,7 +19,6 @@ export interface UnifiedUrlModel {
   performance: Record<string, number>;
   accessibility: { counters: Record<string, number>; issues: Array<{ id: string; impact: string; recommendation: string; nodes: number; tags: string[] }> };
   coreWebVitals: { lcp: number | null; cls: number | null; inp: number | null; fcp: number | null };
-  lighthouse: { available: boolean; categories: Record<string, number | null> };
   throttled: { available: boolean; degradationFactor: number | null };
   security: Record<string, boolean | string | null>;
   seoScore: { overallScore: number };

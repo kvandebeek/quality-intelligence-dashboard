@@ -14,7 +14,7 @@ const state = {
   selectedDomain: null,
   selectedView: 'domain-overview',
   domainSummary: null,
-  facets: { failures:false, broken:false, visualFailed:false, throttled:false, lighthouse:false, a11y:new Set() },
+  facets: { failures:false, broken:false, visualFailed:false, throttled:false, a11y:new Set() },
   sorts: { stability: { key: 'index', dir: 'asc' } }
 };
 
@@ -164,7 +164,6 @@ function filterUrls(){
     if(state.facets.broken && (u.sections['broken-links.json']?.summary?.brokenCount ?? 0) <= 0) return false;
     if(state.facets.visualFailed && u.sections['visual-regression.json']?.summary?.passed !== false) return false;
     if(state.facets.throttled && u.sections['throttled-run.json']?.state === 'missing') return false;
-    if(state.facets.lighthouse && u.sections['lighthouse-summary.json']?.state === 'missing') return false;
     if(state.facets.a11y.size){
       const sev = u.sections['accessibility.json']?.summary || {};
       const has = [...state.facets.a11y].some((s)=> (sev[s] ?? 0) > 0);
@@ -310,7 +309,6 @@ function render(options = {}){
         <label><input type="checkbox" id="f-broken" ${state.facets.broken?'checked':''}> Broken links &gt; 0</label>
         <label><input type="checkbox" id="f-visual" ${state.facets.visualFailed?'checked':''}> Visual regression failed</label>
         <label><input type="checkbox" id="f-throttle" ${state.facets.throttled?'checked':''}> Throttled run available</label>
-        <label><input type="checkbox" id="f-lh" ${state.facets.lighthouse?'checked':''}> Lighthouse available</label>
         <div class="facet-inline">A11y severity:
           ${['critical','serious','moderate','minor'].map(s=>`<button class="pill ${state.facets.a11y.has(s)?'on':''}" data-sev="${s}">${s}</button>`).join('')}
         </div>
@@ -422,7 +420,6 @@ function bindFilters(){
   document.getElementById('f-broken').onchange=(e)=>{state.facets.broken=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'broken',enabled:state.facets.broken}); render();};
   document.getElementById('f-visual').onchange=(e)=>{state.facets.visualFailed=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'visualFailed',enabled:state.facets.visualFailed}); render();};
   document.getElementById('f-throttle').onchange=(e)=>{state.facets.throttled=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'throttled',enabled:state.facets.throttled}); render();};
-  document.getElementById('f-lh').onchange=(e)=>{state.facets.lighthouse=e.target.checked; logEvent('INFO','UI facet changed',{operationId:createOperationId(),facet:'lighthouse',enabled:state.facets.lighthouse}); render();};
   document.querySelectorAll('[data-sev]').forEach((btn)=>btn.onclick=()=>{const sev=btn.dataset.sev; state.facets.a11y.has(sev)?state.facets.a11y.delete(sev):state.facets.a11y.add(sev); logEvent('INFO','UI a11y severity filter changed',{operationId:createOperationId(),severity:sev,enabled:state.facets.a11y.has(sev)}); render();});
 
   const verboseBtn = document.getElementById('toggle-verbose');
@@ -579,7 +576,6 @@ async function loadTab(id, tab){
     case 'accessibility.json': body = renderAxe(unwrapped.payload); break;
     case 'broken-links.json': body = renderBroken(unwrapped.payload); break;
     case 'core-web-vitals.json': body = renderCwv(unwrapped.payload); break;
-    case 'lighthouse-summary.json': body = renderLighthouse(unwrapped.payload); break;
     case 'memory-profile.json': body = renderMemory(unwrapped.payload); break;
     case 'performance.json': body = renderPerformance(unwrapped.payload); break;
     case 'cross-browser-performance.json': body = renderCrossBrowserPerformance(unwrapped.payload); break;
@@ -625,7 +621,6 @@ const renderA11yHeuristics = (r={})=>{
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
 const renderBroken = (r={})=>`<div class="kpis">${metric('Checked',r.checkedCount ?? r.checked)}${metric('Broken',r.brokenCount ?? r.broken)}${metric('Redirect chains',r.redirectChains)}${metric('Loops',r.loops)}</div>`;
 const renderCwv = (r={})=>{const vals=[toNum(r.lcpMs ?? r.lcp),toNum(r.cls),toNum(r.inpMs ?? r.inp),toNum(r.fcpMs ?? r.fcp)]; const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs ?? r.lcp,'ms','Largest Contentful Paint')}${metric('CLS',r.cls)}${metric('INP',r.inpMs ?? r.inp,'ms','Interaction to Next Paint')}${metric('FCP',r.fcpMs ?? r.fcp,'ms','First Contentful Paint')}${metric('Readiness',ready,'%')}</div>`};
-const renderLighthouse = (r={})=>`<div class="kpis">${metric('Performance',r.performance ?? r.categories?.performance,'%')}${metric('Accessibility',r.accessibility ?? r.categories?.accessibility,'%')}${metric('SEO',r.seo ?? r.categories?.seo,'%')}${metric('Best practices',r.bestPractices ?? r.categories?.bestPractices,'%')}</div>`;
 const renderMemory = (r={})=>`<div>${metric('Growth',r.growth ?? r.growthVerdict,'bytes')}<pre>${(r.samples||[]).slice(0,20).map((x)=>Math.round(x)).join(', ')}</pre></div>`;
 const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class="kpis">${metric('DNS',n.dnsMs,'ms')}${metric('TCP',n.tcpMs,'ms')}${metric('TTFB',n.ttfbMs,'ms')}${metric('DCL',n.domContentLoadedMs,'ms')}${metric('Load',n.loadEventMs,'ms')}${metric('FP',r.paint?.fpMs ?? r.paint?.['first-paint'],'ms')}${metric('FCP',r.paint?.fcpMs ?? r.paint?.['first-contentful-paint'],'ms')}</div>`;};
 const renderCrossBrowserPerformance = (r={})=>{

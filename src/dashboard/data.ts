@@ -17,7 +17,6 @@ export const SECTION_FILES = [
   'a11y-beyond-axe.json',
   'accessibility.json',
   'core-web-vitals.json',
-  'lighthouse-summary.json',
   'memory-profile.json',
   'performance.json',
   'cross-browser-performance.json',
@@ -243,7 +242,7 @@ function readCandidateMetadata(candidate: unknown): Partial<RunMetadataView> {
 
 async function selectRunMetadata(store: ArtifactStore, runPath: string, urlId: string): Promise<RunMetadataView> {
   const selected: RunMetadataView = { runId: null, timestamp: null, runTime: null, environment: null };
-  const sectionCandidates: SectionFile[] = ['target-summary.json', 'performance.json', 'core-web-vitals.json', 'lighthouse-summary.json', 'accessibility.json', 'throttled-run.json', 'a11y-beyond-axe.json'];
+  const sectionCandidates: SectionFile[] = ['target-summary.json', 'performance.json', 'core-web-vitals.json', 'accessibility.json', 'throttled-run.json', 'a11y-beyond-axe.json'];
   for (const section of sectionCandidates) {
     const loaded = await store.loadSection(urlId, section);
     if (loaded.state === 'missing' || loaded.state === 'error') continue;
@@ -300,10 +299,6 @@ function normalizeSection(section: SectionFile, raw: unknown): { state: SectionI
   if (section === 'stability.json') {
     const unstable = obj.unstable === true;
     return { state: unstable ? 'issues' : 'ok', raw, summary: { unstable } };
-  }
-  if (section === 'lighthouse-summary.json') {
-    if (obj.available === false) return { state: 'not_available', raw, summary: { reason: obj.reason ?? 'Not available' } };
-    return { state: 'ok', raw, summary: { performance: toNum(obj.performance), accessibility: toNum(obj.accessibility), seo: toNum(obj.seo) } };
   }
   if (section === 'seo-score.json') {
     const overall = toNum(obj.overallScore);
@@ -413,7 +408,7 @@ export async function buildDashboardIndexWithLogger(runPath: string, logger?: Ap
       hasFailures,
       badges: {
         a11y: aggregateBadge(sections['accessibility.json'].state, sections['a11y-beyond-axe.json'].state),
-        perf: aggregateBadge(sections['performance.json'].state, sections['cross-browser-performance.json'].state, sections['core-web-vitals.json'].state, sections['lighthouse-summary.json'].state),
+        perf: aggregateBadge(sections['performance.json'].state, sections['cross-browser-performance.json'].state, sections['core-web-vitals.json'].state),
         sec: aggregateBadge(sections['security-scan.json'].state, sections['third-party-risk.json'].state),
         seo: aggregateBadge(sections['seo-score.json'].state),
         visual: aggregateBadge(sections['visual-regression.json'].state, sections['visual-current.png'].state),
@@ -451,10 +446,12 @@ export async function loadDashboardRun(runPath: string): Promise<DashboardRunDat
     }
 
     const a11y = (artifacts['accessibility.json'] as Record<string, unknown> | undefined) ?? {};
-    const performance = (artifacts['lighthouse-summary.json'] as Record<string, unknown> | undefined) ?? {};
-    const perfScore = toNum(performance.performance);
-    const a11yScore = toNum(performance.accessibility);
-    const seoScore = toNum(performance.seo);
+    const performance = (artifacts['performance.json'] as Record<string, unknown> | undefined) ?? {};
+    const navigation = asRecord(performance.navigation);
+    const perfScore = toNum(navigation.loadEventMs ?? navigation.domContentLoadedMs);
+    const a11yCounters = asRecord(a11y.counters);
+    const a11yScore = Math.max(0, 100 - ((toNum(a11yCounters.critical) ?? 0) * 10 + (toNum(a11yCounters.serious) ?? 0) * 6 + (toNum(a11yCounters.moderate) ?? 0) * 3 + (toNum(a11yCounters.minor) ?? 0)));
+    const seoScore = toNum((artifacts['seo-score.json'] as Record<string, unknown> | undefined)?.overallScore);
     const overall = Math.round(((perfScore ?? 60) + (a11yScore ?? 70) + (seoScore ?? 70)) / 3);
     const status: 'PASS' | 'WARN' | 'FAIL' = item.hasFailures ? (overall < 60 ? 'FAIL' : 'WARN') : 'PASS';
 
@@ -465,7 +462,7 @@ export async function loadDashboardRun(runPath: string): Promise<DashboardRunDat
       images,
       categoryScores: {
         performance: { value: perfScore ?? overall, derived: perfScore === null },
-        accessibility: { value: a11yScore ?? (100 - ((toNum(a11y.critical) ?? 0) * 10)), derived: a11yScore === null },
+        accessibility: { value: a11yScore, derived: true },
         security: { value: 70, derived: true },
         stability: { value: 70, derived: true },
         seo: { value: seoScore ?? 70, derived: seoScore === null },

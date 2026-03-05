@@ -255,17 +255,6 @@ export const SECTION_DEFINITIONS = {
       keyTerms: ['lcp', 'cls', 'inp', 'fcp', 'readiness']
     }
   },
-  'lighthouse-summary.json': {
-    route: 'lighthouse-summary.json',
-    label: 'lighthouse-summary',
-    category: 'performance',
-    info: {
-      whatItIs: 'A summary of Lighthouse category scores for this page.',
-      whyItMatters: 'It gives a quick, balanced quality snapshot across major web quality areas.',
-      howToRead: ['Compare the category scores side by side.', 'Focus first on the lowest category.', 'Use this view for trend checks across runs.', 'Use detailed sections to investigate root causes.'],
-      keyTerms: baseTerms
-    }
-  },
   'memory-profile.json': {
     route: 'memory-profile.json',
     label: 'memory-profile',
