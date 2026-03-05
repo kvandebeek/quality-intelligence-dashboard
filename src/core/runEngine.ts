@@ -15,7 +15,7 @@ import { publishToElasticsearch } from '../publishers/elasticsearchPublisher.js'
 import { extractAnchorHrefs, runBfsCrawl } from './crawler.js';
 import { SCHEMA_VERSION, TOOL_VERSION, type ArtifactMeta } from '../models/platform.js';
 import { writeValidatedArtifact } from './artifactValidation.js';
-import { buildRunIndex, percentileSummary } from './normalization.js';
+import { buildRunIndex, normalizeBrokenLinkDetails, percentileSummary } from './normalization.js';
 import { TestTimingTracker } from './testTiming.js';
 import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
@@ -398,6 +398,8 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   }
   const thirdPartyRisk = [...thirdPartyRiskMap.values()].map((entry) => ({ domain: entry.domain, requests: entry.requests, transferSize: entry.transferSize, avgDurationMs: entry.requests > 0 ? entry.totalDuration / entry.requests : 0, trackerHeuristic: entry.trackerHeuristic })).sort((a, b) => b.transferSize - a.transferSize);
 
+  const brokenLinksDetails: Array<{ sourcePageUrl: string; brokenUrl: string; status: number; chainLength: number }> = [];
+  for (const href of hrefs.slice(0, 50)) {
   const brokenLinksDetails: Array<{ url: string; status: number; chainLength: number }> = [];
   const brokenLinksItems: BrokenLinkItem[] = [];
   const linkRequestContext = await browser.newContext();
@@ -406,6 +408,19 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
     try {
       const resolved = new URL(link.href, target.url).toString();
       if (new URL(resolved).hostname !== host) continue;
+      const req = await browser.newContext().then(async (ctx) => { const r = await ctx.request.get(resolved, { maxRedirects: 10 }); await ctx.close(); return r; });
+      brokenLinksDetails.push({ sourcePageUrl: target.url, brokenUrl: resolved, status: req.status(), chainLength: 1 });
+    } catch {
+      // best effort
+    }
+  }
+  const normalizedBrokenLinksDetails = normalizeBrokenLinkDetails(brokenLinksDetails);
+  const brokenLinks = {
+    checked: normalizedBrokenLinksDetails.length,
+    broken: normalizedBrokenLinksDetails.filter((item) => item.status >= 400).length,
+    redirectChains: normalizedBrokenLinksDetails.filter((item) => item.chainLength > 1).length,
+    loops: 0,
+    details: normalizedBrokenLinksDetails
       const req = await linkRequestContext.request.get(resolved, { maxRedirects: 10, timeout: 10000 });
       const statusCode = req.status();
       brokenLinksDetails.push({ url: resolved, status: statusCode, chainLength: 1 });
