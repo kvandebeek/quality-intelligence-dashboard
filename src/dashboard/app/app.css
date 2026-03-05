@@ -153,6 +153,14 @@ pre{overflow:auto;max-height:300px;background:var(--preBg);padding:8px;border-ra
 .a11y-thumb-button{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);cursor:pointer;text-align:left}
 .a11y-thumb{width:100%;height:120px;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
 .a11y-modal{width:min(1100px,95vw);border:1px solid var(--border);background:var(--surface);color:var(--text)}
+
+.ux-issue-modal{width:min(1200px,96vw);border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.ux-issue-modal-body{display:grid;gap:10px}
+.ux-issue-viewer{overflow:auto;max-height:65vh;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}
+.ux-issue-image{max-width:100%;display:block}
+.ux-issue-selectors{display:grid;gap:8px}
+.ux-issue-selector{border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--surface2)}
+.ux-issue-selector h4{margin:0 0 6px}
 .a11y-shot-wrap{position:relative;overflow:auto;max-height:70vh}
 .a11y-full{max-width:100%}
 .a11y-overlays{position:absolute;left:0;top:0;pointer-events:none}

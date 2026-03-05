@@ -70,7 +70,7 @@ function issueTargetLabel(target){
   return MISSING;
 }
 
-function renderIssueTargets(targets){
+function renderIssueTargets(targets, issue = null){
   if (!Array.isArray(targets) || targets.length === 0) return '';
   const labels = targets.map((target)=>issueTargetLabel(target)).filter((label)=>label && label !== MISSING);
   if (labels.length === 0) return '';
@@ -78,7 +78,15 @@ function renderIssueTargets(targets){
   const remaining = labels.length - visible.length;
   const items = visible.map((label)=>`<li><code>${safe(label)}</code></li>`).join('');
   const more = remaining > 0 ? `<li>+${remaining} more</li>` : '';
-  return `<details class="issue-targets"><summary>Targets (${labels.length})</summary><ul>${items}${more}</ul></details>`;
+  const hasVisualization = issue?.visualization?.annotatedScreenshotPath && issue?.visualization?.metaPath;
+  const viewBtn = hasVisualization
+    ? `<button type="button" class="btn-mini issue-visualization-btn" data-screenshot-path="${encodeURIComponent(issue.visualization.annotatedScreenshotPath)}" data-meta-path="${encodeURIComponent(issue.visualization.metaPath)}" data-issue-title="${encodeURIComponent(issue.title ?? issue.id ?? 'Issue visualization')}">View on screenshot</button>`
+    : '';
+  return `<details class="issue-targets"><summary>Targets (${labels.length})</summary><ul>${items}${more}</ul></details>${viewBtn}`;
+}
+
+function renderIssueVisualizationModal(){
+  return `<dialog class="ux-issue-modal"><form method="dialog"><button class="link">Close</button></form><div class="ux-issue-modal-body"></div></dialog>`;
 }
 
 function metricGoodRate(metric){
@@ -676,9 +684,54 @@ async function loadTab(id, tab){
   bindCollapsiblePanels(el);
   if(tab === 'a11y-beyond-axe.json') bindA11yHeuristics(el);
   if(tab === 'broken-links.json') bindBrokenLinks(el);
+  if(tab.startsWith('ux-')) bindUxIssueVisualizations(el);
   logEvent(Math.round(performance.now()-started)>500?'WARN':'INFO','UI section render completed',{operationId,urlId:id,section:tab,view:tab,durationMs:Math.round(performance.now()-started),state:payload.state});
 
   el.querySelectorAll('[data-sort-scope]').forEach((btn)=>btn.onclick=()=>{const scope=btn.dataset.sortScope;const key=btn.dataset.sortKey;const current=state.sorts[scope];state.sorts[scope]={key,dir:current.key===key&&current.dir==='asc'?'desc':'asc'};loadTab(id, tab);});
+}
+
+
+async function openUxIssueVisualization(scope, trigger){
+  const modal = scope.querySelector('.ux-issue-modal');
+  if(!modal) return;
+  const screenshotPath = decodeURIComponent(trigger.dataset.screenshotPath || '');
+  const metaPath = decodeURIComponent(trigger.dataset.metaPath || '');
+  if(!screenshotPath || !metaPath) return;
+  const res = await fetch(`/artifacts/${encodeURIComponent(state.selectedId)}/${metaPath}`);
+  if(!res.ok){
+    modal.querySelector('.ux-issue-modal-body').innerHTML = `<p>Unable to load visualization metadata.</p>`;
+    modal.showModal();
+    return;
+  }
+  const meta = await res.json();
+  const selectors = Array.isArray(meta.selectors) ? meta.selectors : [];
+  const selectorItems = selectors.map((selector)=>{
+    const matches = Array.isArray(selector.matches) ? selector.matches : [];
+    const matchRows = matches.length
+      ? `<ul>${matches.map((match)=>`<li><button type="button" class="link" data-highlight-label="${escapeHtml(match.label)}">${escapeHtml(match.label)}</button> · <code>${escapeHtml(match.tagName)}</code> ${escapeHtml(match.id ? `#${match.id}` : '')} ${escapeHtml(match.className ? `.${match.className.split(/\s+/).join('.')}` : '')} — ${escapeHtml(match.textSnippet || 'No text')}</li>`).join('')}</ul>`
+      : '<p class="muted-copy">0 matches</p>';
+    return `<article class="ux-issue-selector"><h4><code>${escapeHtml(selector.selector || '')}</code> <span class="muted-copy">(${selector.matchCount || 0} matches${selector.unresolvedFrame ? ', unresolved frame' : ''})</span></h4>${matchRows}</article>`;
+  }).join('');
+
+  const image = `/artifacts/${encodeURIComponent(state.selectedId)}/${encodeURIComponent(screenshotPath)}`;
+  const title = decodeURIComponent(trigger.dataset.issueTitle || 'Issue visualization');
+  modal.querySelector('.ux-issue-modal-body').innerHTML = `<h3>${escapeHtml(title)}</h3><div class="ux-issue-viewer"><img class="ux-issue-image" src="${image}" alt="Annotated issue screenshot"></div><div class="ux-issue-selectors">${selectorItems || '<p>No selectors metadata available.</p>'}</div>`;
+  modal.querySelectorAll('[data-highlight-label]').forEach((btn)=>{
+    btn.onclick = ()=>{
+      const label = btn.dataset.highlightLabel;
+      const imageEl = modal.querySelector('.ux-issue-image');
+      if(imageEl) imageEl.setAttribute('data-focus-label', label || '');
+    };
+  });
+  modal.showModal();
+}
+
+function bindUxIssueVisualizations(scope){
+  const modal = scope.querySelector('.ux-issue-modal');
+  if(!modal) return;
+  scope.querySelectorAll('.issue-visualization-btn').forEach((button)=>{
+    button.onclick = ()=>openUxIssueVisualization(scope, button);
+  });
 }
 
 const renderA11yHeuristics = (r={})=>{
@@ -793,11 +846,11 @@ const renderUxOverview = (r={})=>{
   const issues = (r.topIssues||[]).slice(0,20);
   return `<div class="kpis">${metric('UX suite score',r.score)}${textMetric('Status',r.meta?.status ?? r.status)}${metric('Top issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>
   <table><tr><th>Artifact</th><th>Status</th><th>Score</th></tr>${rows.map(([k,v])=>`<tr><td>${safe(k)}</td><td>${safe(v.status)}</td><td>${safe(v.score)}</td></tr>`).join('')}</table>
-  <h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Title</th><th>Targets</th></tr>${issues.map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.title)}</td><td>${renderIssueTargets(x.targets)}</td></tr>`).join('')}</table>`;
+  <h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Title</th><th>Targets</th></tr>${issues.map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.title)}</td><td>${renderIssueTargets(x.targets, x)}</td></tr>`).join('')}</table>${renderIssueVisualizationModal()}`;
 };
 const renderUxGeneric = (tab, r={})=>{
   const screens = tab === 'ux-visual-regression.json' ? `<div class="image-wrap"><a href="/artifacts/${encodeURIComponent(state.selectedId)}/ux-visual-above-the-fold.png" target="_blank">Above the fold screenshot</a><br><a href="/artifacts/${encodeURIComponent(state.selectedId)}/ux-visual-fullpage.png" target="_blank">Full page screenshot</a></div>` : '';
-  return `<div class="kpis">${textMetric('Status',r.meta?.status ?? r.status)}${metric('Score',r.score)}${metric('Issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>${screens}<h4>Signals</h4><pre>${escapeHtml(JSON.stringify(r.signals||{},null,2))}</pre><h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Description</th><th>Targets</th></tr>${(r.topIssues||[]).map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.description)}</td><td>${renderIssueTargets(x.targets)}</td></tr>`).join('')}</table>`;
+  return `<div class="kpis">${textMetric('Status',r.meta?.status ?? r.status)}${metric('Score',r.score)}${metric('Issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>${screens}<h4>Signals</h4><pre>${escapeHtml(JSON.stringify(r.signals||{},null,2))}</pre><h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Description</th><th>Targets</th></tr>${(r.topIssues||[]).map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.description)}</td><td>${renderIssueTargets(x.targets, x)}</td></tr>`).join('')}</table>${renderIssueVisualizationModal()}`;
 };
 const renderMemoryLeaks = (r={})=>`<div class="kpis">${textMetric('Mode',r.mode)}${metric('Initial heap',r.initialHeapMB,'MB')}${metric('Final heap',r.finalHeapMB,'MB')}${metric('Growth',r.growthMB,'MB')}${textMetric('Leak risk',r.leakRisk)}</div><ul>${(r.evidence||[]).map((line)=>`<li>${safe(line)}</li>`).join('')}</ul>`;
 const renderPrivacyAudit = (r={})=>`<div class="kpis">${textMetric('Consent banner detected',r.consentBannerDetected)}${metric('Cookies before consent',(r.cookiesBeforeConsent||[]).length)}${metric('Insecure cookies',(r.insecureCookies||[]).length)}${metric('Trackers before consent',(r.thirdPartyTrackers||[]).length)}${textMetric('GDPR risk',r.gdprRisk)}</div>`;

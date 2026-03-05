@@ -6,13 +6,203 @@ import { writeJson } from '../utils/file.js';
 
 export type UxStatus = 'pass'|'warn'|'fail'|'partial'|'skipped';
 export type UxIssueTarget = string | { selector: string; label?: string; [key: string]: unknown };
+export interface UxIssueVisualization {
+  annotatedScreenshotPath: string;
+  metaPath: string;
+}
+export interface UxIssueMatch {
+  label: string;
+  tagName: string;
+  id: string;
+  className: string;
+  textSnippet: string;
+  ariaLabel: string;
+  boundingBox: { x: number; y: number; width: number; height: number };
+  frameUrl: string;
+}
+export interface UxIssueSelectorMeta {
+  selector: string;
+  matchCount: number;
+  unresolvedFrame: boolean;
+  matches: UxIssueMatch[];
+}
+export interface UxIssueVisualizationMeta {
+  issueId: string;
+  checkId: string;
+  pageUrl: string;
+  viewport: { width: number; height: number };
+  selectors: UxIssueSelectorMeta[];
+  generatedAt: string;
+}
 export interface UxArtifact {
   meta: { runId: string; url: string; timestamp: string; browserName: string; viewport: { width:number; height:number }; durationMs: number; status: UxStatus };
   score: number | null;
   signals: Record<string, unknown>;
-  topIssues: Array<{ id:string; title:string; severity:'info'|'low'|'medium'|'high'; description:string; evidence?: Record<string, unknown>; targets?: UxIssueTarget[] }>;
+  topIssues: Array<{ id:string; title:string; severity:'info'|'low'|'medium'|'high'; description:string; evidence?: Record<string, unknown>; targets?: UxIssueTarget[]; visualization?: UxIssueVisualization }>;
   errors: Array<{ step:string; message:string }>;
   recommendations: Array<{ title:string; detail:string }>;
+}
+
+function selectorFromTarget(target: UxIssueTarget): string | null {
+  if (typeof target === 'string') return target;
+  if (target && typeof target === 'object' && typeof target.selector === 'string') return target.selector;
+  return null;
+}
+
+async function resolveSelectorMeta(page: Page, selector: string, selectorIndex: number): Promise<UxIssueSelectorMeta> {
+  const selectors: UxIssueMatch[] = [];
+  let unresolvedFrame = false;
+  const frames = [page.mainFrame(), ...page.frames().filter((frame) => frame !== page.mainFrame())];
+  for (const frame of frames) {
+    let frameOffset = { x: 0, y: 0 };
+    if (frame !== page.mainFrame()) {
+      try {
+        const box = await (await frame.frameElement()).boundingBox();
+        if (!box) {
+          unresolvedFrame = true;
+          continue;
+        }
+        frameOffset = { x: box.x, y: box.y };
+      } catch {
+        unresolvedFrame = true;
+        continue;
+      }
+    }
+    let count = 0;
+    try {
+      count = await frame.locator(selector).count();
+    } catch {
+      continue;
+    }
+    for (let index = 0; index < count; index += 1) {
+      const element = frame.locator(selector).nth(index);
+      const details = await element.evaluate((node) => {
+        const el = node as HTMLElement;
+        const rect = el.getBoundingClientRect();
+        const textSnippet = (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        return {
+          tagName: el.tagName.toLowerCase(),
+          id: el.id ?? '',
+          className: typeof el.className === 'string' ? el.className : '',
+          textSnippet,
+          ariaLabel: el.getAttribute('aria-label') ?? '',
+          boundingBox: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        };
+      }).catch(() => null);
+      if (!details) continue;
+      if (details.boundingBox.width <= 0 || details.boundingBox.height <= 0) continue;
+      selectors.push({
+        ...details,
+        label: `S${selectorIndex + 1}-${selectors.length + 1}`,
+        frameUrl: frame.url(),
+        boundingBox: {
+          x: Number((details.boundingBox.x + frameOffset.x).toFixed(2)),
+          y: Number((details.boundingBox.y + frameOffset.y).toFixed(2)),
+          width: Number(details.boundingBox.width.toFixed(2)),
+          height: Number(details.boundingBox.height.toFixed(2))
+        }
+      });
+    }
+  }
+
+  return { selector, matchCount: selectors.length, unresolvedFrame, matches: selectors };
+}
+
+async function addVisualizationOverlay(page: Page, selectors: UxIssueSelectorMeta[]): Promise<void> {
+  const boxes = selectors.flatMap((selector) => selector.matches.map((match) => ({
+    label: match.label,
+    x: match.boundingBox.x,
+    y: match.boundingBox.y,
+    width: match.boundingBox.width,
+    height: match.boundingBox.height
+  })));
+
+  await page.evaluate((payload) => {
+    const existing = document.getElementById('__ux-issue-overlay__');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = '__ux-issue-overlay__';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.style.position = 'absolute';
+    overlay.style.left = '0';
+    overlay.style.top = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = `${Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)}px`;
+    overlay.style.pointerEvents = 'none';
+    overlay.style.zIndex = '2147483647';
+    for (const box of payload) {
+      const shape = document.createElement('div');
+      shape.style.position = 'absolute';
+      shape.style.left = `${box.x}px`;
+      shape.style.top = `${box.y}px`;
+      shape.style.width = `${box.width}px`;
+      shape.style.height = `${box.height}px`;
+      shape.style.border = '2px solid #ff3b30';
+      shape.style.background = 'rgba(255,59,48,0.15)';
+      shape.style.boxSizing = 'border-box';
+
+      const label = document.createElement('span');
+      label.textContent = box.label;
+      label.style.position = 'absolute';
+      label.style.left = '0';
+      label.style.top = '-18px';
+      label.style.background = '#ff3b30';
+      label.style.color = '#fff';
+      label.style.font = '600 11px/1.2 monospace';
+      label.style.padding = '2px 4px';
+      label.style.borderRadius = '3px';
+
+      shape.appendChild(label);
+      overlay.appendChild(shape);
+    }
+    document.body.appendChild(overlay);
+  }, boxes);
+}
+
+async function clearVisualizationOverlay(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    document.getElementById('__ux-issue-overlay__')?.remove();
+  });
+}
+
+async function attachIssueVisualization(page: Page, artifact: UxArtifact, checkId: string, outputDir: string): Promise<void> {
+  const issues = artifact.topIssues.filter((issue) => Array.isArray(issue.targets) && issue.targets.length > 0);
+  if (issues.length === 0) return;
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  for (const issue of issues) {
+    const selectors = normalizeUxIssueTargets(issue.targets ?? [])
+      .map((target) => selectorFromTarget(target))
+      .filter((selector): selector is string => typeof selector === 'string' && !!selector);
+    if (selectors.length === 0) continue;
+    const selectorMeta = [] as UxIssueSelectorMeta[];
+    for (let index = 0; index < selectors.length; index += 1) {
+      selectorMeta.push(await resolveSelectorMeta(page, selectors[index], index));
+    }
+
+    const issueDir = path.join(outputDir, 'ux', 'visualization', checkId.replace(/\.json$/i, ''), issue.id);
+    fs.mkdirSync(issueDir, { recursive: true });
+    const screenshotPath = path.join(issueDir, 'annotated.png');
+    const metaPath = path.join(issueDir, 'meta.json');
+    await addVisualizationOverlay(page, selectorMeta);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await clearVisualizationOverlay(page);
+
+    const visualizationMeta: UxIssueVisualizationMeta = {
+      issueId: issue.id,
+      checkId,
+      pageUrl: page.url(),
+      viewport: artifact.meta.viewport,
+      selectors: selectorMeta,
+      generatedAt: new Date().toISOString()
+    };
+    writeJson(metaPath, visualizationMeta);
+
+    issue.visualization = {
+      annotatedScreenshotPath: path.join('ux', 'visualization', checkId.replace(/\.json$/i, ''), issue.id, 'annotated.png').replaceAll('\\', '/'),
+      metaPath: path.join('ux', 'visualization', checkId.replace(/\.json$/i, ''), issue.id, 'meta.json').replaceAll('\\', '/')
+    };
+  }
 }
 
 const DESTRUCTIVE = ['logout','delete','remove','unsubscribe','sign out','pay','purchase','checkout'];
@@ -268,6 +458,8 @@ async function collectSingle(page: Page, key: string, context: { runId:string; u
     }
     artifact.signals = { baselineFound, baselinePath: baselineFound ? baselinePath : null, currentPath: above, fullPagePath: full, diffRatio };
   }
+
+  await safe(artifact, 'issue-visualization', async () => attachIssueVisualization(page, artifact, key, outputDir), undefined);
 
   return finalize(artifact, started);
 }
