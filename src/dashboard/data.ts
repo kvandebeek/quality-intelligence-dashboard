@@ -1,11 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { AppLogger } from './logging.js';
+import { expandHomePath } from './paths.js';
 
 export interface RunPathOptions { cliRunPath?: string; envRunPath?: string }
 export function resolveRunPath(options: RunPathOptions): string {
   const value = options.cliRunPath ?? options.envRunPath;
-  return value ? path.resolve(value) : process.cwd();
+  return value ? path.resolve(expandHomePath(value)) : process.cwd();
 }
 
 type JsonValue = Record<string, unknown> | unknown[];

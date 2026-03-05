@@ -1,4 +1,5 @@
 import path from 'node:path';
+import os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { resolveRunPath } from '../src/dashboard/data.js';
 
@@ -10,5 +11,10 @@ describe('resolveRunPath', () => {
   it('prefers explicit run path values', () => {
     expect(resolveRunPath({ cliRunPath: 'tests/fixtures/dashboard-run' })).toBe(path.resolve('tests/fixtures/dashboard-run'));
     expect(resolveRunPath({ envRunPath: 'tests/fixtures/dashboard-run' })).toBe(path.resolve('tests/fixtures/dashboard-run'));
+  });
+
+  it('expands leading tilde for unix-style and windows-style input', () => {
+    expect(resolveRunPath({ cliRunPath: '~/dashboard-run' })).toBe(path.resolve(path.join(os.homedir(), 'dashboard-run')));
+    expect(resolveRunPath({ cliRunPath: '~\\dashboard-run' })).toBe(path.resolve(path.join(os.homedir(), 'dashboard-run')));
   });
 });
