@@ -2,6 +2,52 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { RunIndex, UnifiedUrlModel } from '../models/platform.js';
 
+export type BrokenLinkDetail = {
+  sourcePageUrl: string;
+  brokenUrl: string;
+  status: number;
+  chainLength: number;
+};
+
+function normalizeUrlForBrokenLink(url: string, baseUrl?: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  try {
+    const resolved = baseUrl ? new URL(trimmed, baseUrl) : new URL(trimmed);
+    resolved.hash = '';
+    return resolved.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeBrokenLinkDetails(details: BrokenLinkDetail[]): BrokenLinkDetail[] {
+  const withIndex = details.map((entry, index) => {
+    const sourcePageUrl = normalizeUrlForBrokenLink(entry.sourcePageUrl);
+    const brokenUrl = normalizeUrlForBrokenLink(entry.brokenUrl, sourcePageUrl ?? entry.sourcePageUrl);
+    if (!sourcePageUrl || !brokenUrl) return null;
+    return { normalized: { ...entry, sourcePageUrl, brokenUrl }, index };
+  }).filter((entry): entry is { normalized: BrokenLinkDetail; index: number } => entry !== null);
+
+  withIndex.sort((a, b) => {
+    const sourceDiff = a.normalized.sourcePageUrl.localeCompare(b.normalized.sourcePageUrl);
+    if (sourceDiff !== 0) return sourceDiff;
+    const brokenDiff = a.normalized.brokenUrl.localeCompare(b.normalized.brokenUrl);
+    if (brokenDiff !== 0) return brokenDiff;
+    return a.index - b.index;
+  });
+
+  const deduped: BrokenLinkDetail[] = [];
+  let previousKey = '';
+  for (const entry of withIndex) {
+    const key = `${entry.normalized.sourcePageUrl}||${entry.normalized.brokenUrl}`;
+    if (key === previousKey) continue;
+    deduped.push(entry.normalized);
+    previousKey = key;
+  }
+  return deduped;
+}
+
 function readJson(filePath: string): unknown {
   return JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
 }

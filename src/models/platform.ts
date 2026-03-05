@@ -32,6 +32,18 @@ export interface UnifiedUrlModel {
       isBroken: boolean;
       isRedirectChain: boolean;
       hasLoop: boolean;
+  brokenLinks: { checked: number; broken: number; redirectChains: number; loops: number; details?: Array<{ sourcePageUrl: string; brokenUrl: string; status: number; chainLength: number }> };
+  brokenLinks: {
+    checked: number;
+    broken: number;
+    redirectChains: number;
+    loops: number;
+    items?: Array<{
+      brokenUrl: string;
+      sourcePageUrl: string;
+      linkText: string;
+      statusCode: number | null;
+      failureReason: '4xx' | '5xx' | 'timeout' | 'dns' | 'invalid_url' | 'request_failed' | 'blocked_by_cors';
     }>;
   };
   thirdPartyRisk: Array<{ domain: string; requests: number; transferSize: number; avgDurationMs: number; trackerHeuristic: boolean }>;

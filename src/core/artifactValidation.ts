@@ -37,6 +37,20 @@ export const artifactSchemas = {
       isRedirectChain: z.boolean(),
       hasLoop: z.boolean()
     }))
+  brokenLinks: wrapped(z.object({ checked: z.number(), broken: z.number(), redirectChains: z.number(), loops: z.number(), details: z.array(z.object({ sourcePageUrl: z.string().url(), brokenUrl: z.string().url(), status: z.number(), chainLength: z.number() })) })),
+  brokenLinks: wrapped(z.object({
+    checked: z.number(),
+    broken: z.number(),
+    redirectChains: z.number(),
+    loops: z.number(),
+    details: z.array(z.object({ url: z.string(), status: z.number(), chainLength: z.number() })),
+    items: z.array(z.object({
+      brokenUrl: z.string(),
+      sourcePageUrl: z.string(),
+      linkText: z.string(),
+      statusCode: z.number().nullable(),
+      failureReason: z.enum(['4xx', '5xx', 'timeout', 'dns', 'invalid_url', 'request_failed', 'blocked_by_cors'])
+    })).optional()
   })),
   thirdPartyRisk: wrapped(z.array(z.object({ domain: z.string(), requests: z.number(), transferSize: z.number(), avgDurationMs: z.number(), trackerHeuristic: z.boolean() }))),
   accessibilityBeyondAxe: wrapped(z.object({

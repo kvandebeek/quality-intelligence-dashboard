@@ -658,6 +658,31 @@ function bindA11yHeuristics(scope){
 
 const renderAxe = (r={})=>{ const issues=r.issues||[]; return `<div class="kpis">${['critical','serious','moderate','minor'].map(s=>metric(s,r.counters?.[s]??r[s]??0)).join('')}</div><table><tr><th>Rule</th><th>Impact</th><th>Description</th><th>Nodes</th></tr>${issues.slice(0,200).map(i=>`<tr><td>${safe(i.id)}</td><td>${safe(i.impact)}</td><td>${safe(i.description)}</td><td>${safe(i.nodes?.length ?? i.nodes)}</td></tr>`).join('')}</table>`; };
 const renderBroken = (r={})=>{ const s = asRecord(r.summary); return `<div class="kpis">${metric('Checked',s.checked ?? r.checkedCount ?? r.checked)}${metric('Broken',s.broken ?? r.brokenCount ?? r.broken)}${metric('Redirect chains',s.redirectChains ?? r.redirectChains)}${metric('Loops',s.loops ?? r.loops)}</div>`; };
+const renderBroken = (r={})=>{
+  const hasDetailField = Object.prototype.hasOwnProperty.call(r,'details');
+  const detailItems = Array.isArray(r.details)
+    ? r.details
+    : [];
+  const rows = detailItems.map((item)=>{
+    const brokenUrl = normalizeDisplay(item?.brokenUrl);
+    return `<tr>
+      <td><a href="${escapeHtml(item?.brokenUrl ?? '')}" target="_blank" rel="noopener noreferrer">${escapeHtml(brokenUrl)}</a><div><code>${escapeHtml(brokenUrl)}</code></div></td>
+      <td>${escapeHtml(normalizeDisplay(item?.sourcePageUrl))}</td>
+      <td>${escapeHtml(normalizeDisplay(item?.linkText))}</td>
+      <td>${escapeHtml(normalizeDisplay(item?.statusCode))}</td>
+      <td>${escapeHtml(normalizeDisplay(item?.failureReason))}</td>
+    </tr>`;
+  }).join('');
+
+  const detailNote = hasDetailField
+    ? ''
+    : '<p class="inline-hint">Details not available for this run</p>';
+  const emptyState = '<p class="inline-hint">No broken links detected</p>';
+
+  return `<div class="kpis">${metric('Checked',r.checkedCount ?? r.checked)}${metric('Broken',r.brokenCount ?? r.broken)}${metric('Redirect chains',r.redirectChains)}${metric('Loops',r.loops)}</div>
+  ${detailNote}
+  ${rows ? `<table><tr><th>brokenUrl</th><th>sourcePageUrl</th><th>linkText</th><th>statusCode</th><th>failureReason</th></tr>${rows}</table>` : emptyState}`;
+};
 const renderCwv = (r={})=>{const vals=[toNum(r.lcpMs ?? r.lcp),toNum(r.cls),toNum(r.inpMs ?? r.inp),toNum(r.fcpMs ?? r.fcp)]; const ready=Math.round(vals.filter((v)=>v!==null).length/4*100); return `<div class="kpis">${metric('LCP',r.lcpMs ?? r.lcp,'ms','Largest Contentful Paint')}${metric('CLS',r.cls)}${metric('INP',r.inpMs ?? r.inp,'ms','Interaction to Next Paint')}${metric('FCP',r.fcpMs ?? r.fcp,'ms','First Contentful Paint')}${metric('Readiness',ready,'%')}</div>`};
 const renderMemory = (r={})=>`<div>${metric('Growth',r.growth ?? r.growthVerdict,'bytes')}<pre>${(r.samples||[]).slice(0,20).map((x)=>Math.round(x)).join(', ')}</pre></div>`;
 const renderPerformance = (r={})=>{const n=r.navigation||{}; return `<div class="kpis">${metric('DNS',n.dnsMs,'ms')}${metric('TCP',n.tcpMs,'ms')}${metric('TTFB',n.ttfbMs,'ms')}${metric('DCL',n.domContentLoadedMs,'ms')}${metric('Load',n.loadEventMs,'ms')}${metric('FP',r.paint?.fpMs ?? r.paint?.['first-paint'],'ms')}${metric('FCP',r.paint?.fcpMs ?? r.paint?.['first-contentful-paint'],'ms')}</div>`;};

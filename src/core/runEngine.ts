@@ -6,7 +6,7 @@ import { CROSS_BROWSER_PERFORMANCE_FILE, type AppConfig, type CrawlPageMetadata,
 import { collectClientErrors, collectDependencyRisk, collectMemoryLeaks, collectPrivacyAudit, collectRuntimeSecurity, installErrorAndUxObservers } from '../collectors/extensionPackCollector.js';
 import { compactTimestamp, stableRunId } from '../utils/time.js';
 import { ensureDir, writeJson } from '../utils/file.js';
-import { ensureUniqueRunRoot } from '../utils/artifactPaths.js';
+import { ensureUniqueRunRoot, resolveBatchItemFolderName } from '../utils/artifactPaths.js';
 import { collectPerformance } from '../collectors/performanceCollector.js';
 import { collectCrossBrowserPerformance } from '../collectors/crossBrowserPerformanceCollector.js';
 import { loadCrossBrowserConfig } from '../config/loadCrossBrowserConfig.js';
@@ -15,7 +15,7 @@ import { publishToElasticsearch } from '../publishers/elasticsearchPublisher.js'
 import { extractAnchorHrefs, runBfsCrawl } from './crawler.js';
 import { SCHEMA_VERSION, TOOL_VERSION, type ArtifactMeta } from '../models/platform.js';
 import { writeValidatedArtifact } from './artifactValidation.js';
-import { buildRunIndex, percentileSummary } from './normalization.js';
+import { buildRunIndex, normalizeBrokenLinkDetails, percentileSummary } from './normalization.js';
 import { TestTimingTracker } from './testTiming.js';
 import { gotoWithConsent } from '../utils/consent/goto-with-consent.js';
 import { computeSeoScore } from '../collectors/seoScore/computeSeoScore.js';
@@ -148,9 +148,39 @@ function sanitizeSlug(url: string): string {
   return `${slug || 'root'}-${hash}`;
 }
 
-async function scrapePageLinks(page: Page): Promise<string[]> {
-  const hrefs = await page.locator('a[href]').evaluateAll((anchors) => anchors.map((anchor) => anchor.getAttribute('href')));
-  return extractAnchorHrefs(hrefs);
+type ScrapedPageLink = { href: string; text: string };
+
+type BrokenLinkItem = {
+  brokenUrl: string;
+  sourcePageUrl: string;
+  linkText: string;
+  statusCode: number | null;
+  failureReason: '4xx' | '5xx' | 'timeout' | 'dns' | 'invalid_url' | 'request_failed' | 'blocked_by_cors';
+};
+
+async function scrapePageLinks(page: Page): Promise<ScrapedPageLink[]> {
+  const links = await page.locator('a[href]').evaluateAll((anchors) => anchors.map((anchor) => ({
+    href: anchor.getAttribute('href'),
+    text: anchor.textContent?.trim() ?? ''
+  })));
+  const hrefs = extractAnchorHrefs(links.map((link) => link.href));
+  const hrefSet = new Set(hrefs);
+  return links
+    .filter((link): link is { href: string; text: string } => typeof link.href === 'string' && hrefSet.has(link.href))
+    .map((link) => ({ href: link.href, text: link.text.replace(/\s+/g, ' ').trim() }));
+}
+
+function classifyBrokenLinkFailure(statusCode: number | null, error: unknown): BrokenLinkItem['failureReason'] {
+  if (typeof statusCode === 'number') {
+    if (statusCode >= 500) return '5xx';
+    if (statusCode >= 400) return '4xx';
+  }
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  if (message.includes('cors') || message.includes('cross-origin')) return 'blocked_by_cors';
+  if (message.includes('timeout') || message.includes('timed out')) return 'timeout';
+  if (message.includes('enotfound') || message.includes('eai_again') || message.includes('dns') || message.includes('name not resolved')) return 'dns';
+  if (message.includes('invalid url') || message.includes('unsupported protocol')) return 'invalid_url';
+  return 'request_failed';
 }
 
 async function collectCoreWebVitals(page: Page): Promise<{ lcp: number | null; cls: number | null; inp: number | null; fcp: number | null }> {
@@ -309,7 +339,7 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
       });
     };
 
-    const [perfMetrics, accessibility, hrefs, coreWebVitals] = await timing.step(testReference, 'Collect core artifacts', async () => {
+    const [perfMetrics, accessibility, scrapedLinks, coreWebVitals] = await timing.step(testReference, 'Collect core artifacts', async () => {
       const performancePromise = runArtifactStep('Artifact: Performance metrics', async () => collectPerformance(page, target.url));
       const accessibilityPromise = runArtifactStep('Artifact: Accessibility', async () => collectAccessibility(page, target.url));
       const pageLinksPromise = runArtifactStep('Artifact: Page links', async () => scrapePageLinks(page));
@@ -368,13 +398,18 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   }
   const thirdPartyRisk = [...thirdPartyRiskMap.values()].map((entry) => ({ domain: entry.domain, requests: entry.requests, transferSize: entry.transferSize, avgDurationMs: entry.requests > 0 ? entry.totalDuration / entry.requests : 0, trackerHeuristic: entry.trackerHeuristic })).sort((a, b) => b.transferSize - a.transferSize);
 
-  const brokenLinksDetails: Array<{ url: string; status: number; chainLength: number }> = [];
+  const brokenLinksDetails: Array<{ sourcePageUrl: string; brokenUrl: string; status: number; chainLength: number }> = [];
   for (const href of hrefs.slice(0, 50)) {
+  const brokenLinksDetails: Array<{ url: string; status: number; chainLength: number }> = [];
+  const brokenLinksItems: BrokenLinkItem[] = [];
+  const linkRequestContext = await browser.newContext();
+  const sampledLinks = scrapedLinks.slice(0, 50);
+  for (const link of sampledLinks) {
     try {
-      const resolved = new URL(href, target.url).toString();
+      const resolved = new URL(link.href, target.url).toString();
       if (new URL(resolved).hostname !== host) continue;
       const req = await browser.newContext().then(async (ctx) => { const r = await ctx.request.get(resolved, { maxRedirects: 10 }); await ctx.close(); return r; });
-      brokenLinksDetails.push({ url: resolved, status: req.status(), chainLength: 1 });
+      brokenLinksDetails.push({ sourcePageUrl: target.url, brokenUrl: resolved, status: req.status(), chainLength: 1 });
     } catch {
       // best effort
     }
@@ -394,6 +429,50 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
       redirectChains: brokenLinksItems.filter((item) => item.isRedirectChain).length,
       loops: brokenLinksItems.filter((item) => item.hasLoop).length
     },
+  const normalizedBrokenLinksDetails = normalizeBrokenLinkDetails(brokenLinksDetails);
+  const brokenLinks = {
+    checked: normalizedBrokenLinksDetails.length,
+    broken: normalizedBrokenLinksDetails.filter((item) => item.status >= 400).length,
+    redirectChains: normalizedBrokenLinksDetails.filter((item) => item.chainLength > 1).length,
+    loops: 0,
+    details: normalizedBrokenLinksDetails
+      const req = await linkRequestContext.request.get(resolved, { maxRedirects: 10, timeout: 10000 });
+      const statusCode = req.status();
+      brokenLinksDetails.push({ url: resolved, status: statusCode, chainLength: 1 });
+      if (statusCode >= 400) {
+        brokenLinksItems.push({
+          brokenUrl: resolved,
+          sourcePageUrl: target.url,
+          linkText: link.text,
+          statusCode,
+          failureReason: classifyBrokenLinkFailure(statusCode, null)
+        });
+      }
+    } catch (error) {
+      const rawTarget = typeof link.href === 'string' ? link.href : '';
+      const maybeResolved = (() => {
+        try {
+          return new URL(rawTarget, target.url).toString();
+        } catch {
+          return rawTarget;
+        }
+      })();
+      brokenLinksItems.push({
+        brokenUrl: maybeResolved,
+        sourcePageUrl: target.url,
+        linkText: link.text,
+        statusCode: null,
+        failureReason: classifyBrokenLinkFailure(null, error)
+      });
+    }
+  }
+  await linkRequestContext.close();
+  const brokenLinks = {
+    checked: brokenLinksDetails.length,
+    broken: brokenLinksItems.length,
+    redirectChains: brokenLinksDetails.filter((item) => item.chainLength > 1).length,
+    loops: 0,
+    details: brokenLinksDetails,
     items: brokenLinksItems
   };
 
@@ -780,7 +859,12 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   await timing.step(testReference, 'Write target summary', async () => Promise.resolve(writeJson(path.join(targetFolder, 'target-summary.json'), artifact)));
 
     timing.endTest(testReference, 'passed');
-    return { artifact, output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl }, hrefs, extensionScores: { clientErrors: clientErrors.severityScore, memory: memoryLeaks.growthMB, privacy: privacyAudit.gdprRisk, runtimeSecurity: runtimeSecurity.securityScore, dependency: dependencyRisk.dependencyRiskScore } };
+    return {
+      artifact,
+      output: { targetName: target.name, folder: path.relative(runRoot, targetFolder), files: [...ARTIFACT_FILES], crawl },
+      hrefs: scrapedLinks.map((link) => link.href),
+      extensionScores: { clientErrors: clientErrors.severityScore, memory: memoryLeaks.growthMB, privacy: privacyAudit.gdprRisk, runtimeSecurity: runtimeSecurity.securityScore, dependency: dependencyRisk.dependencyRiskScore }
+    };
   } catch (error) {
     timing.endTest(testReference, 'failed');
     throw error;
@@ -793,9 +877,24 @@ function resolveLinearTargets(config: AppConfig): RunTarget[] { return config.ta
 
 export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   const timestamp = compactTimestamp();
-  const runId = stableRunId(timestamp, config.browser, config.iteration, config.name);
+  const runId = config.name
+    ? resolveBatchItemFolderName(config.name, config.startUrl)
+    : stableRunId(timestamp, config.browser, config.iteration);
   const metadata: RunMetadata = { runId, timestamp, browser: config.browser, environment: config.environment, iteration: config.iteration, name: config.name, startUrl: config.startUrl, targets: config.targets };
-  const runRoot = ensureUniqueRunRoot(config.outputDir, runId);
+  const runRoot = (() => {
+    if (!config.name) {
+      return ensureUniqueRunRoot(config.outputDir, runId);
+    }
+
+    const namedFolder = resolveBatchItemFolderName(config.name, config.startUrl);
+    const outputLeaf = path.basename(path.normalize(config.outputDir));
+
+    if (outputLeaf === namedFolder) {
+      return ensureUniqueRunRoot(path.dirname(path.normalize(config.outputDir)), namedFolder);
+    }
+
+    return ensureUniqueRunRoot(config.outputDir, namedFolder);
+  })();
   ensureDir(runRoot);
   writeJson(path.join(runRoot, 'run-metadata.json'), metadata);
   const timing = new TestTimingTracker(runId);
