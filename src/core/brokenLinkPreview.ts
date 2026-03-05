@@ -83,6 +83,28 @@ export async function captureBrokenLinkPreview(page: Page, targetFolder: string,
   const snippetPath = path.join(previewDir, `${findingId}.png`);
   const thumbPath = path.join(previewDir, `${findingId}_thumb.png`);
 
+  const captureFullPageFallback = async (reason: string): Promise<BrokenLinkScreenshot> => {
+    try {
+      await page.screenshot({ path: snippetPath, type: 'png', fullPage: true });
+      await page.screenshot({ path: thumbPath, type: 'png', fullPage: true });
+      return {
+        type: 'fullpage',
+        path: toRelative(targetFolder, snippetPath),
+        thumbnailPath: toRelative(targetFolder, thumbPath),
+        elementSelector: target.elementSelector,
+        error: reason
+      };
+    } catch (error) {
+      return {
+        type: 'none',
+        path: null,
+        thumbnailPath: null,
+        elementSelector: target.elementSelector,
+        error: `Preview generation failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  };
+
   let bbox = await target.locator?.boundingBox().catch(() => null);
   if ((!bbox || bbox.width <= 0 || bbox.height <= 0) && target.elementSelector) {
     bbox = await page.locator(target.elementSelector).first().boundingBox().catch(() => null);
@@ -115,35 +137,11 @@ export async function captureBrokenLinkPreview(page: Page, targetFolder: string,
       };
     } catch (error) {
       await removeOverlay(page).catch(() => undefined);
-    return {
-        type: 'fullpage',
-        path: null,
-        thumbnailPath: null,
-        elementSelector: target.elementSelector,
-        error: `Snippet preview failed (${error instanceof Error ? error.message : String(error)}); will use fallback.`
-      };
+      return captureFullPageFallback(`Snippet preview failed (${error instanceof Error ? error.message : String(error)}); used full-page fallback.`);
     }
   }
 
-  try {
-    await page.screenshot({ path: snippetPath, type: 'png', fullPage: true });
-    await page.screenshot({ path: thumbPath, type: 'png', fullPage: true });
-    return {
-      type: 'fullpage',
-      path: toRelative(targetFolder, snippetPath),
-      thumbnailPath: toRelative(targetFolder, thumbPath),
-      elementSelector: target.elementSelector,
-      error: 'Fell back to full-page preview because element bounding box was unavailable.'
-    };
-  } catch (error) {
-    return {
-      type: 'none',
-      path: null,
-      thumbnailPath: null,
-      elementSelector: target.elementSelector,
-      error: `Preview generation failed: ${error instanceof Error ? error.message : String(error)}`
-    };
-  }
+  return captureFullPageFallback('Fell back to full-page preview because element bounding box was unavailable.');
 }
 
 export function shouldSkipBrokenLinkPreview(brokenIndex: number): boolean {
