@@ -1,8 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { renderBroken } from '../src/dashboard/app/brokenLinks.js';
+import { normalizeBrokenLinksReport, renderBroken } from '../src/dashboard/app/brokenLinks.js';
 
 describe('renderBroken', () => {
-  it('renders headers, deterministic row order, and clickable URL markup', () => {
+  it('renders deterministic table with summary, filter, and clickable links', () => {
     const html = renderBroken({
       checkedCount: 8,
       brokenCount: 3,
@@ -15,10 +17,12 @@ describe('renderBroken', () => {
       ]
     });
 
+    expect(html).toContain('Broken links: 3 across 2 pages');
+    expect(html).toContain('Filter broken URL');
     expect(html).toContain('<th>Source page</th>');
     expect(html).toContain('<th>Broken URL</th>');
     expect(html).toContain('<th>Status</th>');
-    expect(html).toContain('<th>Errors</th>');
+    expect(html).toContain('<th>Failure reason</th>');
     expect(html).toContain('<a href="https://example.com/a" target="_blank" rel="noreferrer noopener">https://example.com/a</a>');
     expect(html).toContain('<a href="https://example.com/404-a" target="_blank" rel="noreferrer noopener">https://example.com/404-a</a>');
 
@@ -29,14 +33,28 @@ describe('renderBroken', () => {
     expect(first).toBeLessThan(second);
   });
 
-  it('shows empty-state and legacy detail note when no modern detail rows can be built', () => {
-    const html = renderBroken({
-      checkedCount: 2,
-      brokenCount: 1,
-      details: [{ url: 'https://legacy.example.com', status: 404 }]
-    });
+  it('supports drifted artifact shapes via parser normalization', () => {
+    const fixturePath = path.join(process.cwd(), 'tests/fixtures/broken-links/multi-shape.json');
+    const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 
-    expect(html).toContain('No broken-link detail rows available.');
-    expect(html).toContain('Legacy detail format detected; source/broken URL pairs are unavailable.');
+    const normalized = normalizeBrokenLinksReport(fixture);
+
+    expect(normalized.rows).toHaveLength(2);
+    expect(normalized.rows[0]).toMatchObject({
+      sourcePageUrl: 'https://example.com/source-a',
+      brokenUrl: 'https://example.com/missing-a',
+      status: 404,
+      linkText: 'Read more'
+    });
+    expect(normalized.rows[1]).toMatchObject({
+      sourcePageUrl: 'https://example.com/source-b',
+      brokenUrl: 'https://example.com/missing-b',
+      selector: 'a.hero-link'
+    });
+  });
+
+  it('shows explicit empty state when artifact is missing', () => {
+    const html = renderBroken({}, { artifactMissing: true });
+    expect(html).toContain('No broken links artifact found in this run');
   });
 });

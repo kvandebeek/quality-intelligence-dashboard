@@ -1,88 +1,180 @@
-const MISSING = 'Not available';
+const MISSING = 'unknown';
 
 const toNum = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 const escapeHtml = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
-function asUrl(value){
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
+function asText(value){
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return null;
 }
 
-function normalizeError(value){
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  return null;
+function asUrl(value){
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function formatCount(value){
+  const numeric = toNum(value);
+  if (numeric === null) return '0';
+  return String(Number.isInteger(numeric) ? numeric : Number(numeric.toFixed(2)));
+}
+
+function metric(label, value){
+  return `<div class="kpi"><span>${label}</span><strong>${formatCount(value)}</strong></div>`;
+}
+
+function formatUnknown(value){
+  const text = asText(value);
+  return text ?? MISSING;
+}
+
+function readErrors(record){
+  const found = [];
+  for (const key of ['failureReason', 'reason', 'error']) {
+    const value = asText(record?.[key]);
+    if (value) found.push(value);
+  }
+  if (Array.isArray(record?.errors)) {
+    for (const item of record.errors) {
+      const value = asText(item);
+      if (value) found.push(value);
+    }
+  }
+  return [...new Set(found)].sort((a, b) => a.localeCompare(b));
+}
+
+export function normalizeBrokenLinkRow(raw){
+  if (!raw || typeof raw !== 'object') return null;
+  const sourcePageUrl = asUrl(raw.sourcePageUrl ?? raw.sourceUrl ?? raw.pageUrl ?? raw.page ?? raw.referrerUrl ?? raw.parentUrl);
+  const brokenUrl = asUrl(raw.brokenUrl ?? raw.url ?? raw.linkUrl ?? raw.href ?? raw.targetUrl ?? raw.destinationUrl);
+  if (!brokenUrl) return null;
+
+  const status = toNum(raw.statusCode ?? raw.status ?? raw.httpStatus ?? raw.code);
+  const linkText = asText(raw.linkText ?? raw.anchorText ?? raw.text ?? raw.label);
+  const selector = asText(raw.selector ?? raw.cssSelector ?? raw.xpath);
+  const errors = readErrors(raw);
+
+  return {
+    sourcePageUrl,
+    brokenUrl,
+    status,
+    linkText,
+    selector,
+    errors,
+    reason: errors.length ? errors.join('; ') : null
+  };
 }
 
 export function aggregateBrokenLinkDetails(details = []) {
   if (!Array.isArray(details)) return [];
   const grouped = new Map();
-
-  for (const raw of details) {
-    if (!raw || typeof raw !== 'object') continue;
-    const sourcePageUrl = asUrl(raw.sourcePageUrl);
-    const brokenUrl = asUrl(raw.brokenUrl);
-    if (!sourcePageUrl || !brokenUrl) continue;
-
-    const key = `${sourcePageUrl}\u0000${brokenUrl}`;
-    const current = grouped.get(key) ?? { sourcePageUrl, brokenUrl, status: null, errors: new Set(), occurrences: 0 };
-    const status = toNum(raw.status);
-    current.status = current.status === null ? status : Math.max(current.status, status ?? -Infinity);
-
-    const singleError = normalizeError(raw.error);
-    if (singleError) current.errors.add(singleError);
-    if (Array.isArray(raw.errors)) {
-      for (const item of raw.errors) {
-        const nextError = normalizeError(item);
-        if (nextError) current.errors.add(nextError);
-      }
-    }
-
+  for (const item of details) {
+    const row = normalizeBrokenLinkRow(item);
+    if (!row) continue;
+    const key = `${row.sourcePageUrl ?? ''}\u0000${row.brokenUrl}`;
+    const current = grouped.get(key) ?? { ...row, occurrences: 0, errors: [] };
+    current.status = current.status === null ? row.status : Math.max(current.status ?? -Infinity, row.status ?? -Infinity);
+    current.linkText = current.linkText ?? row.linkText;
+    current.selector = current.selector ?? row.selector;
+    current.errors = [...new Set([...(current.errors ?? []), ...(row.errors ?? [])])].sort((a, b) => a.localeCompare(b));
+    current.reason = current.errors.length ? current.errors.join('; ') : null;
     current.occurrences += 1;
     grouped.set(key, current);
   }
 
-  return [...grouped.values()]
-    .map((entry) => ({
-      sourcePageUrl: entry.sourcePageUrl,
-      brokenUrl: entry.brokenUrl,
-      status: entry.status,
-      errors: [...entry.errors].sort((a, b) => a.localeCompare(b)),
-      occurrences: entry.occurrences
-    }))
-    .sort((a, b) =>
-      a.sourcePageUrl.localeCompare(b.sourcePageUrl)
-      || a.brokenUrl.localeCompare(b.brokenUrl)
-      || (toNum(b.status) ?? -Infinity) - (toNum(a.status) ?? -Infinity)
-      || a.errors.join(' | ').localeCompare(b.errors.join(' | '))
-    );
+  return [...grouped.values()].sort((a, b) =>
+    (a.sourcePageUrl ?? '').localeCompare(b.sourcePageUrl ?? '')
+    || a.brokenUrl.localeCompare(b.brokenUrl)
+    || (a.status ?? -Infinity) - (b.status ?? -Infinity)
+    || (a.reason ?? '').localeCompare(b.reason ?? '')
+  );
 }
 
-function fmt(value){
-  const n = toNum(value);
-  if (n === null) return MISSING;
-  const rounded = Number.isInteger(n) ? n : Number(n.toFixed(2));
-  return String(rounded);
+function readDetailCandidates(report){
+  if (!report || typeof report !== 'object') return [];
+  const candidates = [
+    report.details,
+    report.items,
+    report.brokenLinks,
+    report.links,
+    report.rows,
+    report.results,
+    report.failures
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+  return [];
 }
 
-function kpi(label, value){
-  return `<div class="kpi"><span>${label}</span><strong>${fmt(value)}</strong></div>`;
+export function normalizeBrokenLinksReport(report = {}) {
+  const details = readDetailCandidates(report);
+  const rows = aggregateBrokenLinkDetails(details);
+
+  const uniquePages = new Set(rows.map((row) => row.sourcePageUrl).filter(Boolean));
+  const summary = report && typeof report.summary === 'object' && report.summary !== null ? report.summary : {};
+  const checked = toNum(summary.checked ?? report.checkedCount ?? report.totalLinks ?? report.checked) ?? 0;
+  const broken = toNum(summary.broken ?? report.brokenCount ?? report.broken) ?? rows.length;
+
+  return {
+    checked,
+    broken,
+    redirectChains: toNum(summary.redirectChains ?? report.redirectChains),
+    loops: toNum(summary.loops ?? report.loops),
+    pageCount: uniquePages.size,
+    rows
+  };
 }
 
-export function renderBroken(report = {}) {
-  const rows = aggregateBrokenLinkDetails(report.details);
-  const legacyDetailPresent = Array.isArray(report.details) && report.details.length > 0 && rows.length === 0;
-  const hasRows = rows.length > 0;
-  const headers = '<tr><th>Source page</th><th>Broken URL</th><th>Status</th><th>Errors</th></tr>';
-  const body = rows.map((row) => {
-    const errors = row.errors.length ? row.errors.map((item) => `<code>${escapeHtml(item)}</code>`).join('<br>') : MISSING;
-    return `<tr><td><a href="${escapeHtml(row.sourcePageUrl)}" target="_blank" rel="noreferrer noopener">${escapeHtml(row.sourcePageUrl)}</a></td><td><a href="${escapeHtml(row.brokenUrl)}" target="_blank" rel="noreferrer noopener">${escapeHtml(row.brokenUrl)}</a></td><td>${fmt(row.status)}</td><td>${errors}</td></tr>`;
+function renderLink(url){
+  const text = formatUnknown(url);
+  if (!url) return `<span>${escapeHtml(text)}</span>`;
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(url)}</a>`;
+}
+
+export function bindBrokenLinks(scope){
+  const filterInput = scope.querySelector('[data-broken-filter]');
+  const rows = [...scope.querySelectorAll('[data-broken-row]')];
+  const countTarget = scope.querySelector('[data-broken-visible-count]');
+  if (!filterInput || rows.length === 0 || !countTarget) return;
+
+  const applyFilter = () => {
+    const query = String(filterInput.value ?? '').trim().toLowerCase();
+    let visible = 0;
+    for (const row of rows) {
+      const haystack = String(row.dataset.brokenSearch ?? '').toLowerCase();
+      const matched = !query || haystack.includes(query);
+      row.hidden = !matched;
+      if (matched) visible += 1;
+    }
+    countTarget.textContent = String(visible);
+  };
+
+  filterInput.oninput = applyFilter;
+  applyFilter();
+}
+
+export function renderBroken(report = {}, options = {}) {
+  if (options.artifactMissing) {
+    return '<p class="inline-hint">No broken links artifact found in this run</p>';
+  }
+
+  const normalized = normalizeBrokenLinksReport(report);
+  const rows = normalized.rows;
+
+  const tableRows = rows.map((row) => {
+    const errors = row.errors.length ? row.errors.map((error) => `<code>${escapeHtml(error)}</code>`).join('<br>') : MISSING;
+    const search = [row.sourcePageUrl, row.brokenUrl, row.linkText, row.selector, row.status, row.reason].filter(Boolean).join(' ');
+    return `<tr data-broken-row data-broken-search="${escapeHtml(search)}"><td>${renderLink(row.sourcePageUrl)}</td><td>${renderLink(row.brokenUrl)}</td><td>${escapeHtml(formatUnknown(row.linkText))}</td><td>${escapeHtml(formatUnknown(row.selector))}</td><td>${escapeHtml(formatUnknown(row.status))}</td><td>${errors}</td></tr>`;
   }).join('');
 
-  const emptyState = hasRows
-    ? ''
-    : '<p class="inline-hint">No broken-link detail rows available.</p>';
-  const legacyNote = legacyDetailPresent
-    ? '<p class="inline-hint">Legacy detail format detected; source/broken URL pairs are unavailable.</p>'
-    : '';
+  const summary = `<div class="kpis">${metric('Checked', normalized.checked)}${metric('Broken', normalized.broken)}${metric('Redirect chains', normalized.redirectChains)}${metric('Loops', normalized.loops)}</div><p class="inline-hint">Broken links: ${formatCount(normalized.broken)} across ${formatCount(normalized.pageCount)} pages</p>`;
 
-  return `<div class="kpis">${kpi('Checked', report.checkedCount ?? report.checked)}${kpi('Broken', report.brokenCount ?? report.broken)}${kpi('Redirect chains', report.redirectChains)}${kpi('Loops', report.loops)}</div>${legacyNote}${emptyState}<table><thead>${headers}</thead><tbody>${body}</tbody></table>`;
+  if (rows.length === 0) {
+    return `${summary}<p class="inline-hint">No broken links detected for this run.</p>`;
+  }
+
+  return `${summary}<label class="inline-hint" for="broken-links-filter">Filter broken URL</label><input id="broken-links-filter" data-broken-filter type="search" placeholder="Search broken URL or source page"><p class="inline-hint">Showing <span data-broken-visible-count>${rows.length}</span> of ${rows.length} rows</p><table><thead><tr><th>Source page</th><th>Broken URL</th><th>Link text</th><th>Selector</th><th>Status</th><th>Failure reason</th></tr></thead><tbody>${tableRows}</tbody></table>`;
 }
