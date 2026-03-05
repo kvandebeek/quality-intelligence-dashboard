@@ -149,8 +149,14 @@ function selectedCategory(){
 
 function syncTabFromLocation(){
   const fromHash = parseTabFromHash();
-  if(fromHash === 'domain-overview'){ state.selectedView='domain-overview'; return true; }
-  if(fromHash && fromHash !== state.selectedTab){
+  if(fromHash === 'domain-overview'){
+    if(state.selectedView !== 'domain-overview'){
+      state.selectedView='domain-overview';
+      return true;
+    }
+    return false;
+  }
+  if(fromHash && (fromHash !== state.selectedTab || state.selectedView !== 'url')){
     state.selectedView='url';
     state.selectedTab = fromHash;
     return true;
