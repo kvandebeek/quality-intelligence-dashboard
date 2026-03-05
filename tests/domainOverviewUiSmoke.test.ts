@@ -19,6 +19,9 @@ describe('domain overview UI smoke', () => {
     ];
     for (const tile of tiles) expect(file).toContain(`data-tile=\"${tile}\"`);
     expect(file).toContain('renderDomainHeader');
+    expect(file).toContain('normalizeDomainLink');
+    expect(file).toContain('target=\"_blank\"');
+    expect(file).toContain('rel=\"noopener noreferrer\"');
     expect(file).toContain('domain-overview-active');
     expect(file).toContain('No security findings');
     expect(file).toContain('Needs improvement');

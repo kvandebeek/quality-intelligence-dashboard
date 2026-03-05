@@ -9,7 +9,8 @@ describe('domain summary aggregation', () => {
   it('aggregates metrics with coverage and missing/null tolerance', async () => {
     const index = {
       generatedAt: 'run-1',
-      urls: [{ id: 'u1' }, { id: 'u2' }, { id: 'u3' }]
+      runPath: '/tmp/run-missing-metadata',
+      urls: [{ id: 'u1', url: 'https://fallback.example/path?q=1' }, { id: 'u2' }, { id: 'u3' }]
     } as any;
 
     const data: Record<string, Record<string, any>> = {
@@ -52,6 +53,9 @@ describe('domain summary aggregation', () => {
     } as any;
 
     const summary = await buildDomainSummary(index, store, 'run-1');
+
+    expect(summary.startUrl).toBe('https://fallback.example/path?q=1');
+    expect(summary.domain).toBe('fallback.example');
 
     expect(summary.accessibility.totalIssues).toBe(13);
     expect(summary.accessibility.coverage).toEqual({ measured: 2, total: 3 });

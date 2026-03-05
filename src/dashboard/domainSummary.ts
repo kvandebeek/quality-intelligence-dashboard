@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import type { ArtifactStore, DashboardIndex } from './data.js';
 
 export interface Coverage {
@@ -7,6 +9,8 @@ export interface Coverage {
 
 export interface DomainSummary {
   runId: string;
+  startUrl: string | null;
+  domain: string | null;
   totals: { urls: number };
   accessibility: { counts: Record<string, number>; totalIssues: number; coverage: Coverage };
   fcp: { avgSeconds: number | null; minSeconds: number | null; maxSeconds: number | null; coverage: Coverage };
@@ -64,7 +68,54 @@ function classifyCwv(value: number | null, goodMax: number, niMax: number): 'goo
   return 'poor';
 }
 
+function parseHostname(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    return new URL(value).hostname || null;
+  } catch {
+    try {
+      return new URL(`https://${value}`).hostname || null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function readStartUrlCandidate(candidate: unknown): string | null {
+  const source = asRecord(candidate);
+  const startUrl = source.startUrl ?? source.startURL ?? source.start_url;
+  return typeof startUrl === 'string' && startUrl.trim() ? startUrl.trim() : null;
+}
+
+async function resolveDomainMetadata(index: DashboardIndex, store: ArtifactStore): Promise<{ startUrl: string | null; domain: string | null }> {
+  let startUrl: string | null = null;
+
+  const runMetadataPath = path.join(index.runPath, 'run-metadata.json');
+  try {
+    await fs.access(runMetadataPath);
+    const rootMetadata = await store.readJson(runMetadataPath);
+    if (rootMetadata.ok) {
+      startUrl = readStartUrlCandidate(rootMetadata.data);
+    }
+  } catch {
+    // optional root metadata
+  }
+
+  if (!startUrl) {
+    const firstUrl = index.urls[0];
+    if (firstUrl) {
+      const targetLoaded = await store.loadSection(firstUrl.id, 'target-summary.json');
+      const target = unwrap(targetLoaded.raw);
+      startUrl = readStartUrlCandidate(target) ?? readStartUrlCandidate(target.payload) ?? readStartUrlCandidate(target.meta);
+    }
+  }
+
+  if (!startUrl) startUrl = typeof index.urls[0]?.url === 'string' ? index.urls[0].url : null;
+  return { startUrl, domain: parseHostname(startUrl) };
+}
+
 export async function buildDomainSummary(index: DashboardIndex, store: ArtifactStore, runId: string): Promise<DomainSummary> {
+  const domainMetadata = await resolveDomainMetadata(index, store);
   const total = index.urls.length;
   const a11yCounts: Record<string, number> = { critical: 0, serious: 0, moderate: 0, minor: 0 };
   let a11yCoverage = 0;
@@ -253,6 +304,8 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
 
   return {
     runId,
+    startUrl: domainMetadata.startUrl,
+    domain: domainMetadata.domain,
     totals: { urls: total },
     accessibility: { counts: a11yCounts, totalIssues: a11yTotalIssues, coverage: { measured: a11yCoverage, total } },
     fcp: {
