@@ -45,6 +45,24 @@ function renderDomainHeader(data){
   </header>`;
 }
 
+
+function issueTargetLabel(target){
+  if (typeof target === 'string') return target;
+  if (target && typeof target === 'object') return safe(target.selector ?? MISSING);
+  return MISSING;
+}
+
+function renderIssueTargets(targets){
+  if (!Array.isArray(targets) || targets.length === 0) return '';
+  const labels = targets.map((target)=>issueTargetLabel(target)).filter((label)=>label && label !== MISSING);
+  if (labels.length === 0) return '';
+  const visible = labels.slice(0, 10);
+  const remaining = labels.length - visible.length;
+  const items = visible.map((label)=>`<li><code>${safe(label)}</code></li>`).join('');
+  const more = remaining > 0 ? `<li>+${remaining} more</li>` : '';
+  return `<details class="issue-targets"><summary>Targets (${labels.length})</summary><ul>${items}${more}</ul></details>`;
+}
+
 function metricGoodRate(metric){
   const measured = toNum(metric?.measured) ?? 0;
   const good = toNum(metric?.good) ?? 0;
@@ -680,11 +698,11 @@ const renderUxOverview = (r={})=>{
   const issues = (r.topIssues||[]).slice(0,20);
   return `<div class="kpis">${metric('UX suite score',r.score)}${textMetric('Status',r.meta?.status ?? r.status)}${metric('Top issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>
   <table><tr><th>Artifact</th><th>Status</th><th>Score</th></tr>${rows.map(([k,v])=>`<tr><td>${safe(k)}</td><td>${safe(v.status)}</td><td>${safe(v.score)}</td></tr>`).join('')}</table>
-  <h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Title</th></tr>${issues.map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.title)}</td></tr>`).join('')}</table>`;
+  <h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Title</th><th>Targets</th></tr>${issues.map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.title)}</td><td>${renderIssueTargets(x.targets)}</td></tr>`).join('')}</table>`;
 };
 const renderUxGeneric = (tab, r={})=>{
   const screens = tab === 'ux-visual-regression.json' ? `<div class="image-wrap"><a href="/artifacts/${encodeURIComponent(state.selectedId)}/ux-visual-above-the-fold.png" target="_blank">Above the fold screenshot</a><br><a href="/artifacts/${encodeURIComponent(state.selectedId)}/ux-visual-fullpage.png" target="_blank">Full page screenshot</a></div>` : '';
-  return `<div class="kpis">${textMetric('Status',r.meta?.status ?? r.status)}${metric('Score',r.score)}${metric('Issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>${screens}<h4>Signals</h4><pre>${escapeHtml(JSON.stringify(r.signals||{},null,2))}</pre><h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Description</th></tr>${(r.topIssues||[]).map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.description)}</td></tr>`).join('')}</table>`;
+  return `<div class="kpis">${textMetric('Status',r.meta?.status ?? r.status)}${metric('Score',r.score)}${metric('Issues',(r.topIssues||[]).length)}${metric('Errors',(r.errors||[]).length)}</div>${screens}<h4>Signals</h4><pre>${escapeHtml(JSON.stringify(r.signals||{},null,2))}</pre><h4>Top issues</h4><table><tr><th>ID</th><th>Severity</th><th>Description</th><th>Targets</th></tr>${(r.topIssues||[]).map((x)=>`<tr><td>${safe(x.id)}</td><td>${safe(x.severity)}</td><td>${safe(x.description)}</td><td>${renderIssueTargets(x.targets)}</td></tr>`).join('')}</table>`;
 };
 const renderMemoryLeaks = (r={})=>`<div class="kpis">${textMetric('Mode',r.mode)}${metric('Initial heap',r.initialHeapMB,'MB')}${metric('Final heap',r.finalHeapMB,'MB')}${metric('Growth',r.growthMB,'MB')}${textMetric('Leak risk',r.leakRisk)}</div><ul>${(r.evidence||[]).map((line)=>`<li>${safe(line)}</li>`).join('')}</ul>`;
 const renderCacheAnalysis = (r={})=>`<div class="kpis">${metric('Cache score',r.cacheScore)}${metric('Improvement',r.improvementPercent,'%')}${metric('Cold LCP',r.cold?.lcpMs,'ms')}${metric('Warm LCP',r.warm?.lcpMs,'ms')}</div><table><tr><th>Asset</th><th>Cache-Control</th></tr>${(r.poorlyCachedAssets||[]).slice(0,40).map((item)=>`<tr><td>${safe(item.url)}</td><td>${safe(item.cacheControl)}</td></tr>`).join('')}</table>`;

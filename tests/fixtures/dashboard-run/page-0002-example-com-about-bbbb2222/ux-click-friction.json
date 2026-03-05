@@ -1,0 +1,11 @@
+{
+  "meta": { "status": "warn" },
+  "score": 85,
+  "topIssues": [
+    {
+      "id": "dead-click",
+      "severity": "medium",
+      "description": "1 click targets had no reaction."
+    }
+  ]
+}

@@ -5,11 +5,12 @@ import type { AppConfig } from '../models/types.js';
 import { writeJson } from '../utils/file.js';
 
 export type UxStatus = 'pass'|'warn'|'fail'|'partial'|'skipped';
+export type UxIssueTarget = string | { selector: string; label?: string; [key: string]: unknown };
 export interface UxArtifact {
   meta: { runId: string; url: string; timestamp: string; browserName: string; viewport: { width:number; height:number }; durationMs: number; status: UxStatus };
   score: number | null;
   signals: Record<string, unknown>;
-  topIssues: Array<{ id:string; title:string; severity:'info'|'low'|'medium'|'high'; description:string; evidence?: Record<string, unknown> }>;
+  topIssues: Array<{ id:string; title:string; severity:'info'|'low'|'medium'|'high'; description:string; evidence?: Record<string, unknown>; targets?: UxIssueTarget[] }>;
   errors: Array<{ step:string; message:string }>;
   recommendations: Array<{ title:string; detail:string }>;
 }
@@ -19,6 +20,38 @@ const SOFT_404 = ['not found','page not found','404','does not exist','can\'t be
 
 const now = () => Date.now();
 const clamp = (v:number, min:number, max:number) => Math.max(min, Math.min(max, v));
+
+export function normalizeSelector(selector: string): string {
+  return selector
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([>+~])\s*/g, ' $1 ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s+/g, ' ');
+}
+
+export function normalizeUxIssueTargets(targets: UxIssueTarget[]): UxIssueTarget[] {
+  const seen = new Set<string>();
+  const normalized: UxIssueTarget[] = [];
+  for (const target of targets) {
+    if (typeof target === 'string') {
+      const selector = normalizeSelector(target);
+      if (!selector || seen.has(selector)) continue;
+      seen.add(selector);
+      normalized.push(selector);
+      continue;
+    }
+    const selector = typeof target.selector === 'string' ? normalizeSelector(target.selector) : '';
+    if (!selector || seen.has(selector)) continue;
+    seen.add(selector);
+    normalized.push({ ...target, selector });
+  }
+  return normalized.sort((a, b) => {
+    const left = typeof a === 'string' ? a : a.selector;
+    const right = typeof b === 'string' ? b : b.selector;
+    return left.localeCompare(right);
+  });
+}
 
 function makeBase(context: { runId:string; url:string; timestamp:string; browserName:string; viewport:{width:number;height:number} }): UxArtifact {
   return { meta: { ...context, durationMs: 0, status:'pass' }, score: 100, signals: {}, topIssues: [], errors: [], recommendations: [] };
@@ -137,9 +170,10 @@ async function collectSingle(page: Page, key: string, context: { runId:string; u
       }, candidate.selector), false);
       results.push({ selector: candidate.selector, reacted });
     }
-    const dead = results.filter((r)=>!r.reacted).length;
-    artifact.signals = { candidates, results, deadClicks: dead };
-    if (dead > 0) { artifact.meta.status = 'warn'; artifact.score = 100 - dead * 15; artifact.topIssues.push({ id:'dead-click', title:'Potential dead clicks', severity:'medium', description:`${dead} click targets had no reaction.` }); }
+    const nonReactingTargets = normalizeUxIssueTargets(results.filter((r)=>!r.reacted).map((r)=>r.selector));
+    const dead = nonReactingTargets.length;
+    artifact.signals = { candidates, results, deadClicks: dead, nonReactingTargets };
+    if (dead > 0) { artifact.meta.status = 'warn'; artifact.score = 100 - dead * 15; artifact.topIssues.push({ id:'dead-click', title:'Potential dead clicks', severity:'medium', description:`${dead} click targets had no reaction.`, targets: nonReactingTargets }); }
   }
 
   if (key === 'ux-keyboard.json') {

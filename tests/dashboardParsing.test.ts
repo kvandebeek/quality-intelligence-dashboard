@@ -27,6 +27,20 @@ describe('dashboard parsing', () => {
     expect(second?.environment).toBe('staging');
   });
 
+
+  it('preserves UX issue targets when present and supports legacy entries without targets', async () => {
+    const fixturePath = path.resolve('tests/fixtures/dashboard-run');
+    const run = await loadDashboardRun(fixturePath);
+    const withTargets = run.urls.find((entry) => entry.id === 'page-0001-example-com-aaaa1111');
+    const withoutTargets = run.urls.find((entry) => entry.id === 'page-0002-example-com-about-bbbb2222');
+
+    const withTargetsIssue = ((withTargets?.artifacts['ux-click-friction.json'] as { topIssues?: Array<{ targets?: string[] }> })?.topIssues ?? [])[0];
+    const withoutTargetsIssue = ((withoutTargets?.artifacts['ux-click-friction.json'] as { topIssues?: Array<{ targets?: string[] }> })?.topIssues ?? [])[0];
+
+    expect(withTargetsIssue?.targets).toEqual(['button.buy', 'div.product > a.add']);
+    expect(withoutTargetsIssue?.targets).toBeUndefined();
+  });
+
   it('marks seo-score as missing without crashing when artifact is absent', async () => {
     const fixturePath = path.resolve('tests/fixtures/dashboard-run');
     const { index } = await buildDashboardIndex(fixturePath);
