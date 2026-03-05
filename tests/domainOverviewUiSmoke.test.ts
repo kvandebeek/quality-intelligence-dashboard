@@ -24,7 +24,8 @@ describe('domain overview UI smoke', () => {
     expect(file).toContain('rel=\"noopener noreferrer\"');
     expect(file).toContain('domain-overview-active');
     expect(file).toContain('No security findings');
-    expect(file).toContain('Needs improvement');
+    expect(file).toContain('Data path:');
+    expect(file).not.toContain('Good ${toNum(cwv.good)??0}');
     expect(file).toContain('renderCwvStoplights');
     expect(file).toContain('severity-label');
     expect(file).toContain('Intermittent');

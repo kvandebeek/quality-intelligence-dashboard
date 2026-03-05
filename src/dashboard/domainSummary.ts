@@ -9,6 +9,7 @@ export interface Coverage {
 
 export interface DomainSummary {
   runId: string;
+  runPath: string;
   startUrl: string | null;
   domain: string | null;
   totals: { urls: number };
@@ -264,15 +265,33 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
 
     if (securityLoaded.state === 'ok' || securityLoaded.state === 'issues') {
       const security = unwrap(securityLoaded.raw);
-      const findings = Array.isArray(security.findings) ? security.findings : Array.isArray(security.issues) ? security.issues : [];
+      securityCoverage += 1;
+      const findings = Array.isArray(security.findings)
+        ? security.findings
+        : Array.isArray(security.issues)
+          ? security.issues
+          : Array.isArray(security.vulnerabilities)
+            ? security.vulnerabilities
+            : [];
       if (findings.length) {
-        securityCoverage += 1;
         for (const finding of findings) {
-          const sev = String(asRecord(finding).severity ?? asRecord(finding).level ?? 'unknown').toLowerCase();
+          const row = asRecord(finding);
+          const sev = String(row.severity ?? row.level ?? row.risk ?? 'unknown').toLowerCase();
           securitySeverities[sev] = (securitySeverities[sev] ?? 0) + 1;
         }
-      } else if (Array.isArray(security.missingHeaders)) {
-        securityCoverage += 1;
+      } else if (Array.isArray(security.severities)) {
+        for (const entry of security.severities) {
+          const row = asRecord(entry);
+          const sev = String(row.label ?? row.severity ?? row.level ?? 'unknown').toLowerCase();
+          const count = toNum(row.count) ?? 0;
+          securitySeverities[sev] = (securitySeverities[sev] ?? 0) + count;
+        }
+      } else if (typeof security.severities === 'object' && security.severities !== null) {
+        for (const [sev, value] of Object.entries(asRecord(security.severities))) {
+          securitySeverities[String(sev).toLowerCase()] = (securitySeverities[String(sev).toLowerCase()] ?? 0) + (toNum(value) ?? 0);
+        }
+      }
+      if (Array.isArray(security.missingHeaders)) {
         securitySeverities.info = (securitySeverities.info ?? 0) + security.missingHeaders.length;
       }
     } else if (securityLoaded.state === 'error') {
@@ -319,6 +338,7 @@ export async function buildDomainSummary(index: DashboardIndex, store: ArtifactS
 
   return {
     runId,
+    runPath: path.relative(process.cwd(), index.runPath) || '.',
     startUrl: domainMetadata.startUrl,
     domain: domainMetadata.domain,
     totals: { urls: total },
