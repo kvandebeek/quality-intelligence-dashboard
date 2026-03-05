@@ -27,7 +27,7 @@ export const artifactSchemas = {
     checks: z.array(z.record(z.string(), z.unknown()))
   })),
   visualRegression: wrapped(z.object({ baselineFound: z.boolean(), diffRatio: z.number().nullable(), passed: z.boolean() })),
-  brokenLinks: wrapped(z.object({ checked: z.number(), broken: z.number(), redirectChains: z.number(), loops: z.number(), details: z.array(z.object({ url: z.string(), status: z.number(), chainLength: z.number() })) })),
+  brokenLinks: wrapped(z.object({ checked: z.number(), broken: z.number(), redirectChains: z.number(), loops: z.number(), details: z.array(z.object({ sourcePageUrl: z.string().url(), brokenUrl: z.string().url(), status: z.number(), chainLength: z.number() })) })),
   thirdPartyRisk: wrapped(z.array(z.object({ domain: z.string(), requests: z.number(), transferSize: z.number(), avgDurationMs: z.number(), trackerHeuristic: z.boolean() }))),
   accessibilityBeyondAxe: wrapped(z.object({
     keyboardReachable: z.boolean(),
