@@ -1,5 +1,6 @@
 :root{
   --bg:#0f1115;
+  --sidebarBg:#161b24;
   --surface:#171a21;
   --surface2:#202532;
   --text:#edf1f9;
@@ -28,6 +29,7 @@
 
 :root[data-theme='light']{
   --bg:#f4f7fb;
+  --sidebarBg:#e9eff9;
   --surface:#ffffff;
   --surface2:#eef3fb;
   --text:#1a2233;
@@ -56,7 +58,7 @@
 
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui;background:var(--bg);color:var(--text)}
 .layout{display:grid;grid-template-columns:380px 1fr;height:100vh}
-.left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.left{background:var(--sidebarBg);border-right:1px solid var(--border);box-shadow:inset -1px 0 0 rgba(0,0,0,.04);display:flex;flex-direction:column;overflow:hidden}
 .search-block,.facets{padding:12px;border-bottom:1px solid var(--border);background:var(--surface)}
 input[type="text"],input[type="search"],.search-block input{width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text)}
 label{display:block;color:var(--textMuted);font-size:12px;margin-top:6px}
