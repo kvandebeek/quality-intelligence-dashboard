@@ -73,6 +73,13 @@ function formatDataPath(runPath){
   return `./${normalized}`;
 }
 
+function formatUrlDataPath(entry){
+  const runPath = typeof state.index?.runPath === 'string' ? state.index.runPath : '';
+  const folderName = typeof entry?.folderName === 'string' ? entry.folderName : '';
+  const combined = [runPath, folderName].filter(Boolean).join('/');
+  return formatDataPath(combined || runPath);
+}
+
 function renderDomainHeader(data){
   const heading = renderDomainLink(data.displayDomain, { fallback: escapeHtml(data.title) }) ?? escapeHtml(data.title);
   return `<header class="detail-header domain-header">
@@ -506,7 +513,7 @@ function renderDetailsShell(u){
   const urlHeading = renderDomainLink(u.url, { fallback: escapeHtml(u.url) }) ?? escapeHtml(u.url);
   return `<header class="detail-header">
     <h2>${urlHeading}</h2>
-    <div class="meta">${safe(u.runTime)} · ${safe(u.runId)}</div>
+    <div class="meta">Data path: ${escapeHtml(formatUrlDataPath(u))}</div>
     <div class="top-issues">
       <span>A11y C/S: ${a11y.critical??0}/${a11y.serious??0}</span>
       <span>Missing security headers: ${sec}</span>
