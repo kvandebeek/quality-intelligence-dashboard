@@ -21,6 +21,12 @@ export interface BatchExpandedRun {
   config: AppConfig;
 }
 
+/**
+ * Converts unknown JSON data to an object-like record.
+ *
+ * Non-object values are normalized to an empty object so downstream parsing
+ * paths can safely access optional fields.
+ */
 function toObject(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return {};
@@ -28,6 +34,9 @@ function toObject(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+/**
+ * Applies environment-based Elasticsearch overrides on top of raw config data.
+ */
 function applyElasticEnv(raw: Record<string, unknown>): Record<string, unknown> {
   const elasticsearch = toObject(raw.elasticsearch);
   return {
@@ -42,10 +51,16 @@ function applyElasticEnv(raw: Record<string, unknown>): Record<string, unknown> 
   };
 }
 
+/**
+ * Parses and validates the final application configuration shape.
+ */
 function ensureAppConfig(raw: Record<string, unknown>): AppConfig {
   return appConfigSchema.parse(applyElasticEnv(raw));
 }
 
+/**
+ * Produces a sanitized per-target output folder name for batch runs.
+ */
 export function createBatchOutputFolder(name: string, startUrl: string): string {
   return resolveBatchItemFolderName(name, startUrl);
 }
@@ -94,9 +109,20 @@ export function expandBatchRunConfig(raw: BatchRunConfigSchema): BatchExpandedRu
   });
 }
 
+/**
+ * Loads a config file and resolves it into either a single-run plan or an
+ * expanded batch plan.
+ */
 export function loadRunPlan(configPath: string): LoadedRunPlan {
   const absolutePath = path.resolve(configPath);
-  const raw = JSON.parse(fs.readFileSync(absolutePath, 'utf-8')) as unknown;
+  const fileContents = fs.readFileSync(absolutePath, 'utf-8');
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fileContents) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse config JSON at ${absolutePath}: ${message}`);
+  }
   const asObject = toObject(raw);
 
   if (typeof asObject.startUrl === 'string') {
@@ -118,6 +144,9 @@ export function loadRunPlan(configPath: string): LoadedRunPlan {
   throw new Error('Invalid config shape. Expected a single-run config with startUrl or a batch config with batch[].');
 }
 
+/**
+ * Loads and validates a single-run config file.
+ */
 export function loadConfig(configPath: string): AppConfig {
   const plan = loadRunPlan(configPath);
   if (plan.kind !== 'single') {

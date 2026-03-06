@@ -300,7 +300,7 @@ async function collectSingle(page: Page, key: string, context: { runId:string; u
   }
 
   if (key === 'ux-layout-stability.json') {
-    const shifts = await safe(artifact, 'layout', async()=> page.evaluate((windowMs: number)=> new Promise((resolve)=>{
+    const shifts: { total: number; largest: Array<{ value: number; ts: number }>; mutations: number } = await safe(artifact, 'layout', async()=> page.evaluate((windowMs: number)=> new Promise((resolve)=>{
       const out: { total:number; largest:Array<{value:number; ts:number}>; mutations:number } = { total:0, largest:[], mutations:0 };
       const mo = new MutationObserver((list)=> { out.mutations += list.length; });
       mo.observe(document, { subtree:true, childList:true, attributes:true });
@@ -320,12 +320,12 @@ async function collectSingle(page: Page, key: string, context: { runId:string; u
       setTimeout(()=>{ mo.disconnect(); po?.disconnect(); out.largest.sort((a,b)=>b.value-a.value); resolve({ ...out, largest: out.largest.slice(0,3) }); }, windowMs);
     }), obsWindow), { total:0, largest:[], mutations:0 });
     artifact.signals = shifts as Record<string, unknown>;
-    const total = Number((shifts as any).total ?? 0);
+    const total = Number(shifts.total ?? 0);
     if (total > 0.25) { artifact.meta.status = 'warn'; artifact.score = 60; artifact.topIssues.push({ id:'high-cls', title:'High layout shift', severity:'medium', description:'Layout shifts exceed threshold', evidence:{ total } }); }
   }
 
   if (key === 'ux-interaction.json') {
-    const metrics = await safe(artifact, 'interaction', async()=> page.evaluate(async()=>{
+    const metrics: { totalLongTaskMs: number; longTaskCount: number; topDurations: number[] } = await safe(artifact, 'interaction', async()=> page.evaluate(async()=>{
       const longTasks: number[] = [];
       let po: PerformanceObserver | null = null;
       if ('PerformanceObserver' in window) {
@@ -339,7 +339,7 @@ async function collectSingle(page: Page, key: string, context: { runId:string; u
       return { totalLongTaskMs, longTaskCount: longTasks.length, topDurations: longTasks.slice(0,3) };
     }), { totalLongTaskMs:0, longTaskCount:0, topDurations:[] });
     artifact.signals = metrics as Record<string, unknown>;
-    if ((metrics as any).totalLongTaskMs > 500) { artifact.meta.status='warn'; artifact.score = 70; artifact.topIssues.push({ id:'long-tasks', title:'Main thread blocked', severity:'medium', description:'Long tasks detected.' }); }
+    if (metrics.totalLongTaskMs > 500) { artifact.meta.status='warn'; artifact.score = 70; artifact.topIssues.push({ id:'long-tasks', title:'Main thread blocked', severity:'medium', description:'Long tasks detected.' }); }
   }
 
   if (key === 'ux-click-friction.json') {
@@ -367,27 +367,27 @@ async function collectSingle(page: Page, key: string, context: { runId:string; u
   }
 
   if (key === 'ux-keyboard.json') {
-    const trace = await safe(artifact, 'keyboard', async()=> {
+    const trace: { visited: string[]; unique: number; visibleFocusPct: number } = await safe(artifact, 'keyboard', async()=> {
       const visited: string[] = [];
       let visibleFocusCount = 0;
       for (let i=0;i<tabLimit;i+=1) {
         await page.keyboard.press('Tab');
-        const focus = await page.evaluate(()=> {
+        const focus = await page.evaluate<{ key: string; visible: boolean } | null>(() => {
           const el = document.activeElement as HTMLElement | null;
           if (!el) return null;
           const style = getComputedStyle(el);
           const visible = style.outlineStyle !== 'none' || style.boxShadow !== 'none';
           const name = el.getAttribute('aria-label') || el.textContent?.trim() || '';
-          return { key:`${el.tagName.toLowerCase()}:${name.slice(0,30)}`, visible };
+          return { key: `${el.tagName.toLowerCase()}:${name.slice(0, 30)}`, visible };
         });
         if (!focus) continue;
-        visited.push((focus as any).key);
-        if ((focus as any).visible) visibleFocusCount += 1;
+        visited.push(focus.key);
+        if (focus.visible) visibleFocusCount += 1;
       }
       return { visited, unique: new Set(visited).size, visibleFocusPct: visited.length ? (visibleFocusCount / visited.length) * 100 : 0 };
     }, { visited:[], unique:0, visibleFocusPct:0 });
     artifact.signals = trace as Record<string, unknown>;
-    if ((trace as any).visibleFocusPct < 70) { artifact.meta.status = 'warn'; artifact.score = 68; artifact.topIssues.push({ id:'focus-visible', title:'Weak focus visibility', severity:'medium', description:'Keyboard focus indicator is often not visible.' }); }
+    if (trace.visibleFocusPct < 70) { artifact.meta.status = 'warn'; artifact.score = 68; artifact.topIssues.push({ id:'focus-visible', title:'Weak focus visibility', severity:'medium', description:'Keyboard focus indicator is often not visible.' }); }
   }
 
   if (key === 'ux-overlays.json') {

@@ -103,6 +103,7 @@ These environment variables materially affect runtime behavior for run/dashboard
 ### Merge/override rules
 - For `run`: there are no per-field CLI overrides besides selecting config path. Runtime values come from file + environment overrides (`ELASTIC_*`).
 - For batch configs: `defaults` is parsed first, then each `batch[]` entry overrides `name`, `startUrl`, and `crawl` for each expanded run.
+- Batch size is data-driven from the config file; large batch lists are expanded fully and preserve original order.
 
 ### Validation behavior and errors (high level)
 - Invalid JSON in `runs` launcher results in a JSON parse error before run starts.
