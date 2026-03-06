@@ -39,17 +39,29 @@ function renderHelpTip(text){
   return `<span class="help-tip" role="img" aria-label="${text}" title="${text}">i</span>`;
 }
 
-function normalizeDomainLink(value){
+function normalizeDomainLink(value, options = {}){
   if(typeof value !== 'string' || !value.trim()) return { displayDomain: null, domainHref: null };
+  const { preferOrigin = false } = options;
   const trimmed = value.trim();
   const parse = (input)=>{
     try { return new URL(input); } catch { return null; }
   };
   const parsed = parse(trimmed) ?? parse(`https://${trimmed}`);
   if(!parsed || !parsed.hostname) return { displayDomain: null, domainHref: null };
-  const displayDomain = parsed.hostname;
-  const domainHref = parse(trimmed) ? trimmed : `https://${displayDomain}`;
+  const normalizedHref = `${parsed.protocol}//${parsed.host}${parsed.pathname || '/'}${parsed.search}${parsed.hash}`;
+  const domainHref = parsed.protocol === 'https:' || parsed.protocol === 'http:' ? normalizedHref : null;
+  if(!domainHref) return { displayDomain: null, domainHref: null };
+  const displayDomain = preferOrigin
+    ? `${parsed.protocol}//${parsed.host}/`
+    : (parse(trimmed) ? trimmed : `${parsed.protocol}//${parsed.host}/`);
   return { displayDomain, domainHref };
+}
+
+function renderDomainLink(value, options = {}){
+  const { fallback = null } = options;
+  const normalized = normalizeDomainLink(value, options);
+  if(!normalized.domainHref || !normalized.displayDomain) return fallback;
+  return `<a class="domain-title-link" href="${escapeHtml(normalized.domainHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(normalized.displayDomain)}</a>`;
 }
 
 
@@ -62,9 +74,7 @@ function formatDataPath(runPath){
 }
 
 function renderDomainHeader(data){
-  const heading = data.domainHref && data.displayDomain
-    ? `<a class="domain-title-link" href="${escapeHtml(data.domainHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(data.displayDomain)}</a>`
-    : escapeHtml(data.title);
+  const heading = renderDomainLink(data.displayDomain, { fallback: escapeHtml(data.title) }) ?? escapeHtml(data.title);
   return `<header class="detail-header domain-header">
     <h2>${heading}</h2>
     <div class="meta">Data path: ${escapeHtml(formatDataPath(data.dataPath))}</div>
@@ -342,7 +352,7 @@ function renderDomainOverview(selected){
       ? 'Partial'
       : 'Untested';
 
-  const normalizedDomain = normalizeDomainLink(s.startUrl ?? s.domain);
+  const normalizedDomain = normalizeDomainLink(s.startUrl ?? s.domain, { preferOrigin: true });
   const header = renderDomainHeader({
     title: normalizedDomain.displayDomain ?? 'Domain overview',
     displayDomain: normalizedDomain.displayDomain,
@@ -493,8 +503,9 @@ function renderDetailsShell(u){
   const sec = u.sections['security-scan.json']?.summary?.missingHeaders ?? MISSING;
   const broken = u.sections['broken-links.json']?.summary?.brokenCount ?? MISSING;
   const visual = u.sections['visual-regression.json']?.summary?.passed;
+  const urlHeading = renderDomainLink(u.url, { fallback: escapeHtml(u.url) }) ?? escapeHtml(u.url);
   return `<header class="detail-header">
-    <h2>${u.url}</h2>
+    <h2>${urlHeading}</h2>
     <div class="meta">${safe(u.runTime)} · ${safe(u.runId)}</div>
     <div class="top-issues">
       <span>A11y C/S: ${a11y.critical??0}/${a11y.serious??0}</span>
