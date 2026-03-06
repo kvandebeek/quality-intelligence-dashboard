@@ -29,15 +29,19 @@ npm run dashboard -- --run <outputDir>/<runId> --port 4173
 ### Console progress output
 
 During `npm run run`, each page now renders a **single-line, live progress bar** that shows:
-- page identity (`Page X/Y` and URL)
+- page identity (`Crawled Page X/Y` and URL)
 - percentage complete
-- current phase (`navigation`, `core artifacts`, `security`, `broken-links`, `seo`, `stability`, `extensions`, `ux`, `persistence`, `teardown`)
+- current phase (`setup`, `consent`, `crawling`, `artifacts`, `stability`, `finalizing`)
 
 Behavior differs by terminal type:
 - **Interactive TTY (local terminal):** inline updates reuse one line via carriage-return/clear-line behavior.
 - **Non-interactive / CI logs:** inline control is disabled and readable snapshot lines are emitted instead.
 
-Each page still writes a durable final completion line with status and elapsed time (`COMPLETED` / `FAILED`), and run-level summary logs remain unchanged.
+Each page writes exactly one durable summary line with status and elapsed time (`PASS` / `FAIL` / `SKIP`) once finished.
+
+Default output is intentionally concise. For extra detail:
+- set `LOG_LEVEL=debug` (or `trace`) to show additional step snapshots in non-TTY logs
+- set `CONSENT_VERBOSE=true` to restore consent-handler detail lines
 
 ## Batch runs
 

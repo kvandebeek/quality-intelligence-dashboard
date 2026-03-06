@@ -14,9 +14,11 @@ program
   .command('run')
   .requiredOption('-c, --config <path>', 'Path to JSON config file')
   .action(async ({ config }) => {
+    process.stdout.write(`Starting run with config: ${config}\n`);
     const plan = loadRunPlan(config);
 
     if (plan.kind === 'single') {
+      process.stdout.write(`Target: ${plan.config.startUrl}\n`);
       const summary = await runAssurance(plan.config);
       process.stdout.write(`Run completed: ${summary.metadata.runId}\n`);
       return;

@@ -72,32 +72,22 @@ type StartTestOptions = {
 };
 
 const PAGE_PROGRESS_PHASES: readonly PageProgressPhase[] = [
-  { id: 'setup', label: 'setup', weight: 8, expectedDurationMs: 2500 },
-  { id: 'navigation', label: 'navigation', weight: 14, expectedDurationMs: 5500 },
-  { id: 'core-artifacts', label: 'core artifacts', weight: 18, expectedDurationMs: 9000 },
-  { id: 'security', label: 'security', weight: 11, expectedDurationMs: 4500 },
-  { id: 'broken-links', label: 'broken-links', weight: 12, expectedDurationMs: 9000 },
-  { id: 'seo', label: 'seo', weight: 8, expectedDurationMs: 3500 },
-  { id: 'stability', label: 'stability', weight: 10, expectedDurationMs: 4500 },
-  { id: 'extensions', label: 'extensions', weight: 8, expectedDurationMs: 3500 },
-  { id: 'ux', label: 'ux', weight: 6, expectedDurationMs: 5000 },
-  { id: 'persistence', label: 'persistence', weight: 3, expectedDurationMs: 1800 },
-  { id: 'teardown', label: 'teardown', weight: 2, expectedDurationMs: 1200 },
+  { id: 'setup', label: 'setup', weight: 5, expectedDurationMs: 2000 },
+  { id: 'consent', label: 'consent', weight: 10, expectedDurationMs: 2000 },
+  { id: 'crawling', label: 'crawling', weight: 10, expectedDurationMs: 5000 },
+  { id: 'artifacts', label: 'artifacts', weight: 60, expectedDurationMs: 12000 },
+  { id: 'stability', label: 'stability', weight: 10, expectedDurationMs: 5000 },
+  { id: 'finalizing', label: 'finalizing', weight: 5, expectedDurationMs: 1500 },
 ];
 
 const phaseFromStepName = (stepName: string): string => {
   const normalized = stepName.toLowerCase();
 
-  if (normalized.includes('close browser context')) return 'teardown';
-  if (normalized.includes('write target summary')) return 'persistence';
-  if (normalized.includes('ux suite')) return 'ux';
-  if (normalized.includes('extension:')) return 'extensions';
+  if (normalized.includes('close browser context') || normalized.includes('write target summary')) return 'finalizing';
+  if (normalized.includes('consent')) return 'consent';
+  if (normalized.includes('navigate') || normalized.includes('wait for selector') || normalized.includes('create browser context') || normalized.includes('create page')) return 'crawling';
   if (normalized.includes('stability') || normalized.includes('cross-browser') || normalized.includes('memory growth') || normalized.includes('focus-trap') || normalized.includes('contrast')) return 'stability';
-  if (normalized.includes('seo')) return 'seo';
-  if (normalized.includes('broken link') || normalized.includes('page links')) return 'broken-links';
-  if (normalized.includes('security')) return 'security';
-  if (normalized.includes('collect core artifacts') || normalized.includes('artifact: performance') || normalized.includes('artifact: accessibility') || normalized.includes('artifact: core web vitals')) return 'core-artifacts';
-  if (normalized.includes('navigate') || normalized.includes('wait for selector')) return 'navigation';
+  if (normalized.includes('collect core artifacts') || normalized.includes('artifact:') || normalized.includes('extension:') || normalized.includes('ux suite') || normalized.includes('security') || normalized.includes('broken link') || normalized.includes('page links') || normalized.includes('seo')) return 'artifacts';
   return 'setup';
 };
 
@@ -122,20 +112,9 @@ const parseBoolean = (value: string | undefined, fallback: boolean): boolean => 
   return value.toLowerCase() === 'true';
 };
 
-const statusText = (status: TestStatus): string => {
-  if (status === 'passed') {
-    return 'PASS';
-  }
-
-  if (status === 'failed') {
-    return 'FAIL';
-  }
-
-  if (status === 'skipped') {
-    return 'SKIP';
-  }
-
-  return 'TIMEOUT';
+const isVerboseLoggingEnabled = (): boolean => {
+  const level = (process.env.LOG_LEVEL ?? '').toLowerCase();
+  return level === 'debug' || level === 'trace';
 };
 
 export class TestTimingTracker {
@@ -185,10 +164,6 @@ export class TestTimingTracker {
     progress.start();
     progress.startPhase('setup');
 
-    if (this.liveLogging) {
-      process.stdout.write(`START   ${testName} (${file})${retry > 0 ? ` retry=${retry}` : ''}${options.pageUrl ? ` | ${options.pageUrl}` : ''}\n`);
-    }
-
     return reference;
   }
 
@@ -217,7 +192,7 @@ export class TestTimingTracker {
         test.progress.completePhase(phaseId);
         test.activePhaseId = undefined;
 
-        if (this.liveLogging && !process.stdout.isTTY) {
+        if (this.liveLogging && !process.stdout.isTTY && isVerboseLoggingEnabled()) {
           process.stdout.write(`  STEP ${pad(toSeconds(stepRecord.durationMs), 8)} ${test.testName}: ${stepRecord.name}\n`);
         }
       }
@@ -234,17 +209,12 @@ export class TestTimingTracker {
     test.end = Date.now();
 
     if (status === 'passed') {
-      test.progress.complete();
+      test.progress.complete('PASS');
     } else if (status === 'failed' || status === 'timedOut') {
       test.progress.fail(test.activePhaseId ?? null);
     } else {
-      test.progress.complete('COMPLETED WITH ERRORS');
+      test.progress.complete('SKIP');
     }
-
-    const durationMs = Math.max((test.end ?? test.start) - test.start, 0);
-    process.stdout.write(
-      `${pad(statusText(status), 7)} ${pad(toSeconds(durationMs), 8)} ${test.testName} (${test.file})${test.retry > 0 ? ` retry=${test.retry}` : ''}\n`,
-    );
 
     if (this.logTestSteps && test.steps.length > 0) {
       for (const step of test.steps) {
