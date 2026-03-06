@@ -3,6 +3,10 @@ import { buildStabilityRows } from './stability.js';
 import { bindBrokenLinks, renderBroken } from './brokenLinks.js';
 
 const app = document.getElementById('app');
+const QUALITY_INTELLIGENCE_LOGOS = {
+  light: '/assets/quality-intelligence-cockpit-light.svg',
+  dark: '/assets/quality-intelligence-cockpit-dark.svg'
+};
 
 const state = {
   index: null,
@@ -415,6 +419,15 @@ function render(options = {}){
         </div>
       </div>
       <div class="domain-overview-block"><button id="domain-overview-btn" class="url-row domain-overview-row ${state.selectedView==='domain-overview' ? 'active domain-overview-active' : ''}" type="button" aria-pressed="${state.selectedView==='domain-overview' ? 'true' : 'false'}"><div class="title">Domain overview</div><div class="subtitle">All checked URLs</div></button></div><div id="url-list" class="url-list"></div>
+      <div class="quality-intelligence-logo-block">
+        <img
+          class="quality-intelligence-logo"
+          src="${state.theme === 'dark' ? QUALITY_INTELLIGENCE_LOGOS.dark : QUALITY_INTELLIGENCE_LOGOS.light}"
+          alt="Quality Intelligence Cockpit logo"
+          width="260"
+          height="27"
+        >
+      </div>
       <div class="theme-block">
         <span class="theme-label">Theme</span>
         <button

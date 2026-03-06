@@ -96,7 +96,11 @@ pre{overflow:auto;max-height:300px;background:var(--preBg);padding:8px;border-ra
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}.cards article{background:var(--surface2);padding:10px;border:1px solid var(--border);border-radius:8px}
 .link{border:0;background:none;color:var(--accentHover);cursor:pointer;padding:0}
 .parse-errors{margin-top:12px;color:var(--danger);font-size:12px}
-.theme-block{padding:12px;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+.quality-intelligence-logo-block{padding:12px 12px 10px;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:flex-start}
+.quality-intelligence-logo{display:block;width:min(100%,320px);height:auto;max-height:44px;object-fit:contain;object-position:left center}
+
+.theme-block{padding:10px 12px 12px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .theme-label{font-size:12px;color:var(--textMuted)}
 .theme-toggle{border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:999px;padding:6px 10px;cursor:pointer;box-shadow:var(--shadow)}
 .theme-toggle:focus-visible{outline:2px solid var(--accentHover);outline-offset:2px}
