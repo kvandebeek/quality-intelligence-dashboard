@@ -3,7 +3,6 @@ import { buildStabilityRows } from './stability.js';
 import { bindBrokenLinks, renderBroken } from './brokenLinks.js';
 
 const app = document.getElementById('app');
-
 const state = {
   index: null,
   sections: null,
@@ -34,6 +33,15 @@ const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 const CWV_NEEDS_IMPROVEMENT_LABEL = 'Needs improvement';
 const SECURITY_NOT_COLLECTED_HELP = 'Not collected means the security scan was disabled, missing, or did not produce severity counts.';
+
+function renderQualityIntelligenceCockpitLogo(){
+  return `<div class="quality-intelligence-logo" role="img" aria-label="Quality Intelligence Cockpit">
+    <span class="quality-intelligence-logo-word" aria-hidden="true">Quality </span>
+    <span class="quality-intelligence-logo-word" aria-hidden="true">Intel</span>
+    <span class="quality-intelligence-logo-i" aria-hidden="true"></span>
+    <span class="quality-intelligence-logo-word" aria-hidden="true">gence Cockpit</span>
+  </div>`;
+}
 
 function renderHelpTip(text){
   return `<span class="help-tip" role="img" aria-label="${text}" title="${text}">i</span>`;
@@ -415,6 +423,9 @@ function render(options = {}){
         </div>
       </div>
       <div class="domain-overview-block"><button id="domain-overview-btn" class="url-row domain-overview-row ${state.selectedView==='domain-overview' ? 'active domain-overview-active' : ''}" type="button" aria-pressed="${state.selectedView==='domain-overview' ? 'true' : 'false'}"><div class="title">Domain overview</div><div class="subtitle">All checked URLs</div></button></div><div id="url-list" class="url-list"></div>
+      <div class="quality-intelligence-logo-block">
+        ${renderQualityIntelligenceCockpitLogo()}
+      </div>
       <div class="theme-block">
         <span class="theme-label">Theme</span>
         <button
