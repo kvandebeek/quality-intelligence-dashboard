@@ -22,6 +22,7 @@ export interface PageProgressOptions {
 const BAR_WIDTH = 18;
 const UNKNOWN_PHASE_CAP = 0.9;
 const LIVE_REFRESH_MS = 250;
+const MAX_URL_LENGTH = 72;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
@@ -127,10 +128,10 @@ export class PageProgressLogger {
     }
 
     this.clearTicking();
-    this.finalizeLine('FAILED', phaseId ? this.phaseLabel(phaseId) : 'failed', message);
+    this.finalizeLine('FAIL', message);
   }
 
-  public complete(status: 'COMPLETED' | 'COMPLETED WITH ERRORS' = 'COMPLETED'): void {
+  public complete(status: 'PASS' | 'SKIP' | 'TIMEOUT' = 'PASS'): void {
     this.clearTicking();
     for (const phase of this.phases) {
       const state = this.phaseStates.get(phase.id);
@@ -139,7 +140,7 @@ export class PageProgressLogger {
       }
     }
 
-    this.finalizeLine(status, 'completed');
+    this.finalizeLine(status);
   }
 
   private ensureTicking(): void {
@@ -207,10 +208,9 @@ export class PageProgressLogger {
     const percent = Math.round(fraction * 100);
     const filled = Math.round(fraction * BAR_WIDTH);
     const bar = `[${'█'.repeat(filled)}${'░'.repeat(Math.max(BAR_WIDTH - filled, 0))}]`;
-    const pageCounter = this.pageIndex && this.totalPages ? `Page ${this.pageIndex}/${this.totalPages}` : 'Page';
-    const identity = this.pageUrl ? this.pageUrl : this.pageLabel;
-    const prefix = `${pageCounter} | ${identity}`;
-    const line = `${prefix} | ${bar} ${String(percent).padStart(3, ' ')}% | Phase: ${phaseDescription}`;
+    const pageCounter = this.formatPageCounter();
+    const identity = this.formatIdentity();
+    const line = `${pageCounter} | ${identity} ${bar} ${String(percent).padStart(3, ' ')}% | Phase: ${phaseDescription}`;
 
     if (this.interactive) {
       this.stream.write(`\r\x1b[2K${line}`);
@@ -221,22 +221,42 @@ export class PageProgressLogger {
     this.lastRenderAt = nowMs;
   }
 
-  private finalizeLine(status: string, phaseDescription: string, extra?: string): void {
+  private finalizeLine(status: string, extra?: string): void {
     const elapsedMs = Math.max(this.now() - this.runStartedMs, 0);
     const seconds = (elapsedMs / 1000).toFixed(1);
-    const fraction = status === 'FAILED' ? this.calculateProgressFraction() : 1;
-    const percent = Math.round(fraction * 100);
-    const filled = Math.round(fraction * BAR_WIDTH);
-    const bar = `[${'█'.repeat(filled)}${'░'.repeat(Math.max(BAR_WIDTH - filled, 0))}]`;
-    const pageCounter = this.pageIndex && this.totalPages ? `Page ${this.pageIndex}/${this.totalPages}` : 'Page';
+    const pageCounter = this.formatPageCounter();
     const identity = this.pageUrl ? this.pageUrl : this.pageLabel;
     const suffix = extra ? ` | ${extra}` : '';
-    const line = `${pageCounter} | ${identity} | ${bar} ${String(percent).padStart(3, ' ')}% | ${status} | Phase: ${phaseDescription} | ${seconds}s${suffix}`;
+    const line = `${status} | ${seconds}s | ${pageCounter} | ${identity}${suffix}`;
 
     if (this.interactive) {
       this.stream.write(`\r\x1b[2K${line}\n`);
     } else {
       this.stream.write(`${line}\n`);
     }
+  }
+
+  private formatPageCounter(): string {
+    if (this.pageIndex && this.totalPages) {
+      return `${this.pageLabel} ${this.pageIndex}/${this.totalPages}`;
+    }
+
+    if (this.pageIndex) {
+      return `${this.pageLabel} ${this.pageIndex}`;
+    }
+
+    return this.pageLabel;
+  }
+
+  private formatIdentity(): string {
+    if (!this.pageUrl) {
+      return this.pageLabel;
+    }
+
+    if (this.pageUrl.length <= MAX_URL_LENGTH) {
+      return this.pageUrl;
+    }
+
+    return `${this.pageUrl.slice(0, MAX_URL_LENGTH - 1)}…`;
   }
 }

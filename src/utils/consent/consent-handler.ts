@@ -143,7 +143,7 @@ export const handleConsent = async (page: Page, options: ConsentOptions = {}): P
   const startedAt = nowMs();
   const enabled = options.enabled ?? true;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const log = options.log ?? console.log;
+  const log = options.log ?? (() => undefined);
 
   if (!enabled) {
     const elapsedMs = nowMs() - startedAt;

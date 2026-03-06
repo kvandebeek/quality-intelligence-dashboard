@@ -30,8 +30,10 @@ const parsePositiveInt = (value: string | undefined, fallback: number): number =
 };
 
 export const getConsentOptionsFromEnv = (): ConsentOptions => {
+  const verbose = parseBoolean(process.env.CONSENT_VERBOSE, false);
   return {
     enabled: parseBoolean(process.env.CONSENT_ENABLED, true),
     timeoutMs: parsePositiveInt(process.env.CONSENT_TIMEOUT_MS, 1500),
+    log: verbose ? console.log : undefined,
   };
 };

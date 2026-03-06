@@ -43,10 +43,9 @@ describe('PageProgressLogger', () => {
     logger.complete();
 
     const output = (stream as unknown as MockStream).chunks.join('');
-    expect(output).toContain('Page 1/2 | https://example.com');
+    expect(output).toContain('Homepage 1/2 | https://example.com');
     expect(output).toContain('Phase: navigation');
-    expect(output).toContain('COMPLETED');
-    expect(output).toContain('100%');
+    expect(output).toContain('PASS |');
   });
 
   it('uses carriage-return updates in interactive mode', () => {
@@ -66,6 +65,6 @@ describe('PageProgressLogger', () => {
 
     const output = (stream as unknown as MockStream).chunks.join('');
     expect(output).toContain('\r\x1b[2K');
-    expect(output).toContain('Page 2/2 | Contact');
+    expect(output).toContain('Contact 2/2 | Contact');
   });
 });
