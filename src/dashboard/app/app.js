@@ -36,10 +36,7 @@ const SECURITY_NOT_COLLECTED_HELP = 'Not collected means the security scan was d
 
 function renderQualityIntelligenceCockpitLogo(){
   return `<div class="quality-intelligence-logo" role="img" aria-label="Quality Intelligence Cockpit">
-    <span class="quality-intelligence-logo-word" aria-hidden="true">Quality </span>
-    <span class="quality-intelligence-logo-word" aria-hidden="true">Intel</span>
-    <span class="quality-intelligence-logo-i" aria-hidden="true"></span>
-    <span class="quality-intelligence-logo-word" aria-hidden="true">gence Cockpit</span>
+    <span class="quality-intelligence-logo-word" aria-hidden="true">Quality Intelligence Dashboard </span>
   </div>`;
 }
 
