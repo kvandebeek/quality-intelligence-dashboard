@@ -21,7 +21,10 @@
   --btnMiniBg:#f6f6f6;
   --btnMiniText:#141821;
   --btnMiniBorder:#999;
+  --logo-wordmark:#f4f7ff;
+  --logo-i-stem:#e53935;
 }
+
 
 :root[data-theme='light']{
   --bg:#f4f7fb;
@@ -46,7 +49,10 @@
   --btnMiniBg:#f3f7ff;
   --btnMiniText:#1a2233;
   --btnMiniBorder:#9db0d0;
+  --logo-wordmark:#74A84A;
+  --logo-i-stem:#e53935;
 }
+
 
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui;background:var(--bg);color:var(--text)}
 .layout{display:grid;grid-template-columns:380px 1fr;height:100vh}
@@ -97,14 +103,19 @@ pre{overflow:auto;max-height:300px;background:var(--preBg);padding:8px;border-ra
 .link{border:0;background:none;color:var(--accentHover);cursor:pointer;padding:0}
 .parse-errors{margin-top:12px;color:var(--danger);font-size:12px}
 
-.quality-intelligence-logo-block{padding:12px 12px 10px;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:flex-start}
-.quality-intelligence-logo{display:block;width:min(100%,320px);height:auto;max-height:44px;object-fit:contain;object-position:left center}
+.quality-intelligence-logo-block{padding:12px 12px 10px;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:flex-start;align-items:flex-end}
+.quality-intelligence-logo{display:inline-flex;align-items:flex-end;gap:0;max-width:100%;white-space:nowrap;line-height:1;font-family:'Plus Jakarta Sans',Inter,system-ui,sans-serif;font-size:clamp(14px,1.42vw,23px);font-weight:800;letter-spacing:-0.02em;color:var(--logo-wordmark)}
+.quality-intelligence-logo-word{color:inherit}
+.quality-intelligence-logo-i{position:relative;display:inline-block;width:0.28em;height:0.96em;margin:0 0.03em 0.07em 0.01em;vertical-align:baseline}
+.quality-intelligence-logo-i::before{content:'';position:absolute;left:0;bottom:0;width:100%;height:0.76em;background:var(--logo-i-stem);border-radius:1px}
+.quality-intelligence-logo-i::after{content:'';position:absolute;left:0;top:0;width:100%;height:0.18em;background:var(--logo-wordmark);border-radius:1px;transform:translateY(-0.18em)}
 
 .theme-block{padding:10px 12px 12px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .theme-label{font-size:12px;color:var(--textMuted)}
 .theme-toggle{border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:999px;padding:6px 10px;cursor:pointer;box-shadow:var(--shadow)}
 .theme-toggle:focus-visible{outline:2px solid var(--accentHover);outline-offset:2px}
 @media (max-width:1000px){.layout{grid-template-columns:1fr;height:auto}.left{max-height:42vh}}
+@media (max-width:700px){.quality-intelligence-logo{font-size:clamp(13px,3.8vw,18px)}}
 
 .btn-mini{font-size:12px;padding:4px 8px;margin-left:4px;border:1px solid var(--btnMiniBorder);background:var(--btnMiniBg);color:var(--btnMiniText);border-radius:4px;cursor:pointer;}
 
