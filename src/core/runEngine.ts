@@ -371,15 +371,33 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
   const urlSlug = sanitizeSlug(target.url);
   const targetFolder = path.join(runRoot, urlSlug);
   ensureDir(targetFolder);
-  const testReference = timing.startTest('src/core/runEngine.ts', target.name, retry, { pageUrl: target.url, pageIndex, totalPages });
-
   const extensionChecksEnabled = Object.values(config.assuranceModules.enabled).some((enabled) => Boolean(enabled));
-  if (!extensionChecksEnabled) {
-    timing.skipPhase(testReference, 'extensions', 'all extension checks disabled in config');
-  }
+  const enabledExtensionChecks = [
+    config.assuranceModules.enabled.clientErrors,
+    config.assuranceModules.enabled.memoryLeaks,
+    config.assuranceModules.enabled.privacyAudit,
+    config.assuranceModules.enabled.runtimeSecurity,
+    config.assuranceModules.enabled.dependencyRisk,
+  ].filter(Boolean).length;
+  const persistenceArtifacts = 11 + enabledExtensionChecks + (config.assuranceModules.enabled.uxSuite ? 1 : 0);
 
-  if (!config.assuranceModules.enabled.uxSuite) {
-    timing.skipPhase(testReference, 'ux', 'ux suite disabled in config');
+  const testReference = timing.startTest('src/core/runEngine.ts', target.name, retry, {
+    pageUrl: target.url,
+    pageIndex,
+    totalPages,
+    phasePlan: {
+      setup: 3,
+      navigation: target.waitForSelector ? 2 : 1,
+      stabilization: 3,
+      artifacts: config.assuranceModules.enabled.uxSuite ? 5 : 4,
+      checks: 6 + enabledExtensionChecks,
+      persistence: persistenceArtifacts,
+      finalization: 1,
+    },
+  });
+
+  if (!extensionChecksEnabled) {
+    timing.skipPhase(testReference, 'checks', 'all extension checks disabled in config');
   }
 
   const context = await timing.step(testReference, 'Create browser context', async () => browser.newContext());
@@ -1079,30 +1097,37 @@ async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['la
 
   const artifact: TargetRunArtifacts = { target, performance: perfMetrics, accessibility };
 
-  writeValidatedArtifact(path.join(targetFolder, 'performance.json'), 'performance', meta, perfMetrics);
-  writeValidatedArtifact(path.join(targetFolder, 'accessibility.json'), 'accessibility', meta, accessibility);
-  writeValidatedArtifact(path.join(targetFolder, 'core-web-vitals.json'), 'coreWebVitals', meta, coreWebVitals);
-  writeValidatedArtifact(path.join(targetFolder, 'throttled-run.json'), 'throttled', meta, { available: throttledLoadMs !== null, baselineLoadMs, throttledLoadMs, degradationFactor: baselineLoadMs && throttledLoadMs ? Number((throttledLoadMs / baselineLoadMs).toFixed(2)) : null });
-  writeValidatedArtifact(path.join(targetFolder, 'security-scan.json'), 'security', { ...meta, schemaVersion: SECURITY_SCAN_SCHEMA_VERSION }, securityScan);
-  writeValidatedArtifact(path.join(targetFolder, 'seo-score.json'), 'seoScore', meta, seoScore);
-  writeValidatedArtifact(path.join(targetFolder, 'visual-regression.json'), 'visualRegression', meta, { baselineFound, diffRatio, passed: diffRatio === null ? true : diffRatio < 0.05 });
-  writeValidatedArtifact(path.join(targetFolder, 'broken-links.json'), 'brokenLinks', meta, brokenLinks);
-  writeValidatedArtifact(path.join(targetFolder, 'third-party-risk.json'), 'thirdPartyRisk', meta, thirdPartyRisk);
-  writeValidatedArtifact(path.join(targetFolder, 'a11y-beyond-axe.json'), 'accessibilityBeyondAxe', meta, focusCheck);
-  writeValidatedArtifact(path.join(targetFolder, 'stability.json'), 'stability', meta, { iterations, loadEventSamples: loadSamples.map((value) => Math.round(value)), timestamps: loadSampleTimestamps, ...navigationStats });
-  writeValidatedArtifact(path.join(targetFolder, 'memory-profile.json'), 'memory', meta, { samples: memorySamples, growth: memorySamples.length > 1 ? Math.round(memorySamples[memorySamples.length - 1]! - memorySamples[0]!) : 0 });
-  writeValidatedArtifact(path.join(targetFolder, CROSS_BROWSER_PERFORMANCE_FILE), 'crossBrowserPerformance', meta, crossBrowserPerformance);
+  const persistArtifact = async (stepName: string, writer: () => void): Promise<void> => {
+    await timing.step(testReference, stepName, async () => {
+      writer();
+      return Promise.resolve();
+    });
+  };
+
+  await persistArtifact('Write artifact: performance', () => writeValidatedArtifact(path.join(targetFolder, 'performance.json'), 'performance', meta, perfMetrics));
+  await persistArtifact('Write artifact: accessibility', () => writeValidatedArtifact(path.join(targetFolder, 'accessibility.json'), 'accessibility', meta, accessibility));
+  await persistArtifact('Write artifact: core web vitals', () => writeValidatedArtifact(path.join(targetFolder, 'core-web-vitals.json'), 'coreWebVitals', meta, coreWebVitals));
+  await persistArtifact('Write artifact: throttled run', () => writeValidatedArtifact(path.join(targetFolder, 'throttled-run.json'), 'throttled', meta, { available: throttledLoadMs !== null, baselineLoadMs, throttledLoadMs, degradationFactor: baselineLoadMs && throttledLoadMs ? Number((throttledLoadMs / baselineLoadMs).toFixed(2)) : null }));
+  await persistArtifact('Write artifact: security scan', () => writeValidatedArtifact(path.join(targetFolder, 'security-scan.json'), 'security', { ...meta, schemaVersion: SECURITY_SCAN_SCHEMA_VERSION }, securityScan));
+  await persistArtifact('Write artifact: seo score', () => writeValidatedArtifact(path.join(targetFolder, 'seo-score.json'), 'seoScore', meta, seoScore));
+  await persistArtifact('Write artifact: visual regression', () => writeValidatedArtifact(path.join(targetFolder, 'visual-regression.json'), 'visualRegression', meta, { baselineFound, diffRatio, passed: diffRatio === null ? true : diffRatio < 0.05 }));
+  await persistArtifact('Write artifact: broken links', () => writeValidatedArtifact(path.join(targetFolder, 'broken-links.json'), 'brokenLinks', meta, brokenLinks));
+  await persistArtifact('Write artifact: third-party risk', () => writeValidatedArtifact(path.join(targetFolder, 'third-party-risk.json'), 'thirdPartyRisk', meta, thirdPartyRisk));
+  await persistArtifact('Write artifact: a11y beyond axe', () => writeValidatedArtifact(path.join(targetFolder, 'a11y-beyond-axe.json'), 'accessibilityBeyondAxe', meta, focusCheck));
+  await persistArtifact('Write artifact: stability', () => writeValidatedArtifact(path.join(targetFolder, 'stability.json'), 'stability', meta, { iterations, loadEventSamples: loadSamples.map((value) => Math.round(value)), timestamps: loadSampleTimestamps, ...navigationStats }));
+  await persistArtifact('Write artifact: memory profile', () => writeValidatedArtifact(path.join(targetFolder, 'memory-profile.json'), 'memory', meta, { samples: memorySamples, growth: memorySamples.length > 1 ? Math.round(memorySamples[memorySamples.length - 1]! - memorySamples[0]!) : 0 }));
+  await persistArtifact('Write artifact: cross-browser performance', () => writeValidatedArtifact(path.join(targetFolder, CROSS_BROWSER_PERFORMANCE_FILE), 'crossBrowserPerformance', meta, crossBrowserPerformance));
   const clientErrors = config.assuranceModules.enabled.clientErrors ? await timing.step(testReference, 'Extension: Client errors', async () => collectClientErrors(page, config.assuranceModules)) : { totalErrors: 0, severityScore: 100, uncaughtExceptions: 0, unhandledRejections: 0, consoleErrors: 0, consoleWarnings: 0, failedRequests: [], topErrors: [] };
   const memoryLeaks = config.assuranceModules.enabled.memoryLeaks ? await timing.step(testReference, 'Extension: Memory leaks', async () => collectMemoryLeaks(page, config.assuranceModules)) : { available: false, mode: 'not_supported', initialHeapMB: null, finalHeapMB: null, growthMB: null, leakRisk: 'unknown', evidence: ['disabled'] };
   const privacyAudit = config.assuranceModules.enabled.privacyAudit ? await timing.step(testReference, 'Extension: Privacy audit', async () => collectPrivacyAudit(page, config.assuranceModules)) : { consentBannerDetected: false, cookiesBeforeConsent: [], insecureCookies: [], thirdPartyTrackers: [], gdprRisk: 'low' };
   const runtimeSecurity = config.assuranceModules.enabled.runtimeSecurity ? await timing.step(testReference, 'Extension: Runtime security', async () => collectRuntimeSecurity(page, target.url)) : { missingHeaders: [], cspStrength: 'none', mixedContent: [], inlineScripts: 0, evalSignals: 0, securityScore: 100 };
   const dependencyRisk = config.assuranceModules.enabled.dependencyRisk ? await timing.step(testReference, 'Extension: Dependency risk', async () => collectDependencyRisk(page, parseDomain(target.url), config.assuranceModules)) : { domainInventory: [], dependencyRiskScore: 100, topRiskyDependencies: [] };
 
-  writeValidatedArtifact(path.join(targetFolder, 'client-errors.json'), 'clientErrors', meta, clientErrors);
-  writeValidatedArtifact(path.join(targetFolder, 'memory-leaks.json'), 'memoryLeaks', meta, memoryLeaks);
-  writeValidatedArtifact(path.join(targetFolder, 'privacy-audit.json'), 'privacyAudit', meta, privacyAudit);
-  writeValidatedArtifact(path.join(targetFolder, 'runtime-security.json'), 'runtimeSecurity', meta, runtimeSecurity);
-  writeValidatedArtifact(path.join(targetFolder, 'dependency-risk.json'), 'dependencyRisk', meta, dependencyRisk);
+  await persistArtifact('Write artifact: client errors', () => writeValidatedArtifact(path.join(targetFolder, 'client-errors.json'), 'clientErrors', meta, clientErrors));
+  await persistArtifact('Write artifact: memory leaks', () => writeValidatedArtifact(path.join(targetFolder, 'memory-leaks.json'), 'memoryLeaks', meta, memoryLeaks));
+  await persistArtifact('Write artifact: privacy audit', () => writeValidatedArtifact(path.join(targetFolder, 'privacy-audit.json'), 'privacyAudit', meta, privacyAudit));
+  await persistArtifact('Write artifact: runtime security', () => writeValidatedArtifact(path.join(targetFolder, 'runtime-security.json'), 'runtimeSecurity', meta, runtimeSecurity));
+  await persistArtifact('Write artifact: dependency risk', () => writeValidatedArtifact(path.join(targetFolder, 'dependency-risk.json'), 'dependencyRisk', meta, dependencyRisk));
 
   if (config.assuranceModules.enabled.uxSuite) {
     await timing.step(testReference, 'Artifact: UX suite', async () => collectUxSuite(page, {

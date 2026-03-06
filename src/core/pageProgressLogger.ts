@@ -20,7 +20,7 @@ export interface PageProgressOptions {
 }
 
 const BAR_WIDTH = 18;
-const UNKNOWN_PHASE_CAP = 0.9;
+const UNKNOWN_PHASE_CAP = 0.95;
 const LIVE_REFRESH_MS = 250;
 const MAX_URL_LENGTH = 72;
 
@@ -47,6 +47,10 @@ export class PageProgressLogger {
 
   private phaseStates = new Map<string, PhaseState>();
 
+  private phaseTotals = new Map<string, number>();
+
+  private phaseCompletedSteps = new Map<string, number>();
+
   private activePhaseId: string | null = null;
 
   private activePhaseStartedAt: number | null = null;
@@ -68,7 +72,20 @@ export class PageProgressLogger {
 
     for (const phase of this.phases) {
       this.phaseStates.set(phase.id, 'pending');
+      this.phaseTotals.set(phase.id, 1);
+      this.phaseCompletedSteps.set(phase.id, 0);
     }
+  }
+
+  public setPhaseTotal(phaseId: string, totalSteps: number): void {
+    if (!this.phaseStates.has(phaseId)) {
+      return;
+    }
+
+    const sanitizedTotal = Math.max(1, Math.round(totalSteps));
+    this.phaseTotals.set(phaseId, sanitizedTotal);
+    const completed = this.phaseCompletedSteps.get(phaseId) ?? 0;
+    this.phaseCompletedSteps.set(phaseId, clamp(completed, 0, sanitizedTotal));
   }
 
   public start(): void {
@@ -97,6 +114,7 @@ export class PageProgressLogger {
     }
 
     this.phaseStates.set(phaseId, 'completed');
+    this.phaseCompletedSteps.set(phaseId, this.phaseTotals.get(phaseId) ?? 1);
     if (this.activePhaseId === phaseId) {
       this.activePhaseId = null;
       this.activePhaseStartedAt = null;
@@ -112,6 +130,7 @@ export class PageProgressLogger {
     }
 
     this.phaseStates.set(phaseId, 'skipped');
+    this.phaseCompletedSteps.set(phaseId, this.phaseTotals.get(phaseId) ?? 1);
     if (this.activePhaseId === phaseId) {
       this.activePhaseId = null;
       this.activePhaseStartedAt = null;
@@ -123,6 +142,7 @@ export class PageProgressLogger {
   public fail(phaseId: string | null, message?: string): void {
     if (phaseId && this.phaseStates.has(phaseId)) {
       this.phaseStates.set(phaseId, 'failed');
+      this.phaseCompletedSteps.set(phaseId, this.phaseTotals.get(phaseId) ?? 1);
       this.activePhaseId = null;
       this.activePhaseStartedAt = null;
     }
@@ -137,6 +157,7 @@ export class PageProgressLogger {
       const state = this.phaseStates.get(phase.id);
       if (state === 'pending' || state === 'running') {
         this.phaseStates.set(phase.id, 'completed');
+        this.phaseCompletedSteps.set(phase.id, this.phaseTotals.get(phase.id) ?? 1);
       }
     }
 
@@ -188,14 +209,43 @@ export class PageProgressLogger {
       }
 
       if (state === 'running' && this.activePhaseId === phase.id && this.activePhaseStartedAt) {
+        const totalSteps = this.phaseTotals.get(phase.id) ?? 1;
+        const completedSteps = this.phaseCompletedSteps.get(phase.id) ?? 0;
+        const completedFraction = clamp(completedSteps / totalSteps, 0, 1);
         const expected = Math.max(phase.expectedDurationMs ?? 6000, 1000);
         const elapsed = Math.max(this.now() - this.activePhaseStartedAt, 0);
-        const fraction = clamp(elapsed / expected, 0.05, UNKNOWN_PHASE_CAP);
-        doneWeight += phase.weight * fraction;
+        const runningFraction = clamp(elapsed / expected, 0.05, UNKNOWN_PHASE_CAP) / totalSteps;
+        doneWeight += phase.weight * clamp(completedFraction + runningFraction, 0, UNKNOWN_PHASE_CAP);
+        continue;
       }
+
+      const totalSteps = this.phaseTotals.get(phase.id) ?? 1;
+      const completedSteps = this.phaseCompletedSteps.get(phase.id) ?? 0;
+      doneWeight += phase.weight * clamp(completedSteps / totalSteps, 0, 1);
     }
 
     return clamp(doneWeight / totalWeight, 0, 1);
+  }
+
+  public completePhaseStep(phaseId: string, stepLabel?: string): void {
+    if (!this.phaseStates.has(phaseId)) {
+      return;
+    }
+
+    const totalSteps = this.phaseTotals.get(phaseId) ?? 1;
+    const completedSteps = this.phaseCompletedSteps.get(phaseId) ?? 0;
+    this.phaseCompletedSteps.set(phaseId, clamp(completedSteps + 1, 0, totalSteps));
+    this.phaseStates.set(phaseId, this.phaseCompletedSteps.get(phaseId) === totalSteps ? 'completed' : 'running');
+    this.activePhaseId = this.phaseCompletedSteps.get(phaseId) === totalSteps ? null : phaseId;
+    this.activePhaseStartedAt = this.activePhaseId ? this.now() : null;
+
+    if (!this.activePhaseId) {
+      this.clearTicking();
+    } else {
+      this.ensureTicking();
+    }
+
+    this.render(stepLabel ? `${this.phaseLabel(phaseId)} | ${stepLabel}` : this.phaseLabel(phaseId));
   }
 
   private render(phaseDescription: string): void {
