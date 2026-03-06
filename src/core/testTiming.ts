@@ -65,29 +65,34 @@ type TestRecordMutable = {
   end?: number;
 };
 
+type PhasePlan = Partial<Record<'setup' | 'navigation' | 'stabilization' | 'artifacts' | 'checks' | 'persistence' | 'finalization', number>>;
+
 type StartTestOptions = {
   readonly pageUrl?: string;
   readonly pageIndex?: number;
   readonly totalPages?: number;
+  readonly phasePlan?: PhasePlan;
 };
 
 const PAGE_PROGRESS_PHASES: readonly PageProgressPhase[] = [
-  { id: 'setup', label: 'setup', weight: 5, expectedDurationMs: 2000 },
-  { id: 'consent', label: 'consent', weight: 10, expectedDurationMs: 2000 },
-  { id: 'crawling', label: 'crawling', weight: 10, expectedDurationMs: 5000 },
-  { id: 'artifacts', label: 'artifacts', weight: 60, expectedDurationMs: 12000 },
-  { id: 'stability', label: 'stability', weight: 10, expectedDurationMs: 5000 },
-  { id: 'finalizing', label: 'finalizing', weight: 5, expectedDurationMs: 1500 },
+  { id: 'setup', label: 'setup / page start', weight: 10, expectedDurationMs: 2000 },
+  { id: 'navigation', label: 'navigation', weight: 18, expectedDurationMs: 8000 },
+  { id: 'stabilization', label: 'page stabilization', weight: 12, expectedDurationMs: 12000 },
+  { id: 'artifacts', label: 'artifact collection', weight: 24, expectedDurationMs: 15000 },
+  { id: 'checks', label: 'checks / analysis', weight: 22, expectedDurationMs: 15000 },
+  { id: 'persistence', label: 'persistence / writing results', weight: 10, expectedDurationMs: 5000 },
+  { id: 'finalization', label: 'finalization', weight: 4, expectedDurationMs: 1500 },
 ];
 
-const phaseFromStepName = (stepName: string): string => {
+const phaseFromStepName = (stepName: string): 'setup' | 'navigation' | 'stabilization' | 'artifacts' | 'checks' | 'persistence' | 'finalization' => {
   const normalized = stepName.toLowerCase();
 
-  if (normalized.includes('close browser context') || normalized.includes('write target summary')) return 'finalizing';
-  if (normalized.includes('consent')) return 'consent';
-  if (normalized.includes('navigate') || normalized.includes('wait for selector') || normalized.includes('create browser context') || normalized.includes('create page')) return 'crawling';
-  if (normalized.includes('stability') || normalized.includes('cross-browser') || normalized.includes('memory growth') || normalized.includes('focus-trap') || normalized.includes('contrast')) return 'stability';
-  if (normalized.includes('collect core artifacts') || normalized.includes('artifact:') || normalized.includes('extension:') || normalized.includes('ux suite') || normalized.includes('security') || normalized.includes('broken link') || normalized.includes('page links') || normalized.includes('seo')) return 'artifacts';
+  if (normalized.includes('close browser context') || normalized.includes('close context') || normalized.includes('finaliz')) return 'finalization';
+  if (normalized.includes('write ') || normalized.includes('persist')) return 'persistence';
+  if (normalized.includes('stability') || normalized.includes('cross-browser') || normalized.includes('memory growth') || normalized.includes('focus-trap') || normalized.includes('contrast') || normalized.includes('fcp')) return 'stabilization';
+  if (normalized.includes('extension:') || normalized.includes('security') || normalized.includes('seo') || normalized.includes('broken link') || normalized.includes('analy')) return 'checks';
+  if (normalized.includes('artifact:') || normalized.includes('collect core artifacts') || normalized.includes('core web vitals') || normalized.includes('ux suite') || normalized.includes('page links') || normalized.includes('screenshot')) return 'artifacts';
+  if (normalized.includes('navigate') || normalized.includes('wait for selector') || normalized.includes('consent')) return 'navigation';
   return 'setup';
 };
 
@@ -161,6 +166,20 @@ export class TestTimingTracker {
       progress,
     });
 
+    const defaultPhasePlan: Required<PhasePlan> = {
+      setup: 3,
+      navigation: 2,
+      stabilization: 2,
+      artifacts: 4,
+      checks: 6,
+      persistence: 6,
+      finalization: 1,
+    };
+    const phasePlan = { ...defaultPhasePlan, ...(options.phasePlan ?? {}) };
+    for (const [phaseId, total] of Object.entries(phasePlan)) {
+      progress.setPhaseTotal(phaseId, total);
+    }
+
     progress.start();
     progress.startPhase('setup');
 
@@ -169,28 +188,28 @@ export class TestTimingTracker {
 
   public async step<T>(testReference: string, stepName: string, operation: () => Promise<T>): Promise<T> {
     const stepStart = Date.now();
+    const test = this.tests.get(testReference);
+    const phaseId = phaseFromStepName(stepName);
+
+    if (test && test.activePhaseId !== phaseId) {
+      test.progress.startPhase(phaseId);
+      test.activePhaseId = phaseId;
+    }
+
     try {
       return await operation();
     } finally {
       const stepEnd = Date.now();
-      const test = this.tests.get(testReference);
       if (test) {
-        const phaseId = phaseFromStepName(stepName);
-        if (test.activePhaseId !== phaseId) {
-          test.progress.startPhase(phaseId);
-          test.activePhaseId = phaseId;
-        }
-
         const stepRecord: TimingStep = {
-        name: stepName,
-        startTime: toIso(stepStart),
-        endTime: toIso(stepEnd),
-        durationMs: Math.max(stepEnd - stepStart, 0),
-        parentTestReference: testReference,
+          name: stepName,
+          startTime: toIso(stepStart),
+          endTime: toIso(stepEnd),
+          durationMs: Math.max(stepEnd - stepStart, 0),
+          parentTestReference: testReference,
         };
         test.steps.push(stepRecord);
-        test.progress.completePhase(phaseId);
-        test.activePhaseId = undefined;
+        test.progress.completePhaseStep(phaseId, stepName);
 
         if (this.liveLogging && !process.stdout.isTTY && isVerboseLoggingEnabled()) {
           process.stdout.write(`  STEP ${pad(toSeconds(stepRecord.durationMs), 8)} ${test.testName}: ${stepRecord.name}\n`);
