@@ -132,8 +132,8 @@ pre{overflow:auto;max-height:300px;background:var(--preBg);padding:8px;border-ra
   .tab-row::before{content:'';position:sticky;left:0;top:0;width:24px;height:100%;pointer-events:none;background:linear-gradient(270deg, rgba(0,0,0,0), var(--bg));}
 }
 
-.domain-overview-block{padding:8px;background:var(--surface);border-bottom:1px solid var(--border)}
-.domain-overview-row{position:static !important;height:58px;margin:0;width:calc(100% - 0px);border-top:1px solid var(--border)}
+.domain-overview-block{padding:8px;border-bottom:1px solid var(--border)}
+.domain-overview-row{position:static !important;height:58px;margin:0;width:calc(100% - 0px)}
 .domain-overview-row .subtitle{font-size:11px;color:var(--textMuted)}
 .domain-overview-row:focus-visible{outline:2px solid var(--accentHover);outline-offset:1px}
 .domain-overview-active{outline:1px solid var(--danger) !important}
