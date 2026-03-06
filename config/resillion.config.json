@@ -8,7 +8,7 @@
   "startUrl": "https://www.resillion.com",
   "targets": [],
   "crawl": {
-    "enabled": true,
+    "enabled": false,
     "maxDepth": 1,
     "maxPages": 1,
     "includeExternalDomains": false,

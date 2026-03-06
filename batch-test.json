@@ -12,36 +12,3136 @@
   },
   "batch": [
     {
+      "name": "ACCELL",
+      "startUrl": "https://www.accell.nl",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "accell.nl"
+        ]
+      }
+    },
+    {
+      "name": "ACTWITHCARE",
+      "startUrl": "https://www.actwithcare.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "actwithcare.be"
+        ]
+      }
+    },
+    {
+      "name": "ADAKO",
+      "startUrl": "https://www.adako.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "adako.be"
+        ]
+      }
+    },
+    {
+      "name": "AE",
+      "startUrl": "https://www.ae.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "ae.be"
+        ]
+      }
+    },
+    {
+      "name": "AGGEREM",
+      "startUrl": "https://www.aggerem.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "aggerem.be"
+        ]
+      }
+    },
+    {
+      "name": "ANTEAGROUP",
+      "startUrl": "https://www.anteagroup.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "anteagroup.com"
+        ]
+      }
+    },
+    {
+      "name": "APPEEL",
+      "startUrl": "https://www.appeel.io",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "appeel.io"
+        ]
+      }
+    },
+    {
+      "name": "ARCADISBELGIUM",
+      "startUrl": "https://www.arcadisbelgium.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "arcadisbelgium.be"
+        ]
+      }
+    },
+    {
+      "name": "ARGUENDO",
+      "startUrl": "https://www.arguendo.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "arguendo.be"
+        ]
+      }
+    },
+    {
+      "name": "AXENTIS",
+      "startUrl": "https://www.axentis.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "axentis.be"
+        ]
+      }
+    },
+    {
+      "name": "AXLTRAX",
+      "startUrl": "https://www.axl-trax.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "axl-trax.com"
+        ]
+      }
+    },
+    {
+      "name": "BCTSOFTWARE",
+      "startUrl": "https://www.bctsoftware.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bctsoftware.com"
+        ]
+      }
+    },
+    {
+      "name": "BE",
+      "startUrl": "https://www.be.ey.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "be.ey.com"
+        ]
+      }
+    },
+    {
+      "name": "BE",
+      "startUrl": "https://www.be.fcm.travel",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "be.fcm.travel"
+        ]
+      }
+    },
+    {
+      "name": "BEWIRE",
+      "startUrl": "https://www.bewire.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bewire.be"
+        ]
+      }
+    },
+    {
+      "name": "BIMEFY",
+      "startUrl": "https://www.bimefy.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bimefy.com"
+        ]
+      }
+    },
+    {
+      "name": "BIMVISIONS",
+      "startUrl": "https://www.bimvisions.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bimvisions.com"
+        ]
+      }
+    },
+    {
+      "name": "BIZLINKTECH",
+      "startUrl": "https://www.bizlinktech.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bizlinktech.com"
+        ]
+      }
+    },
+    {
+      "name": "BLENDUP",
+      "startUrl": "https://www.blend-up.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "blend-up.be"
+        ]
+      }
+    },
+    {
+      "name": "BLOOLOC",
+      "startUrl": "https://www.blooloc.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "blooloc.com"
+        ]
+      }
+    },
+    {
+      "name": "BLUECIE",
+      "startUrl": "https://www.bluecie.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bluecie.com"
+        ]
+      }
+    },
+    {
+      "name": "BONANA",
+      "startUrl": "https://www.bonana.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bonana.com"
+        ]
+      }
+    },
+    {
+      "name": "BOOSTNBALANCE",
+      "startUrl": "https://www.boostnbalance.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "boostnbalance.com"
+        ]
+      }
+    },
+    {
+      "name": "BORNDIGITAL",
+      "startUrl": "https://www.borndigital.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "borndigital.be"
+        ]
+      }
+    },
+    {
+      "name": "BOUWXLENCE",
+      "startUrl": "https://www.bouwxlence.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "bouwxlence.be"
+        ]
+      }
+    },
+    {
+      "name": "BRANDSATION",
+      "startUrl": "https://www.brandsation.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "brandsation.com"
+        ]
+      }
+    },
+    {
+      "name": "BRBX",
+      "startUrl": "https://www.brbx.ai",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "brbx.ai"
+        ]
+      }
+    },
+    {
+      "name": "BROBOTS",
+      "startUrl": "https://www.brobots.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "brobots.be"
+        ]
+      }
+    },
+    {
+      "name": "BUILTFORENDURANCE",
+      "startUrl": "https://www.builtforendurance.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "builtforendurance.com"
+        ]
+      }
+    },
+    {
+      "name": "BUZZWORKS",
+      "startUrl": "https://www.buzzworks.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "buzzworks.be"
+        ]
+      }
+    },
+    {
+      "name": "CANON",
+      "startUrl": "https://www.canon.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "canon.be"
+        ]
+      }
+    },
+    {
+      "name": "CATSANDDOGS",
+      "startUrl": "https://www.catsanddogs.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "catsanddogs.com"
+        ]
+      }
+    },
+    {
+      "name": "CEGEKA",
+      "startUrl": "https://www.cegeka.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cegeka.com"
+        ]
+      }
+    },
+    {
+      "name": "CERTIMED",
+      "startUrl": "https://www.certimed.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "certimed.be"
+        ]
+      }
+    },
+    {
+      "name": "CEUSTERS",
+      "startUrl": "https://www.ceusters.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "ceusters.be"
+        ]
+      }
+    },
+    {
+      "name": "CGM",
+      "startUrl": "https://www.cgm.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cgm.com"
+        ]
+      }
+    },
+    {
+      "name": "CLAEYSENGELS",
+      "startUrl": "https://www.claeysengels.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "claeysengels.be"
+        ]
+      }
+    },
+    {
+      "name": "CLAIMBEE",
+      "startUrl": "https://www.claimbee.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "claimbee.be"
+        ]
+      }
+    },
+    {
+      "name": "CLEANWATERGLOBAL",
+      "startUrl": "https://www.cleanwaterglobal.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cleanwaterglobal.be"
+        ]
+      }
+    },
+    {
+      "name": "CLIMAPULSE",
+      "startUrl": "https://www.climapulse.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "climapulse.com"
+        ]
+      }
+    },
+    {
+      "name": "CLIPIDO",
+      "startUrl": "https://www.clipido.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "clipido.com"
+        ]
+      }
+    },
+    {
+      "name": "CLOUBIS",
+      "startUrl": "https://www.cloubis.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cloubis.be"
+        ]
+      }
+    },
+    {
+      "name": "CNTONLINE",
+      "startUrl": "https://www.cnt-online.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cnt-online.com"
+        ]
+      }
+    },
+    {
+      "name": "COMENTEC",
+      "startUrl": "https://www.comentec.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "comentec.com"
+        ]
+      }
+    },
+    {
+      "name": "CONCLUSIONINTELLIGENCE",
+      "startUrl": "https://www.conclusionintelligence.de",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "conclusionintelligence.de"
+        ]
+      }
+    },
+    {
+      "name": "CONTEC",
+      "startUrl": "https://www.contec.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "contec.be"
+        ]
+      }
+    },
+    {
+      "name": "CORDA",
+      "startUrl": "https://www.corda.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "corda.be"
+        ]
+      }
+    },
+    {
+      "name": "CORDABARBER",
+      "startUrl": "https://www.cordabarber.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cordabarber.be"
+        ]
+      }
+    },
+    {
+      "name": "CORDACAMPUS",
+      "startUrl": "https://www.cordacampus.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cordacampus.com"
+        ]
+      }
+    },
+    {
+      "name": "CORDIER",
+      "startUrl": "https://www.cordier.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cordier.com"
+        ]
+      }
+    },
+    {
+      "name": "CORPORATELEADERS",
+      "startUrl": "https://www.corporate-leaders.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "corporate-leaders.com"
+        ]
+      }
+    },
+    {
+      "name": "CPT",
+      "startUrl": "https://www.cpt.valantic.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cpt.valantic.com"
+        ]
+      }
+    },
+    {
+      "name": "CRANIUM",
+      "startUrl": "https://www.cranium.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cranium.eu"
+        ]
+      }
+    },
+    {
+      "name": "CRESCOLAW",
+      "startUrl": "https://www.crescolaw.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "crescolaw.com"
+        ]
+      }
+    },
+    {
+      "name": "CROANHOUSE",
+      "startUrl": "https://www.croanhouse.onmicrosoft.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "croanhouse.onmicrosoft.com"
+        ]
+      }
+    },
+    {
+      "name": "CUBIGO",
+      "startUrl": "https://www.cubigo.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cubigo.com"
+        ]
+      }
+    },
+    {
+      "name": "CURAATHLETICA",
+      "startUrl": "https://www.cura-athletica.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "cura-athletica.be"
+        ]
+      }
+    },
+    {
+      "name": "CURAVEX",
+      "startUrl": "https://www.curavex.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "curavex.be"
+        ]
+      }
+    },
+    {
+      "name": "DATASENSE",
+      "startUrl": "https://www.datasense.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "datasense.be"
+        ]
+      }
+    },
+    {
+      "name": "DATAVISE",
+      "startUrl": "https://www.datavise.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "datavise.be"
+        ]
+      }
+    },
+    {
+      "name": "DCPIP",
+      "startUrl": "https://www.dcp-ip.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "dcp-ip.com"
+        ]
+      }
+    },
+    {
+      "name": "DEAGILETESTERS",
+      "startUrl": "https://www.deagiletesters.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "deagiletesters.be"
+        ]
+      }
+    },
+    {
+      "name": "DEGROOTEDEMAN",
+      "startUrl": "https://www.degroote-deman.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "degroote-deman.be"
+        ]
+      }
+    },
+    {
+      "name": "DEINS",
+      "startUrl": "https://www.deins.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "deins.be"
+        ]
+      }
+    },
+    {
+      "name": "DELTA",
+      "startUrl": "https://www.delta.blue",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "delta.blue"
+        ]
+      }
+    },
+    {
+      "name": "DEPENDS",
+      "startUrl": "https://www.depends.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "depends.be"
+        ]
+      }
+    },
+    {
+      "name": "DIGIFLOW3D",
+      "startUrl": "https://www.digiflow3d.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "digiflow3d.com"
+        ]
+      }
+    },
+    {
+      "name": "DILLEN",
+      "startUrl": "https://www.dillen.io",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "dillen.io"
+        ]
+      }
+    },
+    {
+      "name": "DOPLIMBURG",
+      "startUrl": "https://www.doplimburg.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "doplimburg.be"
+        ]
+      }
+    },
+    {
+      "name": "DPGMEDIA",
+      "startUrl": "https://www.dpgmedia.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "dpgmedia.be"
+        ]
+      }
+    },
+    {
+      "name": "DQSBELGIUM",
+      "startUrl": "https://www.dqsbelgium.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "dqsbelgium.be"
+        ]
+      }
+    },
+    {
+      "name": "ETORCH",
+      "startUrl": "https://www.e-torch.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "e-torch.eu"
+        ]
+      }
+    },
+    {
+      "name": "EVOLVE",
+      "startUrl": "https://www.e-volve.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "e-volve.be"
+        ]
+      }
+    },
+    {
+      "name": "ECORUS",
+      "startUrl": "https://www.ecorus.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "ecorus.com"
+        ]
+      }
+    },
+    {
+      "name": "ELEM3NTS",
+      "startUrl": "https://www.elem3nts.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "elem3nts.com"
+        ]
+      }
+    },
+    {
+      "name": "ELEMENT61",
+      "startUrl": "https://www.element61.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "element61.be"
+        ]
+      }
+    },
+    {
+      "name": "ELISION",
+      "startUrl": "https://www.elision.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "elision.eu"
+        ]
+      }
+    },
+    {
+      "name": "ENGIFY",
+      "startUrl": "https://www.engify.network",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "engify.network"
+        ]
+      }
+    },
+    {
+      "name": "EPIHUNTER",
+      "startUrl": "https://www.epihunter.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "epihunter.com"
+        ]
+      }
+    },
+    {
+      "name": "EPLY",
+      "startUrl": "https://www.eply.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "eply.be"
+        ]
+      }
+    },
+    {
+      "name": "EQUIVITAGENETICS",
+      "startUrl": "https://www.equivita-genetics.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "equivita-genetics.com"
+        ]
+      }
+    },
+    {
+      "name": "FAROW",
+      "startUrl": "https://www.farow.health",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "farow.health"
+        ]
+      }
+    },
+    {
+      "name": "FAVORITEFAMILY",
+      "startUrl": "https://www.favoritefamily.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "favoritefamily.eu"
+        ]
+      }
+    },
+    {
+      "name": "FAVV",
+      "startUrl": "https://www.favv.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "favv.be"
+        ]
+      }
+    },
+    {
+      "name": "FELIES",
+      "startUrl": "https://www.felies.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "felies.be"
+        ]
+      }
+    },
+    {
+      "name": "FENEGO",
+      "startUrl": "https://www.fenego.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "fenego.be"
+        ]
+      }
+    },
+    {
+      "name": "FIBRICHECK",
+      "startUrl": "https://www.fibricheck.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "fibricheck.com"
+        ]
+      }
+    },
+    {
+      "name": "FITDESIGN",
+      "startUrl": "https://www.fit-design.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "fit-design.be"
+        ]
+      }
+    },
+    {
+      "name": "FITAGENCY",
+      "startUrl": "https://www.fitagency.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "fitagency.be"
+        ]
+      }
+    },
+    {
+      "name": "FORWARD",
+      "startUrl": "https://www.forward.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "forward.eu"
+        ]
+      }
+    },
+    {
+      "name": "FUL",
+      "startUrl": "https://www.ful.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "ful.be"
+        ]
+      }
+    },
+    {
+      "name": "FULLYBOOKED",
+      "startUrl": "https://www.fullybooked.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "fullybooked.be"
+        ]
+      }
+    },
+    {
+      "name": "GEVERS",
+      "startUrl": "https://www.gevers.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "gevers.eu"
+        ]
+      }
+    },
+    {
+      "name": "GLUO",
+      "startUrl": "https://www.gluo.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "gluo.be"
+        ]
+      }
+    },
+    {
+      "name": "GREYWALLMARKETING",
+      "startUrl": "https://www.greywallmarketing.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "greywallmarketing.be"
+        ]
+      }
+    },
+    {
+      "name": "GROEIONDERSTEUNING",
+      "startUrl": "https://www.groeiondersteuning.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "groeiondersteuning.be"
+        ]
+      }
+    },
+    {
+      "name": "GUMBYS",
+      "startUrl": "https://www.gumbys.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "gumbys.be"
+        ]
+      }
+    },
+    {
+      "name": "HELDER",
+      "startUrl": "https://www.helder.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "helder.eu"
+        ]
+      }
+    },
+    {
+      "name": "HIPPODX",
+      "startUrl": "https://www.hippo-dx.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "hippo-dx.com"
+        ]
+      }
+    },
+    {
+      "name": "HUMBLDESIGN",
+      "startUrl": "https://www.humbl-design.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "humbl-design.be"
+        ]
+      }
+    },
+    {
+      "name": "HYPERFOX",
+      "startUrl": "https://www.hyperfox.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "hyperfox.com"
+        ]
+      }
+    },
+    {
+      "name": "IBEAUTY",
+      "startUrl": "https://www.ibeauty.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "ibeauty.be"
+        ]
+      }
+    },
+    {
+      "name": "IFACTO",
+      "startUrl": "https://www.ifacto.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "ifacto.be"
+        ]
+      }
+    },
+    {
+      "name": "IMEC",
+      "startUrl": "https://www.imec.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "imec.be"
+        ]
+      }
+    },
+    {
+      "name": "IMECISTART",
+      "startUrl": "https://www.imecistart.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "imecistart.com"
+        ]
+      }
+    },
+    {
+      "name": "IN2FACTS",
+      "startUrl": "https://www.in2facts.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "in2facts.com"
+        ]
+      }
+    },
+    {
+      "name": "INDUXX",
+      "startUrl": "https://www.induxx.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "induxx.be"
+        ]
+      }
+    },
+    {
+      "name": "INFOFARM",
+      "startUrl": "https://www.infofarm.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "infofarm.be"
+        ]
+      }
+    },
+    {
+      "name": "INUITS",
+      "startUrl": "https://www.inuits.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "inuits.eu"
+        ]
+      }
+    },
+    {
+      "name": "JABIL",
+      "startUrl": "https://www.jabil.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "jabil.com"
+        ]
+      }
+    },
+    {
+      "name": "JEROENJEURIS",
+      "startUrl": "https://www.jeroenjeuris.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "jeroenjeuris.be"
+        ]
+      }
+    },
+    {
+      "name": "JMREYNAERTS",
+      "startUrl": "https://www.jmreynaerts.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "jmreynaerts.be"
+        ]
+      }
+    },
+    {
+      "name": "JOBMATCH",
+      "startUrl": "https://www.jobmatch.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "jobmatch.be"
+        ]
+      }
+    },
+    {
+      "name": "JOUVOLUTIE",
+      "startUrl": "https://www.jouvolutie.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "jouvolutie.be"
+        ]
+      }
+    },
+    {
+      "name": "JUSTTHAT",
+      "startUrl": "https://www.justthat.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "justthat.eu"
+        ]
+      }
+    },
+    {
+      "name": "JUUNIEK",
+      "startUrl": "https://www.juuniek.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "juuniek.be"
+        ]
+      }
+    },
+    {
+      "name": "KISWE",
+      "startUrl": "https://www.kiswe.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "kiswe.com"
+        ]
+      }
+    },
+    {
+      "name": "KJHASSELT",
+      "startUrl": "https://www.kjhasselt.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "kjhasselt.be"
+        ]
+      }
+    },
+    {
+      "name": "KOSYOFFICE",
+      "startUrl": "https://www.kosyoffice.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "kosyoffice.com"
+        ]
+      }
+    },
+    {
+      "name": "KUBUSINFO",
+      "startUrl": "https://www.kubusinfo.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "kubusinfo.be"
+        ]
+      }
+    },
+    {
+      "name": "LANDALANGUAGES",
+      "startUrl": "https://www.landalanguages.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "landalanguages.be"
+        ]
+      }
+    },
+    {
+      "name": "LEFTFIELDS",
+      "startUrl": "https://www.leftfields.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "leftfields.be"
+        ]
+      }
+    },
+    {
+      "name": "LETSLINK",
+      "startUrl": "https://www.letslink.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "letslink.be"
+        ]
+      }
+    },
+    {
+      "name": "LETTERLIGHTS",
+      "startUrl": "https://www.letterlights.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "letterlights.be"
+        ]
+      }
+    },
+    {
+      "name": "LIBRASERVICES",
+      "startUrl": "https://www.libra-services.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "libra-services.be"
+        ]
+      }
+    },
+    {
+      "name": "LIFEWORX",
+      "startUrl": "https://www.lifeworx.group",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "lifeworx.group"
+        ]
+      }
+    },
+    {
+      "name": "LIMBURGSTARTUP",
+      "startUrl": "https://www.limburgstartup.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "limburgstartup.be"
+        ]
+      }
+    },
+    {
+      "name": "LOCATEINLIMBURG",
+      "startUrl": "https://www.locateinlimburg.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "locateinlimburg.com"
+        ]
+      }
+    },
+    {
+      "name": "LRM",
+      "startUrl": "https://www.lrm.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "lrm.be"
+        ]
+      }
+    },
+    {
+      "name": "LYVIO",
+      "startUrl": "https://www.lyvio.ai",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "lyvio.ai"
+        ]
+      }
+    },
+    {
+      "name": "MAGICLEAP",
+      "startUrl": "https://www.magicleap.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "magicleap.com"
+        ]
+      }
+    },
+    {
+      "name": "MENSURA",
+      "startUrl": "https://www.mensura.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "mensura.be"
+        ]
+      }
+    },
+    {
+      "name": "MOBILEVIKINGS",
+      "startUrl": "https://www.mobilevikings.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "mobilevikings.be"
+        ]
+      }
+    },
+    {
+      "name": "MOBIQAM",
+      "startUrl": "https://www.mobiqam.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "mobiqam.com"
+        ]
+      }
+    },
+    {
+      "name": "MOORE",
+      "startUrl": "https://www.moore.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "moore.be"
+        ]
+      }
+    },
+    {
+      "name": "MOTOSMARTY",
+      "startUrl": "https://www.motosmarty.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "motosmarty.com"
+        ]
+      }
+    },
+    {
+      "name": "MRWATTS",
+      "startUrl": "https://www.mrwatts.io",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "mrwatts.io"
+        ]
+      }
+    },
+    {
+      "name": "MYCELLHUB",
+      "startUrl": "https://www.mycellhub.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "mycellhub.com"
+        ]
+      }
+    },
+    {
+      "name": "NEWPOINTPROFESSIONALS",
+      "startUrl": "https://www.newpointprofessionals.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "newpointprofessionals.be"
+        ]
+      }
+    },
+    {
+      "name": "NEXTGENMEDIA",
+      "startUrl": "https://www.nextgenmedia.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "nextgenmedia.be"
+        ]
+      }
+    },
+    {
+      "name": "NEXUZHEALTH",
+      "startUrl": "https://www.nexuzhealth.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "nexuzhealth.com"
+        ]
+      }
+    },
+    {
+      "name": "NFUSE",
+      "startUrl": "https://www.nfuse.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "nfuse.eu"
+        ]
+      }
+    },
+    {
+      "name": "ONSOPHIC",
+      "startUrl": "https://www.onsophic.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "onsophic.com"
+        ]
+      }
+    },
+    {
+      "name": "OUTLOOK",
+      "startUrl": "https://www.outlook.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "outlook.com"
+        ]
+      }
+    },
+    {
+      "name": "PADELIZE",
+      "startUrl": "https://www.padelize.ai",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "padelize.ai"
+        ]
+      }
+    },
+    {
+      "name": "PAKKETBOXEN",
+      "startUrl": "https://www.pakketboxen.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "pakketboxen.be"
+        ]
+      }
+    },
+    {
+      "name": "PARENTIA",
+      "startUrl": "https://www.parentia.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "parentia.be"
+        ]
+      }
+    },
+    {
+      "name": "PARTNERINASSISTENTIE",
+      "startUrl": "https://www.partnerinassistentie.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "partnerinassistentie.be"
+        ]
+      }
+    },
+    {
+      "name": "PASSWERK",
+      "startUrl": "https://www.passwerk.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "passwerk.be"
+        ]
+      }
+    },
+    {
+      "name": "PEPPEDUPPEPPERMINTS",
+      "startUrl": "https://www.peppedup-peppermints.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "peppedup-peppermints.com"
+        ]
+      }
+    },
+    {
+      "name": "PEPSICO",
+      "startUrl": "https://www.pepsico.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "pepsico.com"
+        ]
+      }
+    },
+    {
+      "name": "PHPRO",
+      "startUrl": "https://www.phpro.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "phpro.be"
+        ]
+      }
+    },
+    {
+      "name": "PIXELVISION",
+      "startUrl": "https://www.pixelvision.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "pixelvision.be"
+        ]
+      }
+    },
+    {
+      "name": "PLATAAN",
+      "startUrl": "https://www.plataan.tv",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "plataan.tv"
+        ]
+      }
+    },
+    {
+      "name": "POMLIMBURG",
+      "startUrl": "https://www.pomlimburg.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "pomlimburg.be"
+        ]
+      }
+    },
+    {
+      "name": "PRACTICS",
+      "startUrl": "https://www.practics.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "practics.be"
+        ]
+      }
+    },
+    {
+      "name": "PRATO",
+      "startUrl": "https://www.prato.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "prato.be"
+        ]
+      }
+    },
+    {
+      "name": "PRINTSALON",
+      "startUrl": "https://www.printsalon.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "printsalon.be"
+        ]
+      }
+    },
+    {
+      "name": "PRODIGIZ",
+      "startUrl": "https://www.prodigiz.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "prodigiz.be"
+        ]
+      }
+    },
+    {
+      "name": "PROGR3SS",
+      "startUrl": "https://www.progr3ss.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "progr3ss.be"
+        ]
+      }
+    },
+    {
+      "name": "PROJECTPURA",
+      "startUrl": "https://www.projectpura.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "projectpura.com"
+        ]
+      }
+    },
+    {
+      "name": "PUILAETCO",
+      "startUrl": "https://www.puilaetco.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "puilaetco.be"
+        ]
+      }
+    },
+    {
+      "name": "PWC",
+      "startUrl": "https://www.pwc.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "pwc.com"
+        ]
+      }
+    },
+    {
+      "name": "PXLNEXT",
+      "startUrl": "https://www.pxl-next.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "pxl-next.be"
+        ]
+      }
+    },
+    {
+      "name": "PXL",
+      "startUrl": "https://www.pxl.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "pxl.be"
+        ]
+      }
+    },
+    {
+      "name": "QSOLUTIONS",
+      "startUrl": "https://www.qsolutions.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "qsolutions.be"
+        ]
+      }
+    },
+    {
+      "name": "RANDSTADDIGITAL",
+      "startUrl": "https://www.randstaddigital.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "randstaddigital.be"
+        ]
+      }
+    },
+    {
+      "name": "RAWSTADIA",
+      "startUrl": "https://www.rawstadia.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "rawstadia.com"
+        ]
+      }
+    },
+    {
+      "name": "RAYSEARCHLABS",
+      "startUrl": "https://www.raysearchlabs.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "raysearchlabs.com"
+        ]
+      }
+    },
+    {
+      "name": "REBITE",
+      "startUrl": "https://www.rebite.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "rebite.be"
+        ]
+      }
+    },
+    {
+      "name": "RECOMMAND",
+      "startUrl": "https://www.recommand.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "recommand.eu"
+        ]
+      }
+    },
+    {
+      "name": "REFLEQT",
+      "startUrl": "https://www.refleqt.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "refleqt.be"
+        ]
+      }
+    },
+    {
+      "name": "RELIGHTMARKETING",
+      "startUrl": "https://www.relightmarketing.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "relightmarketing.com"
+        ]
+      }
+    },
+    {
+      "name": "RESILION",
+      "startUrl": "https://www.resilion.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "resilion.com"
+        ]
+      }
+    },
+    {
       "name": "RESILLION",
       "startUrl": "https://www.resillion.com",
       "crawl": {
-        "enabled": true,
-        "maxDepth": 3,
-        "maxPages": 10,
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
         "includeExternalDomains": false,
-        "allowedDomains": ["resillion.com"]
+        "allowedDomains": [
+          "resillion.com"
+        ]
       }
     },
     {
-      "name": "OpenAI Docs",
-      "startUrl": "https://platform.openai.com/docs",
+      "name": "RESPONSUM",
+      "startUrl": "https://www.responsum.eu",
       "crawl": {
-        "enabled": true,
-        "maxDepth": 2,
-        "maxPages": 8,
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
         "includeExternalDomains": false,
-        "allowedDomains": ["openai.com"]
+        "allowedDomains": [
+          "responsum.eu"
+        ]
       }
     },
     {
-      "name": "NodeJS",
-      "startUrl": "https://nodejs.org/en",
+      "name": "RESULTX",
+      "startUrl": "https://www.resultx.ai",
       "crawl": {
-        "enabled": true,
-        "maxDepth": 2,
-        "maxPages": 6,
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
         "includeExternalDomains": false,
-        "allowedDomains": ["nodejs.org"]
+        "allowedDomains": [
+          "resultx.ai"
+        ]
+      }
+    },
+    {
+      "name": "REZOLV",
+      "startUrl": "https://www.rezolv.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "rezolv.be"
+        ]
+      }
+    },
+    {
+      "name": "RIGHTCROWD",
+      "startUrl": "https://www.rightcrowd.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "rightcrowd.com"
+        ]
+      }
+    },
+    {
+      "name": "ROBERTHALF",
+      "startUrl": "https://www.roberthalf.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "roberthalf.be"
+        ]
+      }
+    },
+    {
+      "name": "ROOA",
+      "startUrl": "https://www.rooa.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "rooa.eu"
+        ]
+      }
+    },
+    {
+      "name": "SCAPTA",
+      "startUrl": "https://www.scapta.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "scapta.com"
+        ]
+      }
+    },
+    {
+      "name": "SCIA",
+      "startUrl": "https://www.scia.net",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "scia.net"
+        ]
+      }
+    },
+    {
+      "name": "SDWORX",
+      "startUrl": "https://www.sdworx.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "sdworx.com"
+        ]
+      }
+    },
+    {
+      "name": "SECUREX",
+      "startUrl": "https://www.securex.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "securex.be"
+        ]
+      }
+    },
+    {
+      "name": "SECURIPRO",
+      "startUrl": "https://www.securipro.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "securipro.be"
+        ]
+      }
+    },
+    {
+      "name": "SELLIGENT",
+      "startUrl": "https://www.selligent.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "selligent.com"
+        ]
+      }
+    },
+    {
+      "name": "SENNAC",
+      "startUrl": "https://www.sennac.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "sennac.be"
+        ]
+      }
+    },
+    {
+      "name": "SHIELDVZW",
+      "startUrl": "https://www.shield-vzw.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "shield-vzw.be"
+        ]
+      }
+    },
+    {
+      "name": "SIGMA",
+      "startUrl": "https://www.sigma.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "sigma.be"
+        ]
+      }
+    },
+    {
+      "name": "SKILLFLEX",
+      "startUrl": "https://www.skillflex.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "skillflex.be"
+        ]
+      }
+    },
+    {
+      "name": "SLCLIMBURG",
+      "startUrl": "https://www.slclimburg.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "slclimburg.be"
+        ]
+      }
+    },
+    {
+      "name": "SMELTPUNT",
+      "startUrl": "https://www.smeltpunt.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "smeltpunt.be"
+        ]
+      }
+    },
+    {
+      "name": "SOCCERLAB",
+      "startUrl": "https://www.soccerlab.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "soccerlab.com"
+        ]
+      }
+    },
+    {
+      "name": "SOITEC",
+      "startUrl": "https://www.soitec.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "soitec.com"
+        ]
+      }
+    },
+    {
+      "name": "SOLITAIREPARADISE",
+      "startUrl": "https://www.solitaireparadise.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "solitaireparadise.com"
+        ]
+      }
+    },
+    {
+      "name": "STACKCANARIES",
+      "startUrl": "https://www.stackcanaries.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "stackcanaries.eu"
+        ]
+      }
+    },
+    {
+      "name": "STAPPINLIMBURG",
+      "startUrl": "https://www.stappinlimburg.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "stappinlimburg.be"
+        ]
+      }
+    },
+    {
+      "name": "STARTIT",
+      "startUrl": "https://www.startit.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "startit.be"
+        ]
+      }
+    },
+    {
+      "name": "STERCKMAGAZINES",
+      "startUrl": "https://www.sterckmagazines.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "sterckmagazines.be"
+        ]
+      }
+    },
+    {
+      "name": "STRATEVISION",
+      "startUrl": "https://www.stratevision.financial",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "stratevision.financial"
+        ]
+      }
+    },
+    {
+      "name": "SYNOVUM",
+      "startUrl": "https://www.synovum.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "synovum.be"
+        ]
+      }
+    },
+    {
+      "name": "TACTILETECHNOLOGIES",
+      "startUrl": "https://www.tactiletechnologies.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "tactiletechnologies.com"
+        ]
+      }
+    },
+    {
+      "name": "TALENTTOMATCH",
+      "startUrl": "https://www.talent-to-match.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "talent-to-match.com"
+        ]
+      }
+    },
+    {
+      "name": "TEAZZERDRINK",
+      "startUrl": "https://www.teazzerdrink.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "teazzerdrink.com"
+        ]
+      }
+    },
+    {
+      "name": "TECHCOMLIGHT",
+      "startUrl": "https://www.techcomlight.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "techcomlight.be"
+        ]
+      }
+    },
+    {
+      "name": "TELLOPORT",
+      "startUrl": "https://www.telloport.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "telloport.com"
+        ]
+      }
+    },
+    {
+      "name": "THALENTO",
+      "startUrl": "https://www.thalento.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "thalento.com"
+        ]
+      }
+    },
+    {
+      "name": "THEDATAFOREST",
+      "startUrl": "https://www.thedataforest.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "thedataforest.be"
+        ]
+      }
+    },
+    {
+      "name": "THEPOOLHOUSE",
+      "startUrl": "https://www.thepoolhouse.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "thepoolhouse.be"
+        ]
+      }
+    },
+    {
+      "name": "THESAFEGROUP",
+      "startUrl": "https://www.thesafegroup.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "thesafegroup.com"
+        ]
+      }
+    },
+    {
+      "name": "TIMESEER",
+      "startUrl": "https://www.timeseer.ai",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "timeseer.ai"
+        ]
+      }
+    },
+    {
+      "name": "TOSTER",
+      "startUrl": "https://www.toster.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "toster.be"
+        ]
+      }
+    },
+    {
+      "name": "TOTALINTERIORS",
+      "startUrl": "https://www.total-interiors.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "total-interiors.be"
+        ]
+      }
+    },
+    {
+      "name": "TOTHEPOINTEVENTS",
+      "startUrl": "https://www.tothepointevents.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "tothepointevents.be"
+        ]
+      }
+    },
+    {
+      "name": "TRAFIROAD",
+      "startUrl": "https://www.trafiroad.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "trafiroad.be"
+        ]
+      }
+    },
+    {
+      "name": "TRANSITIEPARTNERS",
+      "startUrl": "https://www.transitie-partners.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "transitie-partners.be"
+        ]
+      }
+    },
+    {
+      "name": "TRENDMINER",
+      "startUrl": "https://www.trendminer.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "trendminer.com"
+        ]
+      }
+    },
+    {
+      "name": "TRIACORE",
+      "startUrl": "https://www.triacore.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "triacore.be"
+        ]
+      }
+    },
+    {
+      "name": "TRICKLE",
+      "startUrl": "https://www.trickle.ai",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "trickle.ai"
+        ]
+      }
+    },
+    {
+      "name": "TRIFINANCE",
+      "startUrl": "https://www.trifinance.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "trifinance.be"
+        ]
+      }
+    },
+    {
+      "name": "TVL",
+      "startUrl": "https://www.tvl.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "tvl.be"
+        ]
+      }
+    },
+    {
+      "name": "UCLL",
+      "startUrl": "https://www.ucll.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "ucll.be"
+        ]
+      }
+    },
+    {
+      "name": "UMANIQ",
+      "startUrl": "https://www.umaniq.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "umaniq.eu"
+        ]
+      }
+    },
+    {
+      "name": "UNIKOO",
+      "startUrl": "https://www.unikoo.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "unikoo.be"
+        ]
+      }
+    },
+    {
+      "name": "VIBENET",
+      "startUrl": "https://www.vibenet.io",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "vibenet.io"
+        ]
+      }
+    },
+    {
+      "name": "VIDEOMARKETING",
+      "startUrl": "https://www.videomarketing.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "videomarketing.be"
+        ]
+      }
+    },
+    {
+      "name": "VLAIO",
+      "startUrl": "https://www.vlaio.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "vlaio.be"
+        ]
+      }
+    },
+    {
+      "name": "VOKA",
+      "startUrl": "https://www.voka.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "voka.be"
+        ]
+      }
+    },
+    {
+      "name": "WALLYAUTOMATION",
+      "startUrl": "https://www.wallyautomation.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "wallyautomation.com"
+        ]
+      }
+    },
+    {
+      "name": "WEARENOVA",
+      "startUrl": "https://www.wearenova.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "wearenova.be"
+        ]
+      }
+    },
+    {
+      "name": "WENGAGE",
+      "startUrl": "https://www.wengage.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "wengage.eu"
+        ]
+      }
+    },
+    {
+      "name": "WERELDS",
+      "startUrl": "https://www.werelds.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "werelds.be"
+        ]
+      }
+    },
+    {
+      "name": "WERKADVOCATEN",
+      "startUrl": "https://www.werk-advocaten.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "werk-advocaten.be"
+        ]
+      }
+    },
+    {
+      "name": "WIJSR",
+      "startUrl": "https://www.wijsr.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "wijsr.com"
+        ]
+      }
+    },
+    {
+      "name": "XCAREINMOTION",
+      "startUrl": "https://www.x-careinmotion.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "x-careinmotion.be"
+        ]
+      }
+    },
+    {
+      "name": "XPLOREGROUP",
+      "startUrl": "https://www.xploregroup.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "xploregroup.be"
+        ]
+      }
+    },
+    {
+      "name": "XTI",
+      "startUrl": "https://www.xt-i.com",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "xt-i.com"
+        ]
+      }
+    },
+    {
+      "name": "XYZT",
+      "startUrl": "https://www.xyzt.ai",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "xyzt.ai"
+        ]
+      }
+    },
+    {
+      "name": "YELLOWGROUND",
+      "startUrl": "https://www.yellowground.eu",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "yellowground.eu"
+        ]
+      }
+    },
+    {
+      "name": "ZOPPLIMBURG",
+      "startUrl": "https://www.zopp-limburg.be",
+      "crawl": {
+        "enabled": false,
+        "maxDepth": 1,
+        "maxPages": 1,
+        "includeExternalDomains": false,
+        "allowedDomains": [
+          "zopp-limburg.be"
+        ]
       }
     }
   ]
