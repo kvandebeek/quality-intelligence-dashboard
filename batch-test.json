@@ -29,8 +29,8 @@
       "startUrl": "https://www.actwithcare.be",
       "crawl": {
         "enabled": false,
-        "maxDepth": 1,
-        "maxPages": 1,
+        "maxDepth": 5,
+        "maxPages": 30,
         "includeExternalDomains": false,
         "allowedDomains": [
           "actwithcare.be"
