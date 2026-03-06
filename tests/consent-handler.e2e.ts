@@ -39,6 +39,22 @@ test.describe('consent handler', () => {
     expect(result.detail).toBe('Accept all cookies');
   });
 
+  test('clicks Accept all cookies link element', async ({ page }) => {
+    await page.setContent(`
+      <div id="cookie-consent">
+        <a href="javascript:void(0)" onclick="window.__accepted='link'" class="c-button" id="AcceptReload">Accept all cookies</a>
+      </div>
+    `);
+
+    const result = await handleConsent(page, { timeoutMs: 800 });
+
+    const accepted = await page.evaluate(() => (window as Window & { __accepted?: string }).__accepted ?? null);
+    expect(accepted).toBe('link');
+    expect(result.handled).toBe(true);
+    expect(result.strategy).toBe('cmp-selector');
+    expect(result.detail).toBe('#AcceptReload');
+  });
+
   test('handles consent banner inside iframe', async ({ page }) => {
     await page.setContent(`
       <iframe id="consent-frame" srcdoc="

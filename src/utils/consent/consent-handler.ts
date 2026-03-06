@@ -24,9 +24,14 @@ const DEFAULT_TIMEOUT_MS = 1500;
 const CMP_SELECTORS: readonly string[] = [
   '#onetrust-accept-btn-handler',
   '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+  '#AcceptReload',
   'button[aria-label*="accept all cookies" i]',
   'button[aria-label*="accept all" i]',
+  'a[aria-label*="accept all cookies" i]',
+  'a[aria-label*="accept all" i]',
+  'a[onclick*="acceptall" i]',
   '[id*="cookie" i] button[aria-label*="accept" i]',
+  '[id*="cookie" i] a[aria-label*="accept" i]',
 ];
 const ROLE_LABELS: readonly string[] = ['Accept all', 'Accept all cookies', 'Allow all', 'Agree'];
 const BANNER_CONTAINERS: readonly string[] = ['[id*="cookie" i]', '[class*="cookie" i]', '[id*="consent" i]', '[class*="consent" i]', '[aria-label*="cookie" i]'];
@@ -99,6 +104,15 @@ const tryRoleSelectors = async (context: SearchContext, timeoutMs: number): Prom
     } catch {
       // Continue to next role label.
     }
+
+    try {
+      const clicked = await clickFirstVisible(context, () => context.getByRole('link', { name: label, exact: true }), perStepTimeout);
+      if (clicked) {
+        return { strategy: 'role-text', detail: label };
+      }
+    } catch {
+      // Continue to next role label.
+    }
   }
 
   for (const containerSelector of BANNER_CONTAINERS) {
@@ -110,6 +124,19 @@ const tryRoleSelectors = async (context: SearchContext, timeoutMs: number): Prom
       );
       if (clicked) {
         return { strategy: 'role-text', detail: `${containerSelector} /accept( all| all cookies)?/i` };
+      }
+    } catch {
+      // Continue to next container.
+    }
+
+    try {
+      const clicked = await clickFirstVisible(
+        context,
+        () => context.locator(containerSelector).getByRole('link', { name: /accept( all| all cookies)?/i }),
+        perStepTimeout,
+      );
+      if (clicked) {
+        return { strategy: 'role-text', detail: `${containerSelector} /accept( all| all cookies)?/i (link)` };
       }
     } catch {
       // Continue to next container.
