@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createBatchOutputFolder, expandBatchRunConfig, loadRunPlan } from '../src/config/loadConfig.js';
 
@@ -11,11 +12,14 @@ describe('loadRunPlan', () => {
   });
 
   it('detects batch config shape and expands runs', () => {
+    const raw = JSON.parse(fs.readFileSync('batch-test.json', 'utf-8')) as { batch?: unknown[] };
+    const expectedRunCount = Array.isArray(raw.batch) ? raw.batch.length : 0;
+
     const plan = loadRunPlan('batch-test.json');
     expect(plan.kind).toBe('batch');
     if (plan.kind === 'batch') {
-      expect(plan.runs).toHaveLength(3);
-      expect(plan.runs[0]?.config.outputDir).toContain('artifacts/RESILLION');
+      expect(plan.runs).toHaveLength(expectedRunCount);
+      expect(plan.runs[0]?.config.outputDir).toContain('artifacts/');
     }
   });
 

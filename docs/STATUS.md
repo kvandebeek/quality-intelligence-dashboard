@@ -31,3 +31,8 @@
   - [x] New cohesive dark theme and responsive layout.
   - [x] Added `DATA_MAPPING.md`, `CONFIG.md`, and README updates.
   - [x] Manual smoke checklist complete.
+
+
+## Maintenance notes
+- Batch configuration handling is validated against the current `batch-test.json` fixture size to avoid brittle fixed-count assumptions in tests.
+- Config JSON parse errors now include the resolved file path for faster troubleshooting.
