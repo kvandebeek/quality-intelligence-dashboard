@@ -367,11 +367,20 @@ function buildRegressionSummary(runRoot: string, outputDir: string, thresholds: 
   };
 }
 
-async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string, timing: TestTimingTracker, config: AppConfig, retry = 0): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[]; extensionScores: Record<string, number | string | null> }> {
+async function executePipelineForUrl(browser: Awaited<ReturnType<BrowserType['launch']>>, runRoot: string, target: RunTarget, crawl: CrawlPageMetadata | undefined, runId: string, timestamp: string, timing: TestTimingTracker, config: AppConfig, pageIndex: number, totalPages?: number, retry = 0): Promise<{ artifact: TargetRunArtifacts; output: RunSummary['outputs'][number]; hrefs: string[]; extensionScores: Record<string, number | string | null> }> {
   const urlSlug = sanitizeSlug(target.url);
   const targetFolder = path.join(runRoot, urlSlug);
   ensureDir(targetFolder);
-  const testReference = timing.startTest('src/core/runEngine.ts', target.name, retry);
+  const testReference = timing.startTest('src/core/runEngine.ts', target.name, retry, { pageUrl: target.url, pageIndex, totalPages });
+
+  const extensionChecksEnabled = Object.values(config.assuranceModules.enabled).some((enabled) => Boolean(enabled));
+  if (!extensionChecksEnabled) {
+    timing.skipPhase(testReference, 'extensions', 'all extension checks disabled in config');
+  }
+
+  if (!config.assuranceModules.enabled.uxSuite) {
+    timing.skipPhase(testReference, 'ux', 'ux suite disabled in config');
+  }
 
   const context = await timing.step(testReference, 'Create browser context', async () => browser.newContext());
   const page = await timing.step(testReference, 'Create page', async () => context.newPage());
@@ -1156,7 +1165,7 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   try {
     if (config.crawl.enabled) {
     const crawlResult = await runBfsCrawl({ startUrl: config.startUrl, crawlConfig: config.crawl }, async ({ url, parentUrl, depth, index }) => {
-      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp, timing, config);
+      const executed = await executePipelineForUrl(browser, runRoot, { name: `Crawled Page ${index + 1}`, url }, { url, parentUrl, depth }, runId, timestamp, timing, config, index + 1);
       targetArtifacts.push(executed.artifact); outputs.push(executed.output); return { discoveredHrefs: executed.hrefs };
     });
     await browser.close();
@@ -1182,8 +1191,8 @@ export async function runAssurance(config: AppConfig): Promise<RunSummary> {
   }
 
     const targets = resolveLinearTargets(config);
-    for (const target of targets) {
-    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp, timing, config);
+    for (const [index, target] of targets.entries()) {
+    const executed = await executePipelineForUrl(browser, runRoot, target, undefined, runId, timestamp, timing, config, index + 1, targets.length);
     outputs.push(executed.output); targetArtifacts.push(executed.artifact);
   }
     await browser.close();

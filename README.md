@@ -25,6 +25,20 @@ npm run run -- --config config/example.config.json
 npm run dashboard -- --run <outputDir>/<runId> --port 4173
 ```
 
+
+### Console progress output
+
+During `npm run run`, each page now renders a **single-line, live progress bar** that shows:
+- page identity (`Page X/Y` and URL)
+- percentage complete
+- current phase (`navigation`, `core artifacts`, `security`, `broken-links`, `seo`, `stability`, `extensions`, `ux`, `persistence`, `teardown`)
+
+Behavior differs by terminal type:
+- **Interactive TTY (local terminal):** inline updates reuse one line via carriage-return/clear-line behavior.
+- **Non-interactive / CI logs:** inline control is disabled and readable snapshot lines are emitted instead.
+
+Each page still writes a durable final completion line with status and elapsed time (`COMPLETED` / `FAILED`), and run-level summary logs remain unchanged.
+
 ## Batch runs
 
 Existing single-config usage remains unchanged:
