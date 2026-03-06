@@ -39,6 +39,48 @@ test.describe('consent handler', () => {
     expect(result.detail).toBe('Accept all cookies');
   });
 
+  test('handles anchor-based accept buttons with inline onclick handlers', async ({ page }) => {
+    await page.setContent(`
+      <div class="button-container" id="cookie-controls">
+        <a href="javascript:void(0)" onclick="window.__cookieAction='preferences'" class="c-button c-button-secondary" id="ChangeReload">Select preferences</a>
+        <a href="javascript:void(0)" onclick="window.__cookieAction='reject'" class="c-button space-left reject-btn" id="rejectReload">Alles weigeren</a>
+        <a href="javascript:void(0)" onclick="window.__cookieAction='accept'" class="c-button" id="AcceptReload">
+          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="currentColor" d="M27 4l-15 15-7-7-5 5 12 12 20-20z"></path></svg>
+          Accept all cookies
+        </a>
+      </div>
+    `);
+
+    const result = await handleConsent(page, { timeoutMs: 1200 });
+
+    const accepted = await page.evaluate(() => (window as Window & { __cookieAction?: string }).__cookieAction ?? null);
+    expect(accepted).toBe('accept');
+    expect(result.handled).toBe(true);
+    expect(result.strategy).toBe('cmp-selector');
+    expect(result.detail).toBe('#AcceptReload');
+  });
+
+  test('finds delayed consent controls using generic clickable scan', async ({ page }) => {
+    await page.setContent(`
+      <div id="app"><p>Loading consent UI...</p></div>
+      <script>
+        setTimeout(() => {
+          const host = document.createElement('section');
+          host.className = 'privacy-overlay';
+          host.innerHTML = '<a href="#" role="button" data-kind="accept" onclick="window.__delayedConsent=\'accepted\'">OK, continue</a>';
+          document.body.appendChild(host);
+        }, 250);
+      </script>
+    `);
+
+    const result = await handleConsent(page, { timeoutMs: 1400 });
+
+    const accepted = await page.evaluate(() => (window as Window & { __delayedConsent?: string }).__delayedConsent ?? null);
+    expect(accepted).toBe('accepted');
+    expect(result.handled).toBe(true);
+    expect(result.detail).toContain('dom-scan:');
+  });
+
   test('handles consent banner inside iframe', async ({ page }) => {
     await page.setContent(`
       <iframe id="consent-frame" srcdoc="
