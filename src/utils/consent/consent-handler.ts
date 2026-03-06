@@ -24,12 +24,18 @@ const DEFAULT_TIMEOUT_MS = 1500;
 const CMP_SELECTORS: readonly string[] = [
   '#onetrust-accept-btn-handler',
   '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+  '#AcceptReload',
+  '#accept-cookies',
+  '#cookie-accept',
   'button[aria-label*="accept all cookies" i]',
   'button[aria-label*="accept all" i]',
+  'a[aria-label*="accept" i]',
+  '[id*="cookie" i] a[id*="accept" i]',
   '[id*="cookie" i] button[aria-label*="accept" i]',
 ];
 const ROLE_LABELS: readonly string[] = ['Accept all', 'Accept all cookies', 'Allow all', 'Agree'];
 const BANNER_CONTAINERS: readonly string[] = ['[id*="cookie" i]', '[class*="cookie" i]', '[id*="consent" i]', '[class*="consent" i]', '[aria-label*="cookie" i]'];
+const GENERIC_CLICKABLE_SELECTOR = 'button,a,[role="button" i],input[type="button" i],input[type="submit" i]';
 
 const nowMs = (): number => Number(process.hrtime.bigint() / BigInt(1_000_000));
 
@@ -58,6 +64,9 @@ const clickFirstVisible = async (
 ): Promise<boolean> => {
   const locator = locatorFactory();
   const count = await locator.count();
+  if (count === 0) {
+    return false;
+  }
   const matches = count > 1 ? locator.first() : locator;
 
   if (!(await canClick(matches, timeoutMs))) {
@@ -83,6 +92,89 @@ const tryCmpSelectors = async (context: SearchContext, timeoutMs: number): Promi
     } catch {
       // Continue searching with other selectors.
     }
+  }
+
+  return null;
+};
+
+const tryGenericClickableScan = async (context: SearchContext, timeoutMs: number): Promise<MatchResult | null> => {
+  const perIterationWaitMs = 100;
+  const deadline = nowMs() + timeoutMs;
+
+  while (nowMs() < deadline) {
+    const detail = await context.evaluate(
+      ({ containerSelectors, clickableSelector }) => {
+        const positivePattern = /(accept|allow|agree|consent|ok(?:ay)?|got it|continue|toestaan|aanvaard|accepter|akzept|acept|alles accepteren)/i;
+        const negativePattern = /(reject|decline|deny|disagree|settings|preferences|manage|customi[sz]e|necessary|only required|alles weigeren|weiger|ablehnen|refus)/i;
+
+        const toText = (element: Element): string => {
+          const htmlElement = element as HTMLElement;
+          const value = element instanceof HTMLInputElement ? element.value : '';
+          return [
+            element.getAttribute('aria-label') ?? '',
+            element.getAttribute('title') ?? '',
+            value,
+            htmlElement.innerText ?? '',
+            htmlElement.textContent ?? '',
+          ]
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        };
+
+        const isVisible = (element: Element): boolean => {
+          const node = element as HTMLElement;
+          if (!node.isConnected) return false;
+          const style = window.getComputedStyle(node);
+          if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) === 0) return false;
+          const rect = node.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        };
+
+        const scoreContainer = (element: Element): number => {
+          for (const selector of containerSelectors) {
+            const container = element.closest(selector);
+            if (container) return 4;
+          }
+          return 0;
+        };
+
+        let bestCandidate: { element: HTMLElement; score: number; text: string } | null = null;
+        const candidates = Array.from(document.querySelectorAll(clickableSelector));
+
+        for (const candidate of candidates) {
+          if (!isVisible(candidate)) continue;
+          const text = toText(candidate);
+          if (!text || !positivePattern.test(text) || negativePattern.test(text)) continue;
+
+          let score = 10 + scoreContainer(candidate);
+          if (/accept all|allow all|all cookies|all tracking/i.test(text)) score += 6;
+          if ((candidate.getAttribute('id') ?? '').toLowerCase().includes('accept')) score += 2;
+          if ((candidate.getAttribute('class') ?? '').toLowerCase().includes('accept')) score += 1;
+
+          if (!bestCandidate || score > bestCandidate.score) {
+            bestCandidate = { element: candidate as HTMLElement, score, text };
+          }
+        }
+
+        if (!bestCandidate) {
+          return null;
+        }
+
+        bestCandidate.element.click();
+        const id = bestCandidate.element.id ? `#${bestCandidate.element.id}` : '';
+        return `dom-scan:${bestCandidate.element.tagName.toLowerCase()}${id} text=${JSON.stringify(bestCandidate.text.slice(0, 80))}`;
+      },
+      { containerSelectors: BANNER_CONTAINERS, clickableSelector: GENERIC_CLICKABLE_SELECTOR },
+    );
+
+    if (detail) {
+      const page = 'page' in context ? context.page() : context;
+      await page.waitForLoadState('domcontentloaded', { timeout: Math.min(500, timeoutMs) }).catch(() => undefined);
+      return { strategy: 'role-text', detail };
+    }
+
+    await context.waitForTimeout(perIterationWaitMs);
   }
 
   return null;
@@ -123,6 +215,11 @@ const tryContext = async (context: SearchContext, timeoutMs: number): Promise<Ma
   const cmp = await tryCmpSelectors(context, timeoutMs);
   if (cmp) {
     return cmp;
+  }
+
+  const generic = await tryGenericClickableScan(context, withTimeout(timeoutMs, 2));
+  if (generic) {
+    return generic;
   }
 
   return tryRoleSelectors(context, timeoutMs);
